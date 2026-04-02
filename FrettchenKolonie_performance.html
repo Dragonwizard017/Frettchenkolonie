@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timberborn Enhanced Features</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .production-chain { display: flex; flex-direction: column; margin: 20px; }
+        .item { margin-bottom: 10px; }
+        .arrows { display: flex; align-items: center; }
+        .arrow { font-size: 2em; }
+        .slider { width: 300px; }
+        .upgrade-level { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Enhanced Features of Timberborn</h1>
+    <div class="production-chain">
+        <h2>Production Chain Visualization</h2>
+        <div class="item">
+            <span>Crops</span><span class="arrow"> ➜ </span><span>Food</span>
+        </div>
+        <div class="item">
+            <span>Food</span><span class="arrow"> ➜ </span><span>Storage</span>
+        </div>
+        <div class="item">
+            <span>Raw Materials</span><span class="arrow"> ➜ </span><span>Products</span>
+        </div>
+    </div>
+
+    <h2>Manual Worker Priorities</h2>
+    <div>
+        <label for="worker-priority">Set Worker Priority:</label>
+        <input type="range" id="worker-priority" min="1" max="10" class="slider">
+    </div>
+
+    <h2>Building Upgrade System</h2>
+    <div>
+        <div class="upgrade-level">
+            <label for="level1">Building Level 1:</label>
+            <input type="checkbox" id="level1">
+        </div>
+        <div class="upgrade-level">
+            <label for="level2">Building Level 2:</label>
+            <input type="checkbox" id="level2">
+        </div>
+        <div class="upgrade-level">
+            <label for="level3">Building Level 3:</label>
+            <input type="checkbox" id="level3">
+        </div>
+    </div>
+
+    <h2>Storage Route System</h2>
+    <p>Ferrets will carry resources between storage and production buildings.</p>
+
+    <h2>Population Growth</h2>
+    <p>Housing capacity affects population growth. Ensure enough housing!</p>
+</body>
+</html>
