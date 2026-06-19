@@ -1,1 +1,29 @@
+# FrettchenKolonie – Changelog
 
+## v10.2 (3D-Edition, Bugfix-Runde 2)
+- Fix: WorldRenderer3D._spawn_building griff auf nicht existierendes Feld
+  "building_id" zu (BuildingEntity nutzt "id") -> Spielstart-Crash behoben
+- Betroffene Stellen: _spawn_building(), _rebuild_all_buildings(), update_ghost()
+
+## v10.1 (3D-Edition, Bugfix-Runde 1)
+- Fix: FerretEntity Wanderlogik nutzte noch Pixel-Werte aus dem 2D-Port
+  (Distanz-Schwelle, Wanderradius, Bewegungsgeschwindigkeit) -> auf
+  Tile-Koordinaten (0.15 / 3.5 / 2.0) umgestellt
+- Fix: Speichern/Laden – Renderer baute die Welt, bevor BuildingSys.deserialize()
+  fertig war -> Gebaeude nach Laden unsichtbar. Neuer post_load_refresh()-Callback
+  in SaveSystem behebt die Reihenfolge
+- Fix: Schreibzugriff auf nicht deklariertes Property eines RefCounted-Objekts
+  (GDScript-4-Laufzeitfehler) entfernt
+- Fix: Risiko doppelter Signal-Verbindungen (is_connected-Guard ergänzt)
+- Fix: Private Methode wurde von ausserhalb der Klasse aufgerufen ->
+  oeffentliche refresh_terrain()-API ergaenzt
+
+## v10.0 (3D-Port)
+- Kompletter Port von 2D-isometrischem Rendering auf echtes 3D
+- Terrain als einzelnes gemergtes ArrayMesh mit Vertex-Farben (performant)
+- Gebaeude als StaticBody3D + BoxMesh + Label3D-Emoji
+- Camera2D durch orthographische Camera3D in isometrischem Winkel ersetzt
+- Tile-Auswahl per Raycast (PhysicsRayQueryParameters3D) statt Pixel-Mathematik
+  -> behebt den Bug, dass Gebaeude nicht anklickbar waren
+- Frettchen/Bevoelkerungssystem auf Tile-Koordinaten (0-60) umgestellt
+- Root-Szene von Control auf Node3D/Node umgestellt, UI weiterhin ueber CanvasLayer
