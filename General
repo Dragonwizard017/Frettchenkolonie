@@ -1,0 +1,148 @@
+# FrettchenKolonie – Projektübersicht
+
+## Was ist FrettchenKolonie?
+
+FrettchenKolonie (engl. "Ferret Colony") ist ein browserbasiertes bzw. (seit dem
+Godot-Port) eigenständiges isometrisches Aufbau-Strategiespiel im Stil von
+Timberborn. Der Spieler verwaltet eine Kolonie von Frettchen-Bewohnern, baut
+Gebäude, verwaltet Ressourcenketten und sorgt für das Überleben und Wachstum
+der Bevölkerung durch Jahreszeiten, Dürreperioden und Expeditionen.
+
+---
+
+## Entwicklungsverlauf im Überblick
+
+### Phase 1 – Zwei parallele HTML-Prototypen
+Zwei eigenständige Single-File-HTML/JS-Versionen wurden parallel entwickelt:
+
+- **FrettchenKolonie_performance.html** (5081 Zeilen)
+  Fokus: Touch-Steuerung, DroughtSystem (Dürre-Zyklen), SeasonSystem
+  (4 Jahreszeiten), ExpeditionSystem, Performance-Optimierung via Tile-Cache
+  und Frustum-Culling.
+
+- **FrettchenKolonie_Freddy.html** (4972 Zeilen)
+  Fokus: SoundSystem (prozedurale Web-Audio-API-Klänge), Terrain-Editing
+  (Erde aufschütten, Sprengstoff), neue Gebäude, Wasser-Tank-System.
+
+### Phase 2 – Fusion zu v5.0 Enhanced
+Beide Versionen wurden zu einer gemeinsamen v5.0 zusammengeführt:
+- Komplettes ResourceSystem mit Wassertank und Storage-Kapazität
+- Neue Ressourcen: MEAT, WHEAT, DYNAMITE, COOKED_MEAT, BREAD, STEW
+- Neue Gebäude: COOKHOUSE, HUNTER_HUT, WHEAT_FARM, DYNAMITE_WORKSHOP, Dekorationen
+- Terrain-Editing (Drag-Aufschüttung, 2-Klick-Sprengstoff)
+- Über 17 Bugs gefixt (Wasser-Routing, Nahrungsprioritäten u.a.)
+
+### Phase 3 – Godot-4-Port (v9, 2D-Isometrie)
+Das Spiel wurde komplett nach Godot 4.6 portiert (28 GDScript-Dateien):
+- Saubere Systemtrennung: BuildingData, ResourceSystem, BuildingEntity,
+  BuildingSystem, FerretEntity, PopulationManager, DayNightSystem, TechTree,
+  DroughtSystem, SeasonSystem, ExpeditionSystem, SaveSystem, SoundSystem
+- Isometrisches Rendering über Node2D/Camera2D + Painter's-Algorithm
+- 3D-Gebäudemodell (GLB) wurde über SubViewport + Camera3D vorgerendert und
+  als 2D-Textur gecacht (Hybrid-Ansatz)
+- UI komplett programmatisch in GDScript aufgebaut (kein .tscn-Layout-Chaos)
+- Bekannter Bug aus dieser Phase: Gebäude waren nicht zuverlässig anklickbar
+
+### Phase 4 – Vollständiger 3D-Port (v10.0)
+Auf Wunsch wurde das Spiel von 2D-Isometrie auf echtes 3D umgestellt, um mehr
+gestalterische Freiheit (Beleuchtung, Modelle, Kamerawinkel) zu ermöglichen:
+- **Terrain**: ein einziges gemergtes `ArrayMesh` mit Vertex-Farben statt
+  einzelner Tile-Sprites (sehr performant, ein Draw-Call)
+- **Gebäude**: `StaticBody3D` + `BoxMesh` + `Label3D`-Emoji statt 2D-Sprites
+- **Kamera**: `Camera2D` ersetzt durch orthographische `Camera3D` in klassischem
+  Isometrie-Winkel (konfigurierbar über CAM_ANGLE_X/Y)
+- **Klick-Erkennung**: physikalischer Raycast (`PhysicsRayQueryParameters3D`)
+  gegen einen Terrain-Collider statt unzuverlässiger Pixel-Rückrechnung
+  → behebt den Klick-Bug aus Phase 3 strukturell
+- **Koordinatensystem**: Frettchen- und Bevölkerungssystem von
+  Pixel-Weltkoordinaten auf Tile-Koordinaten (0–60) umgestellt
+- **Szenenstruktur**: Root-Node von `Control` auf `Node`/`Node3D` geändert,
+  UI bleibt weiterhin über eine `CanvasLayer` unabhängig von der 3D-Kamera
+
+### Phase 5 – Bugfix-Runden (v10.1, v10.2)
+Nach dem 3D-Port wurde der komplette neue Code systematisch auf Logikfehler
+durchsucht. Acht Bugs wurden gefunden und behoben (Details siehe Changes-Datei),
+u.a.:
+- Frettchen-Wanderlogik enthielt noch Pixel-Werte aus dem 2D-Code
+- Speichern/Laden brachte Renderer und Gebäude-Daten in falsche Reihenfolge
+- Ein Feldname (`building_id` statt korrekt `id`) verursachte einen
+  Spielstart-Crash
+
+---
+
+## Aktuelle Architektur (Stand v10.2)
+
+```
+FK_3D/
+├── project.godot                  ← Godot 4.6, Forward+, alle Autoloads
+├── autoloads/GameState.gd         ← zentraler Signal-Hub, Spielzustand
+├── systems/
+│   ├── BuildingData.gd            ← 30+ Gebäudetypen, Rezepte (AUTOLOAD)
+│   ├── ResourceSystem.gd          ← Ressourcen, Wassertank
+│   ├── BuildingEntity.gd          ← Gebäude-Klasse (RefCounted)
+│   ├── BuildingSystem.gd          ← bauen/verkaufen/upgraden
+│   ├── FerretEntity.gd            ← Frettchen mit Bedürfnissen (Tile-Koords)
+│   ├── PopulationManager.gd       ← Wachstum, Tod, Arbeitszuweisung
+│   ├── DayNightSystem.gd, TechTree.gd
+│   ├── DroughtSystem.gd, SeasonSystem.gd, ExpeditionSystem.gd
+│   ├── SaveSystem.gd              ← JSON-Speicherstand nach user://
+│   └── SoundSystem.gd             ← prozedurale Klänge via AudioStreamGenerator
+├── world/WorldGenerator.gd        ← Perlin-Noise-Weltgenerierung, Terraforming
+├── rendering/
+│   └── WorldRenderer3D.gd         ← komplettes 3D-Rendering (Terrain-Mesh,
+│                                     Gebäude, Frettchen, Selektion/Ghost)
+├── game/GameController.gd         ← Input, Camera3D-Steuerung, Raycast-Klicks,
+│                                     Spiellogik-Loop
+├── ui/ (HUD, BuildMenu, BuildingInfo, PauseMenu, NotificationLayer,
+│        MainMenu, WorldCreation, ExpeditionPanel, GraveyardPanel, StatsPanel)
+└── scenes/Main.gd + Main.tscn     ← Root-Node, UI komplett programmatisch
+```
+
+---
+
+## Gameplay-Systeme (vollständig, seit den HTML-Prototypen erhalten)
+
+**Ressourcen & Produktion**
+12+ Ressourcentypen (Holz, Stein, Beeren, Wasser, Bretter, Werkzeuge, Essen,
+Eisen, Eisenstäbe, Maschinen, Kohle, Stahl, Fleisch, Weizen, Dynamit u.a.),
+mehrstufige Produktionsketten, Gebäude-Upgrades (Stufe 1–3, +35 % Output je
+Stufe), Wasserrad-Bonus für nahe Prozessoren, Lager-Kapazitätsgrenzen.
+
+**Bevölkerung & Frettchen**
+Individuelle Frettchen mit Namen, Bedürfnissen (Hunger, Durst, Schlaf,
+Glück), Gesundheitssystem, Spezialisierung nach 5 Tagen im selben Gebäude
+(+40 % Output), Bevölkerungswachstum abhängig von freien Betten, Nahrung und
+Glück, Prioritäten-Slider pro Gebäude, Gedenkstätte für Verstorbene.
+
+**Dürre & Jahreszeiten**
+Dürre-Zyklus (nass → Übergang → Dürre), Wasserreservoir-Vorsorge,
+30-Tage-Dürrevorhersage, vier Jahreszeiten mit Produktions-Multiplikatoren
+und visuellen Effekten.
+
+**Expeditionen & Ruinen**
+Expeditionslager ab Epoche 2 (1–4 Frettchen, 3–12 Tage), dauerabhängige
+Belohnungen, erkundbare Ruinen mit Werkzeug-Kosten und Zufallsbeute.
+
+**Technologie**
+Vier Epochen mit jeweils eigenen Gebäuden, von einfachen Holzfäller-/
+Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
+
+---
+
+## Bekannte offene Punkte
+
+- Deliverables werden aktuell als ZIP bereitgestellt, da `/mnt/project/`
+  schreibgeschützt ist. Direkter Datei-Push erfolgt seit dieser Phase über
+  die GitHub-API in das Repository `Dragonwizard017/Frettchenkolonie`.
+- Versionierung: Haupt-Ports erhalten ganze Versionsnummern (v9, v10),
+  Bugfix-Runden Punkt-Releases (v10.1, v10.2), jeweils mit Eintrag in der
+  `Changes`-Datei im Repo.
+
+---
+
+## Tools & Engine
+
+- **Engine**: Godot 4.6 (GDScript), Forward+-Renderer
+- **Frühere Prototypen**: Vanilla JavaScript / HTML5 Canvas (kein Framework)
+- **Versionsverwaltung**: GitHub-Repository `Dragonwizard017/Frettchenkolonie`,
+  Updates per GitHub REST API (Contents-Endpoint)
