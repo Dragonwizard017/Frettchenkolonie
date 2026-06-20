@@ -1,5 +1,57 @@
 # FrettchenKolonie – Changelog
 
+## v10.3 (3D-Edition, Bugfix-Runde 3)
+Drei vom Nutzer gemeldete Bugs behoben:
+- **Fix: Klick-Versatz beim Anklicken von Tiles/Gebäuden.** Die
+  Terrain-Kollision (für den Auswahl-Raycast) war bisher eine FLACHE Box
+  fest bei y=0, unabhängig von der tatsächlichen, pro Tile variierenden
+  Geländehöhe. Da der WorldGenerator praktisch überall eine Höhe > 0
+  erzeugt (Hügel, Berge etc.), traf der Raycast meist eine falsche Ebene,
+  wodurch der ausgewählte Tile-Punkt gegenüber der echten Mausposition
+  versetzt war – besonders deutlich auf erhöhtem Gelände. Fix:
+  WorldRenderer3D._build_collision() erzeugt die Kollisionsform jetzt
+  direkt aus dem sichtbaren Terrain-Mesh (ConcavePolygonShape3D via
+  create_trimesh_shape()), sodass der Raycast exakt die gerenderte
+  Oberfläche trifft. refresh_terrain() baut die Kollision bei jeder
+  Höhenänderung konsistent mit neu.
+- **Fix: Spiel stürzte nach einiger Zeit ab.** Ursache: Beim Aufschütten
+  von Terrain (Werkzeug "Erde aufschütten", Drag-Malen) wurde bei JEDEM
+  Mausbewegungs-Event renderer.build_world() aufgerufen – ein KOMPLETTER
+  Neuaufbau, der Terrain, Kollision, ALLE Gebäude und ALLE Frettchen
+  zerstört (queue_free) und sofort neu erzeugt. Da InputEventMouseMotion
+  mehrfach pro Frame ausgelöst werden kann, stapelten sich beim Ziehen der
+  Maus etliche, noch nicht entsorgte Knoten-Generationen (StaticBody3D /
+  CollisionShape3D / MeshInstance3D) innerhalb desselben Frames auf. Über
+  eine längere Spielsitzung mit mehrfachem Terrain-Editing führte das zur
+  Erschöpfung von Render-/Physik-Server-Ressourcen und letztlich zum
+  Absturz. Fix: GameController._handle_click() und _handle_drag_paint()
+  rufen für Höhenänderungen jetzt nur noch das leichtgewichtige
+  renderer.refresh_terrain() auf (baut nur Mesh + Kollision neu, keine
+  Gebäude/Frettchen) statt des vollen build_world().
+- **Vorsorglicher Fix (gleiche Fehlerklasse wie Bug6 aus v10.1):**
+  BuildingSystem.sell() schrieb beim Verkaufen eines im Bau befindlichen
+  Gebäudes auf ein nicht deklariertes Property (current_construction_site)
+  eines BuildingEntity-Objekts (assigned_builder). Dieses Feld existiert
+  nur auf FerretEntity – ein Schreibzugriff auf eine nicht deklarierte
+  Property eines RefCounted-Objekts wirft in GDScript 4 einen
+  Laufzeitfehler. Aktuell wird assigned_builder nirgends befüllt (totes
+  Feld), der Fehler war also noch nicht auslösbar, wurde aber als
+  Vorsichtsmaßnahme entfernt, bevor das Feld künftig genutzt wird.
+- **Fix: Fehlender Epochen-Button.** Bisher gab es im Bau-Menü nur ein
+  reines Text-Label ("Epoche N") ohne jegliche Funktion. Der einzige Weg,
+  eine neue Epoche freizuschalten, war ein Button, der ganz unten in der
+  scrollbaren Bauliste auftauchte – und das auch nur, wenn man sich die
+  nächste Epoche bereits leisten konnte. Vorher hatte man also gar keine
+  Möglichkeit zu sehen, was für die nächste Epoche überhaupt benötigt
+  wird. Fix: Das Label wurde durch einen dauerhaft sichtbaren Button
+  (EpochBtn) im Header des Bau-Menüs ersetzt. Er zeigt immer die aktuelle
+  Epoche sowie Name + Kosten der nächsten Epoche an und schaltet sie per
+  Klick frei, sobald genug Ressourcen vorhanden sind (sonst Hinweis-Popup).
+  Neue Hilfsfunktion TechTree.get_next_epoch_id().
+- Betroffene Dateien: rendering/WorldRenderer3D.gd, game/GameController.gd,
+  systems/BuildingSystem.gd, systems/TechTree.gd, ui/BuildMenu.gd,
+  scenes/Main.gd
+
 ## v10.2 (3D-Edition, Bugfix-Runde 2)
 - Fix: WorldRenderer3D._spawn_building griff auf nicht existierendes Feld
   "building_id" zu (BuildingEntity nutzt korrekt "id") -> Spielstart-Crash
