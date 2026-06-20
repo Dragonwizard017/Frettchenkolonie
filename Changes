@@ -2,28 +2,103 @@
 
 ## v10.2 (3D-Edition, Bugfix-Runde 2)
 - Fix: WorldRenderer3D._spawn_building griff auf nicht existierendes Feld
-  "building_id" zu (BuildingEntity nutzt "id") -> Spielstart-Crash behoben
-- Betroffene Stellen: _spawn_building(), _rebuild_all_buildings(), update_ghost()
+  "building_id" zu (BuildingEntity nutzt korrekt "id") -> Spielstart-Crash
+  beim Aufbau der Startgebäude behoben
+- Betroffene Stellen: _spawn_building(), _rebuild_all_buildings(),
+  update_ghost() in WorldRenderer3D.gd, sowie analoge Stellen in
+  GameController.gd
 
 ## v10.1 (3D-Edition, Bugfix-Runde 1)
-- Fix: FerretEntity Wanderlogik nutzte noch Pixel-Werte aus dem 2D-Port
-  (Distanz-Schwelle, Wanderradius, Bewegungsgeschwindigkeit) -> auf
-  Tile-Koordinaten (0.15 / 3.5 / 2.0) umgestellt
-- Fix: Speichern/Laden – Renderer baute die Welt, bevor BuildingSys.deserialize()
-  fertig war -> Gebaeude nach Laden unsichtbar. Neuer post_load_refresh()-Callback
-  in SaveSystem behebt die Reihenfolge
-- Fix: Schreibzugriff auf nicht deklariertes Property eines RefCounted-Objekts
-  (GDScript-4-Laufzeitfehler) entfernt
-- Fix: Risiko doppelter Signal-Verbindungen (is_connected-Guard ergänzt)
-- Fix: Private Methode wurde von ausserhalb der Klasse aufgerufen ->
-  oeffentliche refresh_terrain()-API ergaenzt
+Acht Bugs nach systematischer Code-Durchsicht des neuen 3D-Codes behoben:
+- FerretEntity.gd: Wanderlogik nutzte noch Pixel-Werte aus dem 2D-Port
+  (Distanz-Schwelle 3.0 statt 0.15, Wanderradius ±180/±90 statt ±3.5,
+  move_speed-Default 22.0 statt 2.0) -> auf Tile-Koordinaten umgestellt
+- FerretEntity.gd: deserialize() interpretierte alte Pixel-Positionen aus
+  Speicherständen (~2880) als gültige Tile-Koordinaten -> Frettchen
+  erschienen in Kartenecken. Heuristik erkennt alte Werte (> 200) und
+  setzt Position auf Kartenmitte zurück
+- SaveSystem.gd: Renderer baute die Welt, bevor BuildingSys.deserialize()
+  abgeschlossen war -> Gebäude nach dem Laden unsichtbar. Neuer
+  post_load_refresh()-Callback in GameController behebt die Reihenfolge
+- GameController.gd: Schreibzugriff auf nicht deklariertes Property
+  (current_construction_site) eines RefCounted-Objekts -> GDScript-4-
+  Laufzeitfehler entfernt
+- GameController.gd: Risiko doppelter Signalverbindungen bei erneutem
+  Spielstart ohne App-Neustart -> is_connected()-Guard ergänzt
+- WorldRenderer3D.gd: private Methode _build_terrain_mesh() wurde von
+  außerhalb der Klasse aufgerufen -> öffentliche refresh_terrain()-API
+  ergänzt und in GameController referenziert
 
-## v10.0 (3D-Port)
-- Kompletter Port von 2D-isometrischem Rendering auf echtes 3D
-- Terrain als einzelnes gemergtes ArrayMesh mit Vertex-Farben (performant)
-- Gebaeude als StaticBody3D + BoxMesh + Label3D-Emoji
-- Camera2D durch orthographische Camera3D in isometrischem Winkel ersetzt
-- Tile-Auswahl per Raycast (PhysicsRayQueryParameters3D) statt Pixel-Mathematik
-  -> behebt den Bug, dass Gebaeude nicht anklickbar waren
-- Frettchen/Bevoelkerungssystem auf Tile-Koordinaten (0-60) umgestellt
-- Root-Szene von Control auf Node3D/Node umgestellt, UI weiterhin ueber CanvasLayer
+## v10.0 (Vollständiger 3D-Port)
+Kompletter Wechsel von 2D-isometrischem Rendering auf echtes 3D, um mehr
+gestalterische Freiheit (Beleuchtung, Modelle, Kamerawinkel) zu ermöglichen:
+- Neu: rendering/WorldRenderer3D.gd ersetzt IsometricRenderer.gd und
+  BuildingTextureRenderer.gd vollständig
+  - Terrain als einzelnes gemergtes ArrayMesh mit Vertex-Farben
+    (Biom-Farbgebung, Dürre-Tinting, Weg-Tinting), ein Draw-Call
+  - Gebäude als StaticBody3D + BoxMesh (Körper + Dach) + Label3D-Emoji
+  - Eigene Terrain-Kollision (StaticBody3D + BoxShape3D) für Raycasts
+  - Auswahl-Highlight und Platzierungs-Ghost als eigene MeshInstance3D
+  - Frettchen als SphereMesh-Pool, positioniert über Tile-Koordinaten
+    inkl. Sub-Tile-Interpolation für flüssige Bewegung
+- game/GameController.gd komplett neu geschrieben:
+  - Camera3D (orthographische Projektion) statt Camera2D, klassischer
+    Iso-Winkel über CAM_ANGLE_X/CAM_ANGLE_Y konfigurierbar
+  - Tile-Auswahl per PhysicsRayQueryParameters3D-Raycast gegen den
+    Terrain-Collider statt Pixel-Rückrechnung
+    -> behebt den Bug, dass Gebäude nicht zuverlässig anklickbar waren
+  - WASD-Kamerabewegung relativ zur Kamera-Horizontalen, Rechtsklick-Drag
+    über "Weltpunkt unter Cursor festhalten"-Methode, Mausrad- und
+    Pinch-Zoom über camera.size
+  - Speichern/Laden auf das neue Welt-Datenformat (Biome, Höhe, Pfade,
+    Ruinen) angepasst
+- scenes/Main.gd: Node2D/Camera2D durch Node3D/Camera3D ersetzt,
+  DirectionalLight3D (Sonne + Fülllicht) und WorldEnvironment ergänzt
+- systems/FerretEntity.gd, systems/PopulationManager.gd: Startpositionen
+  und Bewegungssystem von Pixel-Weltkoordinaten (~2880-Bereich) auf
+  Tile-Koordinaten (0–60) migriert
+- project.godot: Physics-Layer benannt (Terrain/Buildings), Renderer auf
+  Forward+ gesetzt
+- Entfernt: rendering/IsometricRenderer.gd, rendering/BuildingTextureRenderer.gd
+
+## v9 (Godot-4-Port, 2D-Isometrie)
+- Komplette Portierung des Spiels von Vanilla-JS/HTML5-Canvas nach Godot 4.6
+  (28 GDScript-Dateien)
+- Saubere Systemtrennung in Autoloads: BuildingData, ResourceSystem,
+  BuildingEntity, BuildingSystem, FerretEntity, PopulationManager,
+  DayNightSystem, TechTree, DroughtSystem, SeasonSystem, ExpeditionSystem,
+  SaveSystem, SoundSystem
+- Isometrisches Rendering über Node2D/Camera2D mit Painter's-Algorithm
+  (IsometricRenderer.gd)
+- Gebäude-3D-Modell (GLB, 1 Mesh, 3.8 MB) über SubViewport + isometrische
+  Camera3D vorgerendert und als ImageTexture gecacht
+  (BuildingTextureRenderer.gd) – Hybrid-Ansatz 2D-Spiel mit 3D-Optik
+- UI komplett programmatisch in GDScript aufgebaut, kein .tscn-Layout
+- Diverse Engine-Migrationsfehler behoben: GameController-Scope-Fehler,
+  FORMAT_32_BITS -> FORMAT_16_BITS, get()-Override-Konflikt mit sample(),
+  ExpeditionSystem-Inner-Class-Referenz, class_name-im-class-body-Konflikt,
+  FMallocBinned2-Speicherfehler im SoundSystem (auf AudioStreamGenerator
+  umgeschrieben), Gebäude nicht klickbar (Touch-Reset nach Rechtsklick-Drag)
+- Bekannter, in v9 nicht vollständig gelöster Bug: Gebäude waren weiterhin
+  nicht zuverlässig anklickbar -> endgültig erst mit dem 3D-Port (v10.0)
+  durch den physikalischen Raycast-Ansatz behoben
+
+## v5.0 Enhanced (HTML-Fusion)
+- Zusammenführung der zwei parallelen HTML-Prototypen
+  (FrettchenKolonie_performance.html und FrettchenKolonie_Freddy.html)
+- SoundSystem ergänzt (prozedurale Klänge via Web Audio API)
+- ResourceSystem erweitert: Wassertank, Storage-Kapazität, neue Ressourcen
+  (MEAT, WHEAT, DYNAMITE, COOKED_MEAT, BREAD, STEW)
+- Neue Gebäude: COOKHOUSE, HUNTER_HUT, WHEAT_FARM, DYNAMITE_WORKSHOP,
+  diverse Dekorationen
+- Terrain-Editing: Erde aufschütten per Drag, Sprengstoff per 2-Klick
+- Drag-Pfad-Malen, Explosionseffekte, Lager-Vollwarnung
+- Über 17 Bugs behoben (Wasser-Routing, PopMgr-Wasserlogik,
+  Nahrungsprioritäten u.a.)
+
+## Vor v5.0 – Ausgangsversionen (Einzelprototypen)
+- FrettchenKolonie_performance.html (5081 Zeilen): Touch-Steuerung
+  (D-Pad, Pinch-Zoom, Tap-to-Click), DroughtSystem, SeasonSystem,
+  ExpeditionSystem, Tile-Cache- und Frustum-Culling-Performance-Optimierung
+- FrettchenKolonie_Freddy.html (4972 Zeilen): SoundSystem, Terrain-Editing,
+  neue Gebäude, Wasser-Tank-System
