@@ -59,7 +59,7 @@ gestalterische Freiheit (Beleuchtung, Modelle, Kamerawinkel) zu ermöglichen:
 - **Szenenstruktur**: Root-Node von `Control` auf `Node`/`Node3D` geändert,
   UI bleibt weiterhin über eine `CanvasLayer` unabhängig von der 3D-Kamera
 
-### Phase 5 – Bugfix-Runden (v10.1, v10.2, v10.3)
+### Phase 5 – Bugfix-Runden (v10.1, v10.2, v10.3, v10.4)
 Nach dem 3D-Port wurde der komplette neue Code systematisch auf Logikfehler
 durchsucht. Acht Bugs wurden gefunden und behoben (Details siehe Changes-Datei),
 u.a.:
@@ -84,9 +84,28 @@ u.a.:
   Property in `BuildingSystem.sell()` entfernt (gleiche Fehlerklasse wie
   ein bereits in v10.1 behobener Bug).
 
+**v10.4** (der "Absturz" war tatsächlich ein fehlender Game-Over-Bildschirm,
+plus echte Bäume + Tutorial):
+- Der nach v10.3 weiterhin gemeldete Absturz ("UI verschwindet, dann
+  Hauptmenü") war kein Engine-Crash, sondern Game Over ohne eigene Anzeige:
+  HUD/Bau-Menü blenden sich bei jedem Nicht-PLAYING-Zustand aus, und
+  Main.gd wartete beim Übergang in GAME_OVER bisher nur 5 Sekunden im
+  Stillen, bevor es kommentarlos ins Hauptmenü sprang. Jetzt zeigt ein
+  echter `GameOverScreen` sofort den Grund + einen "Zum Hauptmenü"-Button.
+- Echte 3D-Bäume (nutzergeliefertes Kiefer-GLB, `assets/pine_tree.glb`)
+  ersetzen die bisherige reine Forest-Farbgebung; platziert auf allen Tiles
+  mit Holz-Resource-Node. Nebenbei behoben: `resource_node` wurde beim
+  Speichern/Laden nie persistiert → Bäume wären nach dem Laden verschwunden.
+- Tutorial wieder hinzugefügt (`ui/TutorialManager.gd`): Freddy Frettchen,
+  10 Schritte, startet automatisch bei einer neuen Kolonie.
+- Diverse GDScript-Warnungen aus dem Debugger aufgeräumt (Shadowing von
+  `exp`/`seed`/`tw`, unbenutzter Parameter, absichtliche Integer-Divisionen
+  mit `@warning_ignore` markiert, harmlose "Signal nie verwendet"-Warnungen
+  für den GameState-Event-Hub projektweit stummgeschaltet).
+
 ---
 
-## Aktuelle Architektur (Stand v10.3)
+## Aktuelle Architektur (Stand v10.4)
 
 ```
 FK_3D/
@@ -105,13 +124,18 @@ FK_3D/
 │   └── SoundSystem.gd             ← prozedurale Klänge via AudioStreamGenerator
 ├── world/WorldGenerator.gd        ← Perlin-Noise-Weltgenerierung, Terraforming
 ├── rendering/
-│   └── WorldRenderer3D.gd         ← komplettes 3D-Rendering (Terrain-Mesh,
-│                                     Gebäude, Frettchen, Selektion/Ghost)
+│   └── WorldRenderer3D.gd         ← komplettes 3D-Rendering (Terrain-Mesh +
+│                                     Trimesh-Kollision, Gebäude, Bäume,
+│                                     Frettchen, Selektion/Ghost)
+├── assets/building.glb, assets/pine_tree.glb  ← 3D-Modelle (Gebäude-Icon-Cache
+│                                     bzw. echte Baum-Meshes auf Holz-Tiles)
 ├── game/GameController.gd         ← Input, Camera3D-Steuerung, Raycast-Klicks,
 │                                     Spiellogik-Loop
 ├── ui/ (HUD, BuildMenu, BuildingInfo, PauseMenu, NotificationLayer,
+│        TutorialManager [Freddy Frettchen, 10 Schritte],
 │        MainMenu, WorldCreation, ExpeditionPanel, GraveyardPanel, StatsPanel)
-└── scenes/Main.gd + Main.tscn     ← Root-Node, UI komplett programmatisch
+└── scenes/Main.gd + Main.tscn     ← Root-Node, UI komplett programmatisch,
+                                      inkl. GameOverScreen-Overlay
 ```
 
 ---

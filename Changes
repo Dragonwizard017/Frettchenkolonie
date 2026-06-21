@@ -1,5 +1,65 @@
 # FrettchenKolonie – Changelog
 
+## v10.4 (3D-Edition, Bugfix-Runde 4 + Bäume + Tutorial)
+- **Echter Crash-Fund: "UI verschwindet, dann Absturz ins Hauptmenü".**
+  Das war kein Engine-Absturz, sondern Game Over ohne eigene Anzeige: Sobald
+  alle Frettchen sterben, sendet PopulationManager `game_over_triggered`, und
+  GameController setzt den Zustand auf GAME_OVER. HUD und Bau-Menü blenden
+  sich bei JEDEM Nicht-PLAYING-Zustand automatisch aus (eigene
+  `_on_state_changed`-Logik) – das ist das "UI verschwindet". Main.gd hatte
+  für GAME_OVER aber keinen eigenen Bildschirm, sondern wartete nur 5
+  Sekunden im Stillen (await + Timer) und sprang dann kommentarlos ins
+  Hauptmenü – das wirkte wie ein Absturz. Fix: neuer richtiger
+  Game-Over-Bildschirm (`GameOverScreen` in Main.gd) zeigt sofort den Grund
+  ("Alle Frettchen sind gestorben!" o.ä.) und einen "Zum Hauptmenü"-Button;
+  kein stilles Einfrieren mehr.
+- **Echte 3D-Bäume statt Forest-Einfärbung.** Bisher gab es keine Baum-Meshes
+  im Spiel – "Wald" war nur eine dunkelgrüne Terrain-Farbe. Das vom Nutzer
+  bereitgestellte GLB-Modell (Kiefer) wird jetzt nach `assets/pine_tree.glb`
+  übernommen und in WorldRenderer3D._place_trees() auf jedes Tile gestellt,
+  das einen Holz-Resource-Node trägt (~35% der FOREST-Tiles), mit leichtem
+  Zufalls-Versatz, Rotation und Skalierung für eine natürliche Verteilung.
+  Nebenbei behoben: `resource_node` (Grundlage für die Baum-Platzierung)
+  wurde beim Speichern/Laden bisher gar nicht persistiert
+  (serialize_world()/deserialize_world() in GameController.gd) – dadurch
+  wären nach dem Laden eines Spielstands alle Bäume verschwunden. Jetzt wird
+  es korrekt mitgespeichert/geladen.
+- **Tutorial wieder hinzugefügt.** Neue Datei `ui/TutorialManager.gd`:
+  Freddy Frettchen führt in 10 Schritten durch Kamera, Bau-Menü, Ressourcen,
+  Bedürfnisse, Tempo, Terrain-Editing, den neuen Epochen-Button und
+  Speichern. Startet automatisch bei einer NEUEN Kolonie (nicht beim Laden),
+  mit "Weiter"/"Tutorial überspringen"-Buttons; ein Schritt wartet sogar auf
+  die erste tatsächliche Gebäude-Platzierung, bevor er weitergeht.
+- **Warnungen aus dem Godot-Debugger aufgeräumt** (alle waren harmlos,
+  keine Fehler, aber Code-Hygiene):
+  - `exp` (Variable/Parameter) shadowte die Built-in-Funktion `exp()` in
+    `ExpeditionSystem.gd` und `ExpeditionPanel.gd` → umbenannt zu `expd`.
+  - `seed` (Variable) shadowte die Built-in-Funktion `seed()` in
+    `WorldCreation.gd` und `Main.gd` → umbenannt zu `seed_str`.
+  - Doppelt vergebener Tween-Variablenname `tw` in verschachtelten Scopes
+    (`NotificationLayer.gd`) → umbenannt zu `fade_in_tw`/`fade_out_tw`.
+  - Unbenutzter Parameter `noise` in `WorldGenerator._place_resource_nodes()`
+    → mit Unterstrich präfixiert (`_noise`).
+  - Vier absichtliche Integer-Divisionen (Tile-Mittelpunkt-Berechnungen in
+    `WorldRenderer3D.gd` und `GameController.gd`) mit `@warning_ignore`
+    markiert.
+  - Die 16 "Signal nie verwendet"-Warnungen für `GameState.gd` sind ein
+    bewusstes Event-Hub-Pattern (Signale werden in anderen Skripten
+    verwendet, nicht in GameState.gd selbst) → projektweit über
+    `project.godot` ([debug] `gdscript/warnings/unused_signal=0`)
+    stummgeschaltet, da reines Stil-Rauschen ohne echten Fehler.
+  - Eine einzelne "Integer wird verwendet wo ein Enum erwartet wird"-Warnung
+    konnte trotz gründlicher Durchsicht aller Enum-Verwendungen
+    (`GameState.State` ist das einzige projekteigene Enum, alle Stellen
+    nutzen bereits benannte Konstanten) nicht eindeutig lokalisiert werden,
+    da der Debugger-Screenshot keine Datei/Zeile zeigt. Falls sie weiter
+    auftaucht: vollständiges Log mit Datei/Zeile schicken, dann gezielt
+    behebbar.
+- Betroffene/neue Dateien: scenes/Main.gd, ui/TutorialManager.gd (neu),
+  rendering/WorldRenderer3D.gd, game/GameController.gd, assets/pine_tree.glb
+  (neu), ui/NotificationLayer.gd, ui/WorldCreation.gd, ui/ExpeditionPanel.gd,
+  systems/ExpeditionSystem.gd, world/WorldGenerator.gd, project.godot
+
 ## v10.3 (3D-Edition, Bugfix-Runde 3)
 Drei vom Nutzer gemeldete Bugs behoben:
 - **Fix: Klick-Versatz beim Anklicken von Tiles/Gebäuden.** Die
