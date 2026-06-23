@@ -122,9 +122,49 @@ Arbeiter-Steuerung, echtes Frettchen-Modell):
 - Echtes, geriggtes Frettchen-GLB-Modell (inkl. Lauf-Animation) ersetzt die
   Platzhalter-Kugel.
 
+### Phase 6 – Wasserphysik & Dürre-System (v10.6)
+Das bisherige Dürre-System war rein abstrakt: ein Timer schaltete zwischen
+"nass"/"Übergang"/"Dürre" um und entzog dem globalen Wassertank des Spielers
+einen festen Betrag - Flüsse und Seen auf der Karte selbst waren statische,
+unveränderliche Biom-Flächen ohne jede Dynamik. Auf Wunsch wurde das durch
+ein echtes, Timberborn-artiges Wassersystem ersetzt:
+- **Neues `systems/WaterSystem.gd` (Autoload `WaterSys`)**: jedes Tile trägt
+  jetzt einen tatsächlichen, simulierten Wasserstand (`water_level`,
+  zusätzlich zur Terrain-`height`). Ein zellulärer Automat lässt das Wasser
+  jeden festen Simulationsschritt (0,15 Sek., unabhängig von Framerate/
+  Spielgeschwindigkeit) zu niedrigeren Nachbar-Tiles abfließen, an
+  Kartenrändern abfließen ("Meeresabfluss") und kontinuierlich verdunsten.
+- **Wasserquellen**: `WorldGenerator._place_water_sources()` führt einen
+  Flood-Fill über jedes zusammenhängende Gewässer aus und markiert dessen
+  tiefste Stelle(n) als Quelle - diese speisen laufend neues Wasser ein und
+  simulieren so Fluss-Zustrom von außerhalb der Karte.
+- **Dürre wirkt jetzt direkt auf die Simulation**: während `DroughtSys.is_drought`
+  sinkt der Quellzufluss drastisch und die Verdunstung steigt stark an -
+  Flüsse/Seen trocknen sichtbar aus (Flussbett färbt sich schlammig-braun)
+  und füllen sich in der nassen Phase wieder auf.
+- **Neues Gebäude `DAM` (Damm, Epoche 1)**: einziges Gebäude, das direkt auf
+  Wasser-Tiles platziert werden darf; reduziert den ausfließenden Wasserfluss
+  am eigenen Tile um 15 % und hält so lokal mehr Wasser zurück - das zentrale
+  strategische Element aus Timberborn, um Dürreperioden gezielt zu
+  überstehen.
+- **Wasserabhängige Gebäude reagieren auf den echten Pegel**: Brunnen,
+  Wasserturm, Wasserpumpe, Aquädukt und Bewässerungskanal beziehen ihre
+  Förderrate jetzt aus dem tatsächlichen, simulierten Wasserstand in ihrer
+  Umgebung (`WaterSys.get_avg_level_near()`) statt aus der statischen
+  Biom-Zugehörigkeit - trocknet der Fluss aus, sinkt auch ihre Förderleistung
+  spürbar. Das Wasserrad benötigt ebenso echten, vorhandenen Wasserstand statt
+  nur WATER-Biom in der Nähe.
+- **Dynamische Wasseroberfläche**: `WorldRenderer3D.gd` rendert eine eigene,
+  halbtransparente Wasser-Mesh auf Höhe (Terrain-Bett + simulierter Pegel),
+  gedrosselt ca. 3×/Sekunde neu aufgebaut (kein voller Terrain-Rebuild) -
+  Flüsse/Seen sind dadurch optisch sichtbar in Bewegung (steigend/fallend).
+- Wasserstand und Quell-Markierung werden pro Tile persistiert
+  (`serialize_world`/`deserialize_world`), sodass Speicherstände den
+  exakten Wasserzustand beibehalten.
+
 ---
 
-## Aktuelle Architektur (Stand v10.5)
+## Aktuelle Architektur (Stand v10.6)
 
 ```
 FK_3D/
@@ -139,12 +179,15 @@ FK_3D/
 │   ├── PopulationManager.gd       ← Wachstum, Tod, Arbeitszuweisung
 │   ├── DayNightSystem.gd, TechTree.gd
 │   ├── DroughtSystem.gd, SeasonSystem.gd, ExpeditionSystem.gd
+│   ├── WaterSystem.gd             ← Wasserphysik: Pegel-Simulation pro Tile,
+│   │                                 Quellen, Fließen, Verdunstung, Dürre
 │   ├── SaveSystem.gd              ← JSON-Speicherstand nach user://
 │   └── SoundSystem.gd             ← prozedurale Klänge via AudioStreamGenerator
 ├── world/WorldGenerator.gd        ← Perlin-Noise-Weltgenerierung, Terraforming
 ├── rendering/
 │   └── WorldRenderer3D.gd         ← komplettes 3D-Rendering (Terrain-Mesh +
-│                                     Trimesh-Kollision, Gebäude, Bäume,
+│                                     Trimesh-Kollision, dynamische
+│                                     Wasseroberflächen-Mesh, Gebäude, Bäume,
 │                                     Frettchen, Selektion/Ghost)
 ├── assets/building.glb, assets/pine_tree.glb, assets/ferret.glb  ← 3D-Modelle
 │                                     (Gebäude-Icon-Cache, Bäume auf
@@ -174,8 +217,15 @@ Glück), Gesundheitssystem, Spezialisierung nach 5 Tagen im selben Gebäude
 (+40 % Output), Bevölkerungswachstum abhängig von freien Betten, Nahrung und
 Glück, Prioritäten-Slider pro Gebäude, Gedenkstätte für Verstorbene.
 
-**Dürre & Jahreszeiten**
-Dürre-Zyklus (nass → Übergang → Dürre), Wasserreservoir-Vorsorge,
+**Wasserphysik & Dürre**
+Echte, pro Tile simulierte Wassertiefe (zellulärer Automat: Quellen-Zufluss,
+Fließen zu tieferen Nachbarn, Verdunstung) statt statischer Wasser-Biome.
+Dürre-Zyklus (nass → Übergang → Dürre) reduziert Quellzufluss und erhöht die
+Verdunstung drastisch - Flüsse/Seen trocknen sichtbar aus (schlammiges
+Flussbett) und füllen sich in der nassen Phase wieder auf. Dämme (Gebäude
+`DAM`) stauen Wasser lokal auf, um Dürreperioden zu überstehen. Brunnen,
+Wasserturm, Wasserpumpe, Aquädukt, Bewässerungskanal und Wasserrad hängen in
+ihrer Leistung vom tatsächlichen, aktuellen Wasserstand in ihrer Umgebung ab.
 30-Tage-Dürrevorhersage, vier Jahreszeiten mit Produktions-Multiplikatoren
 und visuellen Effekten.
 
@@ -195,8 +245,8 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
   schreibgeschützt ist. Direkter Datei-Push erfolgt seit dieser Phase über
   die GitHub-API in das Repository `Dragonwizard017/Frettchenkolonie`.
 - Versionierung: Haupt-Ports erhalten ganze Versionsnummern (v9, v10),
-  Bugfix-Runden Punkt-Releases (v10.1, v10.2, v10.3), jeweils mit Eintrag in
-  der `Changes`-Datei im Repo.
+  Bugfix- und Feature-Runden Punkt-Releases (v10.1–v10.6), jeweils mit
+  Eintrag in der `Changes`-Datei im Repo.
 - Bei der v10.3-Durchsicht aufgefallen: `ui/MainMenu.gd`, `ui/WorldCreation.gd`,
   `ui/ExpeditionPanel.gd`, `ui/GraveyardPanel.gd` und `ui/StatsPanel.gd`
   existieren als Skripte, werden aber von `scenes/Main.gd` nirgends
@@ -205,6 +255,11 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
   aktuell nicht erreichbar – kein Crash-Risiko, aber unvollständige Anbindung,
   die in einer künftigen Session nachgezogen werden könnte, falls die
   Statistik-/Expeditions-/Gedenkstätten-Panels gewünscht sind.
+- Die neue Wasserphysik (v10.6) deckt den Kern ab (Pegel-Simulation, Quellen,
+  Dürre-Auswirkung, ein Damm-Gebäude). Echte Timberborn-Tiefe wie mehrstufige
+  Dammwände, Schleusen/Kanäle oder eine UI-Anzeige des lokalen Pegels pro
+  Tile wurden bewusst nicht umgesetzt, um den Umfang in einer Session
+  beherrschbar zu halten - könnten aber bei Bedarf nachgezogen werden.
 
 ---
 

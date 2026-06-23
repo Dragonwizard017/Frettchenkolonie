@@ -1,5 +1,57 @@
 # FrettchenKolonie – Changelog
 
+## v10.6 (Wasser- & Dürre-Physik wie in Timberborn)
+- **Neu: echte Wasserphysik statt statischer Wasser-Biome.** Neues Autoload
+  `WaterSys` (`systems/WaterSystem.gd`) simuliert pro Tile einen
+  tatsächlichen Wasserstand (`water_level`, additiv zur Terrain-`height`).
+  Ein zellulärer Automat lässt Wasser jeden festen Simulationsschritt
+  (0,15 Sek., unabhängig von Framerate/Spielgeschwindigkeit) zu niedrigeren
+  Nachbar-Tiles abfließen, an Kartenrändern abfließen ("Meeresabfluss") und
+  kontinuierlich verdunsten - exakt das Verhalten, das man aus Timberborns
+  Wassersimulation kennt.
+- **Neu: echte Wasserquellen.** `WorldGenerator._place_water_sources()`
+  führt einen Flood-Fill über jedes zusammenhängende Gewässer aus und
+  markiert dessen tiefste Stelle(n) (meiste Wasser-Nachbarn) als Quelle.
+  Quellen speisen laufend neues Wasser ein und simulieren so den
+  Fluss-Zustrom von außerhalb der Karte - ohne sie würde jeder See/Fluss
+  durch Verdunstung dauerhaft austrocknen.
+- **Neu: Dürre wirkt jetzt direkt auf die Wassersimulation.** Während
+  `DroughtSys.is_drought` sinkt der Quellzufluss von 0,6/Sek auf 0,05/Sek
+  und die Verdunstung steigt von 0,004/Sek auf 0,05/Sek - Flüsse und Seen
+  trocknen über die Dürreperiode sichtbar aus und füllen sich in der
+  nassen Phase wieder auf. Bisher war die Dürre rein abstrakt (nur ein
+  Abzug vom globalen Wassertank); jetzt verändert sie die Welt selbst.
+- **Neu: Gebäude `DAM` (Damm, Epoche 1, 15 Holz + 25 Stein).** Einziges
+  Gebäude, das direkt auf Wasser-Tiles platziert werden darf
+  (`GameController._place_building`); reduziert den ausfließenden
+  Wasserfluss am eigenen Tile um 15 % (`DAM_RETENTION`) und hält so lokal
+  mehr Wasser zurück - das zentrale strategische Werkzeug aus Timberborn,
+  um Dürreperioden gezielt zu überstehen.
+- **Fix/Feature: wasserabhängige Gebäude reagieren jetzt auf den echten
+  Pegel statt auf die statische Biom-Zugehörigkeit.** Brunnen, Wasserturm,
+  Wasserpumpe, Aquädukt und Bewässerungskanal (`BuildingEntity._collect()`)
+  beziehen ihre Förderrate über `WaterSys.get_avg_level_near()` aus dem
+  tatsächlichen, simulierten Wasserstand in ihrer Umgebung. Trocknet der
+  Fluss in einer Dürre aus, sinkt auch ihre Förderleistung spürbar - vorher
+  lieferten sie unabhängig von Dürre/Wasserstand immer einen festen Bonus
+  allein dafür, dass WATER-Biom-Tiles in der Nähe lagen. Das Wasserrad
+  (`BuildingSystem.update()`) benötigt aus demselben Grund jetzt einen
+  echten, vorhandenen Wasserstand (`water_level > 0.15`) statt nur
+  WATER-Biom in der Nähe.
+- **Neu: dynamische Wasseroberfläche.** `WorldRenderer3D._build_water_mesh()`
+  rendert eine eigene, halbtransparente Wasser-Mesh auf Höhe
+  (Terrain-Bett + simulierter Pegel), aufgerufen über die neue öffentliche
+  `refresh_water()`-API, gedrosselt ca. 3×/Sekunde von `GameController`
+  neu aufgebaut (kein voller Terrain-Rebuild wie bei `build_world()`) -
+  Flüsse/Seen sind dadurch sichtbar in Bewegung. Das Flussbett selbst
+  färbt sich zusätzlich schlammig-braun, je niedriger der tatsächliche
+  Pegel ist (`_build_terrain_mesh()`).
+- **Speichern/Laden erweitert:** `water_level` und `is_water_source` werden
+  jetzt pro Tile persistiert (`serialize_world`/`deserialize_world`),
+  `WaterSys.init()` wird nach dem Laden mit den geladenen Daten neu
+  aufgesetzt - Speicherstände behalten den exakten Wasserzustand bei.
+- Neues Autoload `WaterSys` in `project.godot` registriert.
+
 ## v10.5 (Baufortschritt, Überlebensrate, Arbeiter-UI, echtes Frettchen-Modell)
 - **Fix: "Gebäude werden nicht gebaut, kein Baufortschritt".** Der
   Baufortschritt lief bisher NUR beim Tageswechsel (alle 180 Sekunden!) und
