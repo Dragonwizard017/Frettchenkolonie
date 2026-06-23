@@ -1,5 +1,46 @@
 # FrettchenKolonie – Changelog
 
+## v10.5 (Baufortschritt, Überlebensrate, Arbeiter-UI, echtes Frettchen-Modell)
+- **Fix: "Gebäude werden nicht gebaut, kein Baufortschritt".** Der
+  Baufortschritt lief bisher NUR beim Tageswechsel (alle 180 Sekunden!) und
+  hing komplett davon ab, dass mindestens ein Frettchen explizit im Bauhof
+  arbeitete - ohne das blieb `construction_progress` für immer bei 0, ohne
+  jede Rückmeldung. Jetzt läuft die Konstruktion JEDEN Frame kontinuierlich
+  (`_process_construction(dt)`, nicht mehr an den Tageswechsel gekoppelt),
+  mit einem garantierten Grundfortschritt (0.35/Sek) auch ohne zugewiesene
+  Bauhof-Arbeiter, plus einem Bonus von 0.5/Sek pro zugewiesenem Arbeiter.
+  Gebäude werden dadurch immer fertig, schneller mit mehr Bauhof-Personal.
+- **Fix: "Frettchen sterben viel zu schnell".** FerretEntity.update() lässt
+  `needs["food"]` mit -0.8/Sek und `needs["water"]` mit -1.1/Sek verfallen.
+  Die Versorgungs-Formel in PopulationManager.update() konnte das beim besten
+  Willen nicht ausgleichen: selbst mit vollen Lagern kamen nur ca.
+  +0.05-0.08 Nahrung/Sek und +0.07 Wasser/Sek zurück - zehn- bis fünfzehnmal
+  zu wenig. Frettchen sind dadurch unabhängig vom Spielerverhalten innerhalb
+  weniger Minuten verhungert/verdurstet. Die Konsum-Konstanten wurden so
+  angehoben, dass ausreichende Produktion (z.B. ein laufender
+  Beerensammler oder Brunnen) den Bedarf jetzt tatsächlich decken kann.
+- **Fix: UI-Überlappung (Ressourcenanzeige lag unter dem Bau-Menü).** Die
+  TopBar (Zeit/Jahreszeit/Ressourcen/Lager/Wasser) ist 38px hoch und geht
+  über die volle Breite. Das Bau-Menü begann aber bei y=0 (volle Höhe links)
+  und wurde NACH dem HUD hinzugefügt -> es lag in der oberen linken Ecke
+  über der TopBar und verdeckte sie. Bau-Menü beginnt jetzt erst unterhalb
+  der TopBar (offset_top = 38).
+- **Feature: Arbeiter-Anzahl pro Gebäude manuell steuern.** Die Gebäude-Info-UI
+  zeigte "Arbeiter: x/y" bisher nur an. Jetzt gibt es "-"/"+"-Buttons direkt
+  daneben, um die Anzahl zugewiesener Frettchen gezielt zu begrenzen oder zu
+  erhöhen (neues `worker_cap`-Feld auf BuildingEntity, wird beim Speichern/
+  Laden mitgespeichert). Die automatische Job-Zuweisung respektiert dieses
+  manuelle Limit.
+- **Echtes Frettchen-3D-Modell.** Das nutzergelieferte, geriggte GLB-Modell
+  (inkl. "Run"-Animation) ersetzt die bisherige Platzhalter-Kugel in
+  WorldRenderer3D.update_ferrets(). Frettchen drehen sich jetzt auch in ihre
+  Laufrichtung. Datei: `assets/ferret.glb`. Falls das Modell falsch
+  ausgerichtet ist, kann `FERRET_ROT_OFFSET` in WorldRenderer3D.gd in
+  90°-Schritten (PI/2) angepasst werden.
+- Betroffene Dateien: game/GameController.gd, systems/PopulationManager.gd,
+  systems/BuildingEntity.gd, ui/BuildingInfo.gd, scenes/Main.gd,
+  rendering/WorldRenderer3D.gd, assets/ferret.glb (neu)
+
 ## v10.4 (3D-Edition, Bugfix-Runde 4 + Bäume + Tutorial)
 - **Echter Crash-Fund: "UI verschwindet, dann Absturz ins Hauptmenü".**
   Das war kein Engine-Absturz, sondern Game Over ohne eigene Anzeige: Sobald

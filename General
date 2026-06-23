@@ -59,7 +59,7 @@ gestalterische Freiheit (Beleuchtung, Modelle, Kamerawinkel) zu ermöglichen:
 - **Szenenstruktur**: Root-Node von `Control` auf `Node`/`Node3D` geändert,
   UI bleibt weiterhin über eine `CanvasLayer` unabhängig von der 3D-Kamera
 
-### Phase 5 – Bugfix-Runden (v10.1, v10.2, v10.3, v10.4)
+### Phase 5 – Bugfix-Runden (v10.1, v10.2, v10.3, v10.4, v10.5)
 Nach dem 3D-Port wurde der komplette neue Code systematisch auf Logikfehler
 durchsucht. Acht Bugs wurden gefunden und behoben (Details siehe Changes-Datei),
 u.a.:
@@ -103,9 +103,28 @@ plus echte Bäume + Tutorial):
   mit `@warning_ignore` markiert, harmlose "Signal nie verwendet"-Warnungen
   für den GameState-Event-Hub projektweit stummgeschaltet).
 
+**v10.5** (Kernschleife endlich spielbar: Baufortschritt, Überlebensrate,
+Arbeiter-Steuerung, echtes Frettchen-Modell):
+- Baufortschritt lief bisher NUR beim Tageswechsel (alle 180 Sek.) und
+  hing komplett von Bauhof-Arbeitern ab → ohne diese blieb der Fortschritt
+  für immer bei 0. Jetzt kontinuierlich jeden Frame, mit garantiertem
+  Grundfortschritt auch ohne Bauhof-Personal plus Arbeiter-Bonus.
+- Nahrungs-/Wasserverfall der Frettchen (-0.8/-1.1 pro Sekunde) konnte von
+  der bisherigen Versorgungs-Formel nie ausgeglichen werden (10-15x zu
+  schwach) → Frettchen verhungerten/verdursteten unabhängig vom
+  Spielerverhalten binnen Minuten. Konsum-Konstanten korrigiert.
+- UI-Überlappung behoben: Bau-Menü lag über der TopBar (Ressourcenanzeige)
+  in der oberen linken Ecke, da es bei y=0 statt unterhalb der 38px-TopBar
+  begann.
+- Neues Feature: "-"/"+"-Buttons in der Gebäude-Info-UI zur manuellen
+  Steuerung der zugewiesenen Arbeiterzahl (`worker_cap` auf BuildingEntity,
+  persistiert).
+- Echtes, geriggtes Frettchen-GLB-Modell (inkl. Lauf-Animation) ersetzt die
+  Platzhalter-Kugel.
+
 ---
 
-## Aktuelle Architektur (Stand v10.4)
+## Aktuelle Architektur (Stand v10.5)
 
 ```
 FK_3D/
@@ -127,8 +146,9 @@ FK_3D/
 │   └── WorldRenderer3D.gd         ← komplettes 3D-Rendering (Terrain-Mesh +
 │                                     Trimesh-Kollision, Gebäude, Bäume,
 │                                     Frettchen, Selektion/Ghost)
-├── assets/building.glb, assets/pine_tree.glb  ← 3D-Modelle (Gebäude-Icon-Cache
-│                                     bzw. echte Baum-Meshes auf Holz-Tiles)
+├── assets/building.glb, assets/pine_tree.glb, assets/ferret.glb  ← 3D-Modelle
+│                                     (Gebäude-Icon-Cache, Bäume auf
+│                                     Holz-Tiles, animiertes Frettchen)
 ├── game/GameController.gd         ← Input, Camera3D-Steuerung, Raycast-Klicks,
 │                                     Spiellogik-Loop
 ├── ui/ (HUD, BuildMenu, BuildingInfo, PauseMenu, NotificationLayer,
