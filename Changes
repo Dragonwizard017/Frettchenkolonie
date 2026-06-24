@@ -1,5 +1,41 @@
 # FrettchenKolonie – Changelog
 
+## v10.7 (Tileset-Grafiktausch – PARALLEL zu v10.6, v10.6 nicht gelöscht!)
+- **Neu: copyright-freies isometrisches Tileset (32×32 Pixelart) ersetzt die
+  reinen Flächenfarben des Terrains.** 6 Tile-Grafiken unter `assets/tiles/`
+  abgelegt - je ein Tile pro Biom: `plains.png` (PLAINS), `forest.png`
+  (FOREST), `beach.png` (BEACH), `hills.png` (HILLS), `mountain.png`
+  (MOUNTAIN), `water.png` (WATER).
+- **`WorldRenderer3D._build_terrain_mesh()` komplett umgebaut**: statt einem
+  einzigen Mesh mit Vertex-Farben entsteht jetzt pro Biom ein eigenes
+  Mesh-Surface mit eigenem `StandardMaterial3D` (`albedo_texture` +
+  `TEXTURE_FILTER_NEAREST` für scharfen Pixelart-Look statt Verschwommenheit).
+  Leere Biom-Surfaces (kein einziges Tile dieses Typs auf der Karte) werden
+  beim Mesh-Aufbau übersprungen. Die Klippen-Seitenflächen bleiben
+  unverändert vertex-eingefärbt (keine Textur, meist ohnehin verdeckt).
+- **`_add_top_quad()` setzt jetzt UV-Koordinaten** und spiegelt jedes Tile
+  pseudo-zufällig (deterministisch anhand der Tile-Koordinate, stabil bei
+  Mesh-Rebuilds) in U und/oder V - verhindert ein sichtbares Wiederholungs-
+  Gitter der einzelnen Tile-Grafik.
+- **Bestehende Färbe-Logik aus v10.6 bleibt voll funktionsfähig, wirkt aber
+  jetzt multiplikativ über der Textur statt als alleinige Flächenfarbe**:
+  Dürre-Tinting, Weg-Tinting (`tile.path != null`) und das austrocknende
+  Flussbett (`water_level < 0.4`) lerpen die Vertex-Farbe weiterhin Richtung
+  derselben Zielfarben wie zuvor - der Ausgangspunkt ist jetzt aber
+  `Color.WHITE` (Textur unverändert sichtbar) statt der alten satten
+  `BIOME_TOP`-Flächenfarbe. `BIOME_TOP` bleibt nur noch als unbenutzte
+  Referenz/Fallback im Code, `BIOME_SIDE` faerbt weiterhin aktiv die
+  Seitenflächen.
+- Die dynamische, halbtransparente Wasseroberflächen-Mesh aus v10.6 wurde
+  bewusst NICHT texturiert (zu aufwändig für den aktuellen Umfang) - nur
+  das Flussbett darunter (`WATER`-Biom-Oberseite) nutzt die neue
+  `water.png`, sichtbar wenn der simulierte Pegel niedrig ist.
+- **Abweichung vom üblichen Workflow auf ausdrücklichen Wunsch:** diese
+  Version wurde als eigene, PARALLELE ZIP-Datei
+  (`FrettchenKolonie_Godot4_v10_7_tileset_grafiken.zip`) hochgeladen, ohne
+  die vorherige `FrettchenKolonie_Godot4_v10_6_water_drought.zip` zu
+  löschen - beide Stände liegen aktuell gleichzeitig im Repo.
+
 ## v10.6 (Wasser- & Dürre-Physik wie in Timberborn)
 - **Neu: echte Wasserphysik statt statischer Wasser-Biome.** Neues Autoload
   `WaterSys` (`systems/WaterSystem.gd`) simuliert pro Tile einen

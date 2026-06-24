@@ -162,6 +162,35 @@ ein echtes, Timberborn-artiges Wassersystem ersetzt:
   (`serialize_world`/`deserialize_world`), sodass Speicherstände den
   exakten Wasserzustand beibehalten.
 
+### Phase 7 – Tileset-Grafiktausch (v10.7, PARALLEL zu v10.6)
+Auf Wunsch wurden die bislang reinen Flächenfarben des Terrains durch ein
+hochgeladenes, copyright-freies isometrisches Tileset (32×32 Pixelart)
+ersetzt. **Wichtig:** dieses Mal explizit als eigene, parallele Version
+ausgeliefert - die vorherige `v10.6`-ZIP (reine Farbdarstellung, ohne
+Tileset) wurde NICHT aus dem Repo entfernt, abweichend vom sonst üblichen
+"alte ZIP durch neue ersetzen"-Workflow.
+- **6 Tile-Grafiken ausgewählt und unter `assets/tiles/` abgelegt**: je ein
+  Tile pro Biom (`plains.png`, `forest.png`, `beach.png`, `hills.png`,
+  `mountain.png`, `water.png`), passend zur jeweiligen Biom-Optik
+  ausgesucht (z.B. dichtes Buschgrün für FOREST, graue Steinplatte für
+  MOUNTAIN).
+- **`WorldRenderer3D._build_terrain_mesh()` umgebaut**: statt einem
+  einzigen vertex-eingefärbten Mesh entsteht jetzt pro Biom ein eigenes
+  Mesh-Surface mit eigenem `StandardMaterial3D` (Textur + Nearest-Filter
+  für scharfen Pixelart-Look). Die Seitenflächen der Klippen bleiben
+  unverändert vertex-eingefärbt (keine Textur, meist ohnehin verdeckt).
+- **Bestehende Farblogik bleibt erhalten, wirkt jetzt aber multiplikativ
+  über der Textur**: Dürre-Tinting, Weg-Tinting und das austrocknende
+  Flussbett (aus v10.6) lerpen die Vertex-Farbe weiterhin Richtung einer
+  Zielfarbe - der Ausgangspunkt ist jetzt aber WEISS (= Textur unverändert
+  sichtbar) statt der alten satten Biom-Flächenfarbe.
+- **Pseudo-zufällige UV-Spiegelung pro Tile** (deterministisch anhand der
+  Tile-Koordinate) sorgt dafür, dass sich die Wiederholung der einzelnen
+  Tile-Grafik nicht als sichtbares Gitter-Muster abzeichnet.
+- Die dynamische Wasseroberflächen-Mesh (v10.6, halbtransparent) wurde
+  NICHT texturiert - nur das Flussbett darunter nutzt jetzt die neue
+  `water.png`-Textur, sichtbar wenn der simulierte Pegel niedrig ist.
+
 ---
 
 ## Aktuelle Architektur (Stand v10.6)
@@ -245,8 +274,11 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
   schreibgeschützt ist. Direkter Datei-Push erfolgt seit dieser Phase über
   die GitHub-API in das Repository `Dragonwizard017/Frettchenkolonie`.
 - Versionierung: Haupt-Ports erhalten ganze Versionsnummern (v9, v10),
-  Bugfix- und Feature-Runden Punkt-Releases (v10.1–v10.6), jeweils mit
-  Eintrag in der `Changes`-Datei im Repo.
+  Bugfix- und Feature-Runden Punkt-Releases (v10.1–v10.7), jeweils mit
+  Eintrag in der `Changes`-Datei im Repo. **Ausnahme v10.7:** auf
+  ausdrücklichen Wunsch als PARALLELE Version neben v10.6 ausgeliefert
+  (Tileset-Grafiktausch) - die v10.6-ZIP wurde NICHT gelöscht, beide
+  Stände liegen aktuell gleichzeitig im Repo.
 - Bei der v10.3-Durchsicht aufgefallen: `ui/MainMenu.gd`, `ui/WorldCreation.gd`,
   `ui/ExpeditionPanel.gd`, `ui/GraveyardPanel.gd` und `ui/StatsPanel.gd`
   existieren als Skripte, werden aber von `scenes/Main.gd` nirgends
