@@ -1,5 +1,39 @@
 # FrettchenKolonie – Changelog
 
+## v10.8 (Bugfix: Tileset-Grafiken sahen "verbuggt" aus - falsche Grafik-Art)
+- **Ursache gefunden:** das in v10.7 verwendete Tileset bestand aus
+  vorgerenderten ISOMETRISCHEN Diamant-Sprites mit transparenten Ecken
+  (gedacht für 2D-Canvas-Renderer, Diamantform + Perspektive bereits ins
+  Bild eingebacken). Da unser Spiel seit dem 3D-Port ein echtes flaches
+  Quadrat in 3D rendert und die Diamant-Optik schon durch die schräge
+  Kamera entsteht, erzeugte das Texturieren mit einem zusätzlich
+  diamantförmigen Sprite eine doppelte Perspektive - durch die
+  transparenten Ecken schimmerte der dunkle Hintergrund durch, sichtbar
+  als gerastertes Lücken-Muster (siehe Bug-Report-Screenshot).
+- **Fix: alle 6 Biom-Texturen durch selbst generierte, garantiert
+  nahtlose, vollständig opake Draufsicht-Texturen ersetzt** (identische
+  Dateinamen unter `assets/tiles/` - daher KEINE GDScript-Änderung nötig,
+  reiner Asset-Tausch). Erzeugt per Python/Pillow: periodisches
+  Rauschfeld (ganzzahlige Frequenzen relativ zur Kachelgröße -> Wert an
+  Kachelrand links/oben ist exakt gleich wie rechts/unten -> garantiert
+  nahtlos), auf ein 16×16-Block-Raster heruntergerechnet und mit
+  Nearest-Neighbor wieder hochskaliert für den chunkigen Pixelart-Look
+  des restlichen Spiels. Farbpalette an die bisherigen `BIOME_TOP`-Farben
+  angelehnt, damit der Gesamteindruck stimmig bleibt.
+- MOUNTAIN bekam zusätzlich ein Fugen-Raster (4×4 "Steinplatten" mit
+  zufälliger Schattierung + dunklen Fugenlinien) für einen lesbaren
+  Stein-Look statt reinem Rauschen. WATER bekam ein periodisches
+  Wellen-Streifenmuster (meist ohnehin von der halbtransparenten
+  Wasseroberflächen-Mesh aus v10.6 verdeckt).
+- Da die neuen Texturen reine Eigenproduktion sind (kein fremdes
+  Bildmaterial, kein KI-Bildgenerator verwendet - stand in dieser Umgebung
+  nicht zur Verfügung), entfällt jede Copyright-Frage komplett.
+- **Abweichung vom üblichen Workflow weiterhin in Kraft:** v10.8 ersetzt
+  nur die fehlerhafte `FrettchenKolonie_Godot4_v10_7_tileset_grafiken.zip`;
+  `FrettchenKolonie_Godot4_v10_6_water_drought.zip` bleibt unverändert im
+  Repo erhalten.
+- General + Changes aktualisiert.
+
 ## v10.7 (Tileset-Grafiktausch – PARALLEL zu v10.6, v10.6 nicht gelöscht!)
 - **Neu: copyright-freies isometrisches Tileset (32×32 Pixelart) ersetzt die
   reinen Flächenfarben des Terrains.** 6 Tile-Grafiken unter `assets/tiles/`

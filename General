@@ -191,6 +191,32 @@ Tileset) wurde NICHT aus dem Repo entfernt, abweichend vom sonst üblichen
   NICHT texturiert - nur das Flussbett darunter nutzt jetzt die neue
   `water.png`-Textur, sichtbar wenn der simulierte Pegel niedrig ist.
 
+### Phase 7b – Tileset-Bugfix: falsche Grafik-Art war die Ursache (v10.8)
+Nach Test-Feedback (Screenshot): das Terrain zeigte ein "verbuggtes",
+diagonal gerastertes Muster mit dunklen Lücken zwischen den Tiles.
+**Ursache identifiziert:** Das in Phase 7 verwendete Tileset bestand aus
+vorgerenderten ISOMETRISCHEN Diamant-Sprites mit transparenten Ecken -
+gedacht für einen 2D-Canvas-Renderer, bei dem die Diamantform und
+Perspektive bereits ins Bild eingebacken sind. Da unser Spiel seit dem
+3D-Port aber ein echtes flaches Quadrat in 3D rendert und die Diamant-
+Optik bereits durch die schräge Kamera entsteht, erzeugte das Texturieren
+mit einem zusätzlich diamantförmigen Sprite eine doppelte Perspektive -
+durch die transparenten Ecken schimmerte der dunkle Hintergrund durch,
+sichtbar als das gerasterte Lücken-Muster.
+- **Fix:** alle 6 Biom-Texturen durch selbst generierte, garantiert
+  nahtlose, vollständig opake Draufsicht-Texturen ersetzt (gleiche
+  Dateinamen unter `assets/tiles/`, daher keine GDScript-Änderung nötig -
+  reiner Asset-Tausch). Erzeugt per Python/Pillow mit periodischem
+  (an den Rändern exakt wiederholendem) Rauschfeld, anschliessend auf ein
+  16×16-Block-Raster herunterskaliert und mit Nearest-Neighbor wieder
+  hochskaliert für den chunkigen Pixelart-Look des restlichen Spiels.
+  Farbpalette an die bisherigen `BIOME_TOP`-Farben angelehnt.
+- MOUNTAIN bekam zusätzlich ein Fugen-Raster (4×4 "Steinplatten" mit
+  zufälliger Schattierung + dunklen Fugenlinien) für einen lesbaren
+  Stein-Look. WATER bekam ein periodisches Wellen-Streifenmuster.
+- Da diese Texturen reine Eigenproduktion (kein fremdes Bildmaterial)
+  sind, entfällt jede Copyright-Frage komplett.
+
 ---
 
 ## Aktuelle Architektur (Stand v10.6)
@@ -274,11 +300,12 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
   schreibgeschützt ist. Direkter Datei-Push erfolgt seit dieser Phase über
   die GitHub-API in das Repository `Dragonwizard017/Frettchenkolonie`.
 - Versionierung: Haupt-Ports erhalten ganze Versionsnummern (v9, v10),
-  Bugfix- und Feature-Runden Punkt-Releases (v10.1–v10.7), jeweils mit
-  Eintrag in der `Changes`-Datei im Repo. **Ausnahme v10.7:** auf
-  ausdrücklichen Wunsch als PARALLELE Version neben v10.6 ausgeliefert
-  (Tileset-Grafiktausch) - die v10.6-ZIP wurde NICHT gelöscht, beide
-  Stände liegen aktuell gleichzeitig im Repo.
+  Bugfix- und Feature-Runden Punkt-Releases (v10.1–v10.8), jeweils mit
+  Eintrag in der `Changes`-Datei im Repo. **Ausnahme v10.7/v10.8:** auf
+  ausdrücklichen Wunsch als PARALLELE Version(en) neben v10.6 ausgeliefert
+  (Tileset-Grafiktausch + Bugfix) - die v10.6-ZIP wurde NICHT gelöscht.
+  v10.8 hat die fehlerhafte v10.7-ZIP ersetzt (Grafik-Bug, siehe Phase 7b);
+  aktuell liegen also v10.6 und v10.8 im Repo.
 - Bei der v10.3-Durchsicht aufgefallen: `ui/MainMenu.gd`, `ui/WorldCreation.gd`,
   `ui/ExpeditionPanel.gd`, `ui/GraveyardPanel.gd` und `ui/StatsPanel.gd`
   existieren als Skripte, werden aber von `scenes/Main.gd` nirgends
