@@ -217,6 +217,36 @@ sichtbar als das gerasterte Lücken-Muster.
 - Da diese Texturen reine Eigenproduktion (kein fremdes Bildmaterial)
   sind, entfällt jede Copyright-Frage komplett.
 
+### Phase 7c – Wald-Höhe, Beerenbüsche, ruhigeres Wasser (v10.9)
+Nach weiterem Test-Feedback (Screenshot) drei Punkte behoben:
+- **Wald "schwebte" über dem Boden:** `WorldGenerator.generate()` gab
+  FOREST-Tiles bisher `height_val = n * 10.0`, PLAINS aber `n * 8.0` -
+  an der Biom-Grenze entstand dadurch ein sichtbarer Höhensprung
+  (Wald-Plateau/Klippe). FOREST nutzt jetzt dieselbe Formel wie PLAINS
+  (`n * 8.0`) - der Wald liegt auf Bodenhöhe, die Bäume selbst (eigene
+  3D-Modelle) sorgen weiterhin für die optische Waldwirkung.
+- **Baum-Größenvarianz deutlich erhöht:** `_place_trees()` skalierte
+  bisher nur ±15 % (`randf_range(0.85, 1.15)`) - jetzt ±45 %
+  (`randf_range(0.65, 1.45)`), sodass kleine Jungbäume und große, alte
+  Bäume nebeneinander stehen können.
+- **Neu: Beerenbüsche.** Hochgeladenes CC0-Modell
+  (`quaternius_cc0-bush-762.glb`) als `assets/bush.glb` übernommen.
+  Neue Funktion `_place_bushes()` (Gegenstück zu `_place_trees()`)
+  platziert einen Busch auf jedem Tile mit einem BERRIES-Resource-Node
+  (wurde von `WorldGenerator._place_resource_nodes()` schon vorher mit
+  35 % Wahrscheinlichkeit auf PLAINS-Tiles angelegt, bislang aber ohne
+  jede visuelle Entsprechung). Zufälliger Versatz/Rotation/Skalierung
+  wie bei den Bäumen.
+- **Wasser sah "verbuggt"/wuselig aus:** die `water.png`-Textur aus
+  Phase 7b nutzte ein periodisches Wellen-Streifenmuster, das sich mit
+  der zufälligen Pro-Tile-UV-Spiegelung (gegen sichtbare
+  Texturwiederholung) zu einem unruhigen Karo-/Webmuster überlagerte.
+  Durch ein fast einfarbiges Wasserblau mit nur ganz feinem
+  Pixel-Rauschen ersetzt (kein großstrukturiertes Muster mehr, das mit
+  der Spiegelung kollidieren könnte) - wirkt jetzt ruhig, was ohnehin
+  passt, da die eigentliche Wasserfläche meist von der halbtransparenten
+  Wasseroberflächen-Mesh (v10.6) verdeckt wird.
+
 ---
 
 ## Aktuelle Architektur (Stand v10.6)
@@ -300,12 +330,12 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
   schreibgeschützt ist. Direkter Datei-Push erfolgt seit dieser Phase über
   die GitHub-API in das Repository `Dragonwizard017/Frettchenkolonie`.
 - Versionierung: Haupt-Ports erhalten ganze Versionsnummern (v9, v10),
-  Bugfix- und Feature-Runden Punkt-Releases (v10.1–v10.8), jeweils mit
-  Eintrag in der `Changes`-Datei im Repo. **Ausnahme v10.7/v10.8:** auf
-  ausdrücklichen Wunsch als PARALLELE Version(en) neben v10.6 ausgeliefert
-  (Tileset-Grafiktausch + Bugfix) - die v10.6-ZIP wurde NICHT gelöscht.
-  v10.8 hat die fehlerhafte v10.7-ZIP ersetzt (Grafik-Bug, siehe Phase 7b);
-  aktuell liegen also v10.6 und v10.8 im Repo.
+  Bugfix- und Feature-Runden Punkt-Releases (v10.1–v10.9), jeweils mit
+  Eintrag in der `Changes`-Datei im Repo. **Ausnahme v10.7/v10.8/v10.9:**
+  auf ausdrücklichen Wunsch als PARALLELE Version(en) neben v10.6
+  ausgeliefert (Tileset-Grafiktausch + Bugfixes) - die v10.6-ZIP wurde
+  NICHT gelöscht. Jede neue Version in dieser Reihe ersetzt nur ihren
+  direkten Vorgänger; aktuell liegen also v10.6 und v10.9 im Repo.
 - Bei der v10.3-Durchsicht aufgefallen: `ui/MainMenu.gd`, `ui/WorldCreation.gd`,
   `ui/ExpeditionPanel.gd`, `ui/GraveyardPanel.gd` und `ui/StatsPanel.gd`
   existieren als Skripte, werden aber von `scenes/Main.gd` nirgends

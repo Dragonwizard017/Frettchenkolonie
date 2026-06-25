@@ -1,5 +1,39 @@
 # FrettchenKolonie – Changelog
 
+## v10.9 (Wald-Höhe, Beerenbüsche, ruhigeres Wasser)
+- **Fix: Wald lag erhöht über dem Boden (sichtbares Plateau/Klippe).**
+  Ursache: `WorldGenerator.generate()` setzte fuer FOREST-Tiles
+  `height_val = n * 10.0`, fuer PLAINS aber `n * 8.0` - an der Biom-Grenze
+  entstand dadurch ein Hoehensprung. FOREST nutzt jetzt dieselbe Formel
+  wie PLAINS (`n * 8.0`); Waldflaechen liegen jetzt auf Bodenhoehe, die
+  Baeume selbst sorgen weiterhin fuer die optische Waldwirkung.
+- **Baum-Groessenvarianz erhoeht:** `_place_trees()` skalierte bisher nur
+  ±15 % (`randf_range(0.85, 1.15)`), jetzt ±45 % (`randf_range(0.65, 1.45)`)
+  fuer deutlich sichtbar unterschiedliche Baumgroessen/-hoehen im selben
+  Waldstueck.
+- **Neu: Beerenbüsche.** Hochgeladenes CC0-Modell
+  (`quaternius_cc0-bush-762.glb`) als `assets/bush.glb` ins Projekt
+  uebernommen. Neue Funktion `WorldRenderer3D._place_bushes()`
+  (Gegenstueck zu `_place_trees()`) platziert einen Busch auf jedem Tile
+  mit einem BERRIES-Resource-Node - dieser wurde von
+  `WorldGenerator._place_resource_nodes()` schon laenger mit 35 %
+  Wahrscheinlichkeit auf PLAINS-Tiles angelegt, hatte bislang aber keine
+  visuelle Entsprechung (Beerensammler hatten dadurch keine sichtbaren
+  Büsche zum Sammeln). Aufgerufen aus `build_world()`.
+- **Fix: Wasser sah "verbuggt"/wuselig aus.** Die `water.png`-Textur aus
+  v10.8 nutzte ein periodisches Wellen-Streifenmuster, das sich mit der
+  zufaelligen Pro-Tile-UV-Spiegelung (gegen sichtbare Texturwiederholung,
+  siehe v10.7) zu einem unruhigen Karo-/Webmuster ueberlagerte. Durch ein
+  fast einfarbiges Wasserblau mit nur ganz feinem Pixel-Rauschen ersetzt
+  (kein grossstrukturiertes Muster mehr) - die eigentliche Wasserflaeche
+  wird ohnehin meist von der halbtransparenten Wasseroberflaechen-Mesh
+  (v10.6) verdeckt, das Flussbett darunter muss daher nicht auffallen.
+- **Workflow weiterhin wie zuletzt:** v10.9 ersetzt nur die vorherige
+  `FrettchenKolonie_Godot4_v10_8_tileset_fix.zip`;
+  `FrettchenKolonie_Godot4_v10_6_water_drought.zip` bleibt unveraendert
+  im Repo erhalten.
+- General + Changes aktualisiert.
+
 ## v10.8 (Bugfix: Tileset-Grafiken sahen "verbuggt" aus - falsche Grafik-Art)
 - **Ursache gefunden:** das in v10.7 verwendete Tileset bestand aus
   vorgerenderten ISOMETRISCHEN Diamant-Sprites mit transparenten Ecken
