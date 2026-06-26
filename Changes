@@ -1,5 +1,60 @@
 # FrettchenKolonie – Changelog
 
+## v10.13 (Bau-Frettchen, Tag/Nacht sichtbar + Schlafzyklus, Beeren-Fix, Wheat-Bug)
+
+- **Fix: Beerensammler produzierte keine Beeren.** Ursache: `production_speed`
+  (1.2) war so niedrig, dass selbst ein voll besetzter Beerensammler (2
+  Arbeiter, mit der globalen `0.35x`-Formel in `_collect()`) nur ~0.84
+  BERRIES/Sek schaffte - der Hunger-Fallback der Kolonie
+  (`PopulationManager.update()`, BERRIES als Nahrungsquelle ohne Kühlhaus)
+  konnte aber bis zu `ferrets.size()*0.4` BERRIES/Sek auffressen. Schon ab 3
+  Frettchen war der Verbrauch staerker als die Produktion - das Lager blieb
+  dauerhaft bei ~0. `production_speed` jetzt `3.5` (Beerensammler) bzw. `5.0`
+  (Garten), berechnet so, dass ein voll besetztes Gebäude den Grundbedarf
+  von ca. 6 Frettchen alleine decken kann.
+- **Bug-Fix (gefunden, nicht angefragt): Getreidefeld produzierte heimlich
+  Beeren statt Weizen.** `BuildingEntity._farm()` hat fest `"BERRIES"`
+  erzeugt, unabhängig vom tatsächlichen Gebäude. `CROP_FIELD` hat jetzt
+  `collects_resource: "WHEAT"`, `_farm()` nutzt dieses Feld (Fallback
+  `"WHEAT"`, falls ein FARM-Gebäude es nicht setzt).
+- **Feature: Bau-Frettchen gehen jetzt zur Baustelle.** Frettchen, die einem
+  Bauhof (`btype "BUILDER"`) zugewiesen sind, suchen sich eine aktive
+  Baustelle im Umkreis (`FerretEntity._find_construction_site()`,
+  Suchradius 50 Tiles) und laufen dorthin, statt nur am Bauhof zu stehen
+  (neuer Zustand `work_state == "BUILDING"`, mit kleiner Hammer-Wippanimation).
+- **Feature: Baugeschwindigkeit pro Baustelle statt global.** Bisher war die
+  Baugeschwindigkeit ein einzelner globaler Wert (Summe ALLER Bauhof-
+  Arbeiter über ALLE Bauhöfe), gleichermaßen auf jede Baustelle angewendet -
+  eine Baustelle baute genauso schnell, egal ob 0 oder 5 Frettchen dort
+  standen. `GameController._process_construction()` zählt jetzt pro
+  Baustelle, wie viele Frettchen GERADE DORT sind (`work_state == "BUILDING"`
+  mit passendem `construction_site`), und nur diese Baustelle profitiert vom
+  Tempo-Bonus.
+- **Feature: Tag/Nacht-Zyklus jetzt sichtbar.** Der Zyklus existierte
+  bereits (`DayNightSystem.gd`, steuert z.B. ob Sammler arbeiten), hatte
+  aber NIE eine sichtbare Auswirkung - Sonne, Umgebungslicht und Himmel
+  blieben immer gleich. `GameController._update_day_night_visuals()` blendet
+  Sonnenlicht/Füllicht/Himmelfarbe jetzt weich zwischen Tag- und
+  Nachtwerten (mit Übergangsphase um Sonnenuntergang/-aufgang).
+- **Feature: Frettchen schlafen nachts.** Neue Zustände in `FerretEntity`
+  (`is_sleeping`, `_update_sleep()`): sobald `DayNight.is_day == false`,
+  brechen alle Frettchen ihre Arbeit ab. Mit zugewiesenem Haus (`home`)
+  laufen sie dorthin und legen sich dort schlafen; ohne Haus legen sie sich
+  einfach an ihrer aktuellen Position auf den Boden. Darstellung: Modell um
+  ~90° auf die Seite gekippt, dicht am Boden, mit einem sehr langsamen
+  Sinus-Wippen ("Atmen"); die Lauf-Animation wird dabei eingefroren.
+  `PopulationManager._assign_homes()` (neu) vergibt freie Betten jetzt auch
+  an die Start-Population und an Frettchen, deren Haus zerstört wurde -
+  bisher bekamen nur neugeborene Frettchen ein Zuhause zugewiesen.
+- **Feature: "Zumindest am Anfang nicht so schnell sterben".** Am
+  allerersten Tag (`DayNight.day_count == 0`) verursachen Hunger/Durst noch
+  keinen Gesundheitsschaden - die Bedürfniswerte selbst sinken weiterhin
+  normal (sichtbar, motiviert zügig zu bauen), aber kein Frettchen kann
+  am ersten Tag sterben. Ergänzt den bereits bestehenden, deutlich
+  großzügigeren Nahrungs-/Wasserverbrauch.
+- Betroffen: `BuildingData.gd`, `BuildingEntity.gd`, `FerretEntity.gd`,
+  `PopulationManager.gd`, `GameController.gd`, `WorldRenderer3D.gd`.
+
 ## v10.12 (Bugfix: AnimationPlayer-Absturz beim Arbeiten/Ernten)
 
 - **Fix: Engine-Fehler beim Arbeiten/Ernten** -
