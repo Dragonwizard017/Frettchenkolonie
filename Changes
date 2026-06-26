@@ -1,5 +1,39 @@
 # FrettchenKolonie – Changelog
 
+## v10.11 (Spezialisierte Ernte-Animationen pro Ressourcentyp)
+
+- **Feature:** das generische Sinus-Wippen während des Erntens (v10.10) wurde
+  durch drei eigenständige, ressourcenspezifische Animationsmodule unter
+  `rendering/animations/` ersetzt:
+  - **`BerryHarvestAnimation.gd`** (BERRIES): mehrere kurze, schnelle
+    "Pflück"-Aktionen (4 pro Ernte-Aktion) mit abwechselndem Lehnen nach
+    links/rechts, als würde an verschiedenen Stellen im Busch gepflückt.
+  - **`TreeFellingAnimation.gd`** (WOOD): ein Hack-Zyklus mit langsamem
+    Ausholen und schnellem Schlag (3 Axthiebe pro Ernte-Aktion), inkl.
+    kurzem Eintauch-Impuls beim "Treffer".
+  - **`WaterCollectAnimation.gd`** (WATER, z.B. Brunnen/Wasserturm): ruhiges
+    Herunterbeugen, kurzes Halten (Schöpfen), gleichmäßiges Aufrichten - ein
+    voller Zyklus, deutlich ruhiger als das Pflücken/Hacken.
+  STONE/IRON haben (noch) kein eigenes Modul und nutzen weiterhin das
+  generische Sinus-Wippen als Fallback.
+- Jedes Modul ist eine reine, zustandslose `static func compute(t, duration)`,
+  die eine Pose (`bob_y`/`rot_x`/`rot_z`) zurückgibt - leicht erweiterbar für
+  STONE/IRON oder weitere Ressourcen, ohne `WorldRenderer3D.gd` weiter
+  anfassen zu müssen (nur ein neuer `match`-Fall).
+- **`FerretEntity.gd`**: neues Feld `work_anim_t` - eine generische, durchgehend
+  laufende "Arbeits-Uhr", die während der gesamten Zeit am Gebäude
+  (`work_state == "WORKING"`) hochzählt. Im Unterschied zu `harvest_anim_t`
+  (läuft nur während `HARVESTING`, also dem Node-Pendeln) wird sie auch für
+  Gebäude gebraucht, die direkt am Gebäude "arbeiten" statt zu einer
+  Resource-Node zu pendeln (aktuell: Wasser-Gebäude).
+- **`WorldRenderer3D.gd`** (`update_ferrets()`): wählt anhand von
+  `fe.assigned_building.collects_resource` das passende Animationsmodul aus
+  und wendet dessen Pose auf `bob_y`/`fn.rotation.x`/`fn.rotation.z` an.
+- Workflow: `FrettchenKolonie_Godot4_v10_10_ressourcen_terrain_arbeit_fix.zip`
+  wurde durch `FrettchenKolonie_Godot4_v10_11_harvest_animationen.zip`
+  ersetzt und aus dem Repo gelöscht. `FrettchenKolonie_Godot4_v10_6_water_drought.zip`
+  bleibt unverändert als parallele Referenzversion erhalten.
+
 ## v10.10 (Ressourcenproduktion-Fix, Terrain-Glättung, Frettchen gehen zur Arbeit)
 
 - **Fix: Ressourcen wurden trotz gebauter Gebäude nicht produziert.**
