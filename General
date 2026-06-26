@@ -408,6 +408,12 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
   Resource-Node zu laufen.
 - `WorldRenderer3D.update_ferrets()` wählt das passende Modul anhand von
   `fe.assigned_building.collects_resource` per `match`.
+### Phase 10 – Bugfix: AnimationPlayer-Absturz beim Arbeiten/Ernten (v10.12)
+- Engine-Fehler `Nonexistent function 'is_paused' in base 'AnimationPlayer'`
+  in `update_ferrets()`, sobald das erste Frettchen an einem Gebäude/einer
+  Quelle ankam: `AnimationPlayer` hat in Godot 4 keine `pause()`/
+  `is_paused()`-Methoden. Fix: `anim.stop(true)` (stoppt und friert die
+  Pose ein) statt `pause()`; Prüfung vereinfacht auf `is_playing()`.
 
 ---
 
