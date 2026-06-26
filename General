@@ -414,6 +414,37 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
   Quelle ankam: `AnimationPlayer` hat in Godot 4 keine `pause()`/
   `is_paused()`-Methoden. Fix: `anim.stop(true)` (stoppt und friert die
   Pose ein) statt `pause()`; Prüfung vereinfacht auf `is_playing()`.
+### Phase 11 – Bau-Frettchen, sichtbarer Tag/Nacht-Zyklus, Schlafverhalten,
+### Beeren-/Wheat-Fix (v10.13)
+- **Beerensammler-Fix:** `production_speed` war zu niedrig (1.2), um den
+  Hunger-Verbrauch der Kolonie (BERRIES als ungekochter Nahrungs-Fallback)
+  auszugleichen - das Lager blieb dauerhaft bei ~0. Jetzt `3.5`
+  (Beerensammler) / `5.0` (Garten), rechnerisch auf ~6 Frettchen Grundbedarf
+  pro voll besetztem Gebäude ausgelegt.
+- **Gefundener Zusatzbug:** `BuildingEntity._farm()` hat fuer JEDES
+  FARM-Gebaeude fest "BERRIES" produziert - das Getreidefeld (CROP_FIELD)
+  erzeugte dadurch heimlich Beeren statt Weizen. Jetzt ueber
+  `collects_resource` (= "WHEAT" fuer CROP_FIELD) gesteuert.
+- **Bau-Frettchen gehen zur Baustelle:** Frettchen an einem Bauhof
+  (`btype "BUILDER"`) suchen sich jetzt eine aktive Baustelle im Umkreis und
+  laufen dorthin (neuer Zustand `work_state == "BUILDING"`), statt nur am
+  Bauhof zu stehen.
+- **Baugeschwindigkeit pro Baustelle statt global:** vorher zaehlte die
+  Summe ALLER Bauhof-Arbeiter ueber ALLE Baustellen gleichermassen; jetzt
+  zaehlt pro Baustelle nur, wie viele Frettchen GERADE DORT physisch stehen
+  (`GameController._process_construction()`).
+- **Tag/Nacht-Zyklus sichtbar gemacht:** der Zyklus existierte bereits als
+  reiner Hintergrund-Timer (`DayNightSystem.gd`), hatte aber nie eine
+  sichtbare Auswirkung. `GameController._update_day_night_visuals()` blendet
+  Sonne/Fuelllicht/Himmelfarbe jetzt weich zwischen Tag und Nacht.
+- **Schlafverhalten:** nachts brechen alle Frettchen ihre Arbeit ab; mit
+  zugewiesenem Haus laufen sie dorthin und schlafen dort (liegende Pose,
+  Lauf-Animation eingefroren), ohne Haus legen sie sich an Ort und Stelle
+  auf den Boden. `PopulationManager._assign_homes()` (neu) vergibt freie
+  Betten jetzt auch an die Start-Population, nicht nur an Neugeborene.
+- **Grace-Period:** am allerersten Tag (`day_count == 0`) verursachen
+  Hunger/Durst noch keinen Gesundheitsschaden - ergaenzt den bereits
+  bestehenden, grosszuegigeren Verbrauch aus Phase 11/v10.12.
 
 ---
 
