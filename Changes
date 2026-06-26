@@ -1,5 +1,21 @@
 # FrettchenKolonie – Changelog
 
+## v10.12 (Bugfix: AnimationPlayer-Absturz beim Arbeiten/Ernten)
+
+- **Fix: Engine-Fehler beim Arbeiten/Ernten** -
+  `Invalid call. Nonexistent function 'is_paused' in base 'AnimationPlayer'`
+  (WorldRenderer3D.gd:823, update_ferrets()). Ursache: `AnimationPlayer`
+  besitzt in Godot 4 keine `pause()`/`is_paused()`-Methoden (anders als z.B.
+  `AudioStreamPlayer` oder `AnimatedSprite2D`) - dieser Aufruf existierte so
+  nie in der Engine und ist sofort beim ersten Frettchen, das an einem
+  Gebäude/einer Quelle ankommt, gecrasht.
+- Fix: `anim.pause()` → `anim.stop(true)` (stoppt die Wiedergabe und friert
+  dabei die zuletzt animierte Pose ein, statt auf die Standard-Pose
+  zurückzuspringen - das Godot-4-Äquivalent zu "pausieren" für
+  `AnimationPlayer`). Die Prüfung vereinfacht sich entsprechend auf
+  `if not anim.is_playing(): anim.play(...)` ohne `is_paused()`.
+- Betroffen: `WorldRenderer3D.gd`, `update_ferrets()`.
+
 ## v10.11 (Spezialisierte Ernte-Animationen pro Ressourcentyp)
 
 - **Feature:** das generische Sinus-Wippen während des Erntens (v10.10) wurde
