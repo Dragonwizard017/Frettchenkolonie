@@ -393,6 +393,22 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
   auszusetzen - die Resource-Nodes sind primär für die sichtbare/spürbare
   Erschöpfungs-Mechanik und die physische Frettchen-Bewegung verantwortlich.
 
+### Phase 9 – Spezialisierte Ernte-Animationen pro Ressourcentyp (v10.11)
+- Das generische Sinus-Wippen aus v10.10 wurde durch drei eigenständige
+  Animationsmodule unter `rendering/animations/` ersetzt: `BerryHarvestAnimation.gd`
+  (mehrfaches schnelles Pflücken), `TreeFellingAnimation.gd` (Axthieb-Zyklen
+  mit Ausholen+Schlag+Eintauch-Impuls) und `WaterCollectAnimation.gd`
+  (ruhiges Herunterbeugen/Halten/Aufrichten). Jedes Modul ist eine reine
+  `static func compute(t, duration) -> Dictionary` (bob_y/rot_x/rot_z),
+  leicht erweiterbar für STONE/IRON (aktuell noch generischer Fallback).
+- `FerretEntity.gd` hat ein neues Feld `work_anim_t` - eine durchgehend
+  laufende Uhr während `work_state == "WORKING"`, getrennt von
+  `harvest_anim_t` (läuft nur beim Node-Pendeln) - nötig für Gebäude wie
+  Brunnen/Wasserturm, die direkt am Gebäude "arbeiten" statt zu einer
+  Resource-Node zu laufen.
+- `WorldRenderer3D.update_ferrets()` wählt das passende Modul anhand von
+  `fe.assigned_building.collects_resource` per `match`.
+
 ---
 
 ## Tools & Engine
