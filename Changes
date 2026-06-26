@@ -1,5 +1,95 @@
 # FrettchenKolonie – Changelog
 
+## v10.10 (Ressourcenproduktion-Fix, Terrain-Glättung, Frettchen gehen zur Arbeit)
+
+- **Fix: Ressourcen wurden trotz gebauter Gebäude nicht produziert.**
+  Ursache gefunden: `ResourceSystem.storage_capacity` startete bei `80.0`,
+  die Start-Ressourcen (`WOOD 50 + STONE 30 + BERRIES 20 = 100`) lagen aber
+  schon beim Spielstart darüber. `get_free_space() = max(0, capacity -
+  total_stored)` war dadurch von Beginn an dauerhaft `0`, und `add()` hat
+  seitdem nichts mehr ins Lager gelassen – komplett unabhängig davon, ob
+  und wie viele Gebäude produzierten. Erst genug `STORAGE`-Gebäude (die
+  die Kapazität über 100 heben) ließen die Produktion wieder "anlaufen".
+  Neue Konstante `BASE_STORAGE_CAPACITY = 150.0` (statt `80.0`) gibt von
+  Anfang an Puffer über den Startressourcen. Betroffen: `init()`,
+  `update_capacity()`, `deserialize()`-Fallback in `ResourceSystem.gd`.
+
+- **Fix: Wasser sah weiterhin "verbuggt" aus (dünne diagonale Risse statt
+  zusammenhängender Seen/Flüsse, siehe Screenshot).** Ursache:
+  `WorldGenerator.generate()` mischte für die Biom-/Höhenentscheidung drei
+  Noise-Oktaven (0.6/0.3/0.1), darunter eine hochfrequente 4x-Oktave. Nahe
+  der `WATER`-Schwelle (`n < 0.25`) ließ genau diese Oktave den
+  Gesamtwert mehrfach knapp unter/über die Schwelle pendeln – sichtbar als
+  regelmäßige, parallele blaue Streifen quer durchs Land statt richtiger
+  Gewässer. Fix: die Biom-Entscheidung nutzt jetzt nur noch eine glatte,
+  niedrigfrequente Basis (`n_smooth`, 2 Oktaven ohne die 4x-Oktave); die
+  feine Oktave bleibt als kleine kosmetische Höhenvariation *innerhalb*
+  eines Bioms erhalten, kippt aber die Schwelle selbst nicht mehr.
+
+- **Fix: Berge/Hügel begannen abrupt (sichtbare Klippen an Biom-Grenzen).**
+  Ursache: jedes Biom hatte bisher eine eigene lineare Höhenformel
+  (`n*8` / `n*12` / `n*16`) – an jeder Biom-Grenze sprang die Höhe dadurch
+  spürbar (z.B. PLAINS bei `n=0.72` → `5.76`, HILLS bei *demselben* `n` →
+  `8.64`). Jetzt gilt eine einzige, stetige, quadratische Formel
+  (`height_val = n*n*20.0`) für alle Biome – an Biom-Übergängen ändert
+  sich die Höhe dadurch zwangsläufig nicht mehr abrupt, Berge wachsen
+  jetzt graduell aus dem Umland heraus statt als Plateau/Klippe zu
+  beginnen.
+
+- **Feature: Frettchen gehen jetzt tatsächlich zu ihrer Arbeit, statt nur
+  zufällig zu wandern.** `FerretEntity` hat eine neue Geh-/Arbeits-
+  Zustandsmaschine (`work_state`: `IDLE`/`TO_BUILDING`/`WORKING`/
+  `TO_NODE`/`HARVESTING`/`RETURN`):
+  - Frettchen mit `assigned_building` laufen zum zugewiesenen Gebäude und
+    bleiben dort ("arbeiten drinnen"), statt weiter ziellos zu wandern.
+  - Bei Sammel-Gebäuden mit physischen Ressourcenquellen im Terrain
+    (`COLLECTOR` mit `WOOD`/`STONE`/`BERRIES`/`IRON`) pendeln sie
+    stattdessen zwischen Gebäude und einer konkreten Resource-Node im
+    Sammelradius: hinlaufen, **3 Sekunden ernten**, zurücklaufen, nächste
+    Quelle suchen.
+  - **Erschöpfung & Regeneration:** jede Resource-Node hat jetzt
+    `amount`/`max_amount`/`regen_timer`/`depleted`. Jede Ernte-Aktion
+    entzieht `18` Einheiten; ist eine Quelle leer, gilt sie als
+    `depleted` und braucht **75 Sekunden**, um auf 55% ihrer
+    ursprünglichen Größe zurückzuwachsen (neue statische Funktion
+    `WorldGenerator.tick_resource_nodes()`, jeden Frame aus
+    `PopulationManager.update()` aufgerufen). Nicht komplett leere
+    Quellen wachsen währenddessen zusätzlich langsam passiv nach.
+  - **Sichtbare Erschöpfung/Regeneration:** `WorldRenderer3D` merkt sich
+    jetzt pro Baum/Busch-Tile den zugehörigen 3D-Node (`_tree_nodes`,
+    `_bush_nodes`) und skaliert ihn über die neue `refresh_vegetation()`
+    (alle 30 Frames aufgerufen) anhand von `amount / max_amount` zwischen
+    22% (fast leer/"Stumpf") und 100% Größe – Bäume schrumpfen beim
+    Abholzen sichtbar, Büsche wirken "abgepflückt", und beide wachsen
+    erkennbar wieder, sobald sich die Quelle erholt.
+  - **Ernte-Animation:** das verwendete `ferret.glb` besitzt laut
+    Projektnotizen nur eine `Run`-Animation, keine eigene Ernte-Pose.
+    Als Ersatz pausiert `update_ferrets()` die Lauf-Animation, sobald ein
+    Frettchen am Gebäude/an der Quelle steht, und spielt während des
+    Erntens stattdessen ein kleines prozedurales Wippen/Bücken
+    (Sinus-Bob auf der Y-Position + leichte Neigung) – deutlich erkennbar
+    als "hier wird gerade geerntet", ohne dafür eine eigene Animation im
+    Modell zu benötigen.
+  - **Schwache Kopplung an die Wirtschaft:** `BuildingEntity._collect()`
+    prüft jetzt zusätzlich per `_has_nearby_node()`, ob im Sammelradius
+    überhaupt eine erntbare Quelle liegt – sind alle gerade erschöpft,
+    sinkt die Förderrate auf 35 % statt unverändert weiterzulaufen. Die
+    eigentliche, bewährte Timer-basierte Produktionsformel bleibt davon
+    unangetastet (Risiko/Balance-Stabilität), die Quellen liefern primär
+    die sichtbare/spürbare Erschöpfungs-Mechanik.
+  - Betroffen: `FerretEntity.gd` (neu geschrieben), `PopulationManager.gd`
+    (`update()` reicht jetzt `world` durch), `BuildingEntity.gd`,
+    `WorldGenerator.gd` (`_place_resource_nodes()`,
+    `tick_resource_nodes()`), `WorldRenderer3D.gd` (`_place_trees()`,
+    `_place_bushes()`, `refresh_vegetation()`, `update_ferrets()`),
+    `GameController.gd` (`PopMgr.update()`-Aufruf,
+    `refresh_vegetation()`-Throttle).
+
+- **Workflow:** `FrettchenKolonie_Godot4_v10_9_wald_buesche_wasser_fix.zip`
+  wurde durch `FrettchenKolonie_Godot4_v10_10_ressourcen_terrain_arbeit_fix.zip`
+  ersetzt und aus dem Repo gelöscht. `FrettchenKolonie_Godot4_v10_6_water_drought.zip`
+  bleibt wie immer unverändert als parallele Referenzversion im Repo.
+
 ## v10.9 (Wald-Höhe, Beerenbüsche, ruhigeres Wasser)
 - **Fix: Wald lag erhöht über dem Boden (sichtbares Plateau/Klippe).**
   Ursache: `WorldGenerator.generate()` setzte fuer FOREST-Tiles
