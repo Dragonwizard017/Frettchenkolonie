@@ -350,6 +350,49 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
   Tile wurden bewusst nicht umgesetzt, um den Umfang in einer Session
   beherrschbar zu halten - könnten aber bei Bedarf nachgezogen werden.
 
+### Phase 8 – Ressourcen-Bug, Terrain-Glättung, Frettchen-Arbeitslogik (v10.10)
+- **Hauptfund der Session:** `ResourceSystem.storage_capacity` startete bei
+  `80.0`, obwohl die Start-Ressourcen schon `100.0` (WOOD 50 + STONE 30 +
+  BERRIES 20) summierten - `get_free_space()` war dadurch von Spielstart an
+  dauerhaft `0`, jede Produktion lief seitdem komplett leer. Neue Konstante
+  `BASE_STORAGE_CAPACITY = 150.0` behebt das. Dies war vermutlich die
+  Hauptursache für "Gebäude gebaut, aber keine Ressourcen produziert".
+- **Terrain-Generierung vereinheitlicht:** `WorldGenerator.generate()` nutzte
+  pro Biom eine eigene lineare Höhenformel (`n*8`/`n*12`/`n*16`), was an
+  jeder Biom-Grenze einen Höhensprung erzeugte (am stärksten sichtbar beim
+  abrupten Beginn von Hügeln/Bergen). Jetzt gilt eine einzige stetige
+  Formel (`n*n*20.0`) für alle Biome.
+- **Wasser-Generierung entrauscht:** die Biom-Entscheidung (inkl. der
+  WATER-Schwelle) nutzte bisher dieselbe 3-Oktaven-Mischung wie die Höhe,
+  inklusive einer hochfrequenten Oktave, die nahe der Schwelle dünne,
+  parallele diagonale Wasser-"Risse" statt zusammenhängender Seen/Flüsse
+  erzeugte. Die Biom-Entscheidung nutzt jetzt nur noch eine geglättete
+  2-Oktaven-Basis (`n_smooth`); die feine Oktave bleibt rein kosmetisch für
+  Höhenvariation innerhalb eines Bioms erhalten.
+- **Frettchen haben jetzt eine echte Geh-/Arbeits-Zustandsmaschine**
+  (`FerretEntity.work_state`): sie laufen zu ihrem zugewiesenen Gebäude und
+  bleiben dort, statt ziellos zu wandern. Bei Sammel-Gebäuden mit
+  physischen Ressourcenquellen (Holzfäller/Steinbruch/Beerensammler/
+  Eisenmine) pendeln sie zu einer konkreten Resource-Node im Sammelradius,
+  ernten dort 3 Sekunden, kehren zurück und suchen die nächste Quelle.
+- **Resource-Nodes erschöpfen sich jetzt** (`amount`/`max_amount`/
+  `regen_timer`/`depleted`) und regenerieren nach 75 Sekunden auf 55 %
+  ihrer ursprünglichen Größe (`WorldGenerator.tick_resource_nodes()`,
+  jeden Frame aufgerufen). `WorldRenderer3D.refresh_vegetation()` skaliert
+  die zugehörigen Baum-/Busch-3D-Modelle dafür sichtbar zwischen 22 % und
+  100 % ihrer Größe - Bäume schrumpfen beim Abholzen, Büsche wirken
+  abgepflückt, beide wachsen sichtbar wieder nach.
+- **Ernte-Animation als Behelfslösung:** da `ferret.glb` nur eine
+  `Run`-Animation besitzt, pausiert `update_ferrets()` diese, sobald ein
+  Frettchen am Gebäude/an der Quelle steht, und spielt während des Erntens
+  ein kleines prozedurales Sinus-Wippen statt einer echten Ernte-Pose.
+- Bewusste Design-Entscheidung: die eigentliche Produktionsmenge kommt
+  weiterhin aus der bewährten Timer-Formel in `BuildingEntity._collect()`
+  (Balance-Stabilität); fehlt eine erntbare Quelle im Sammelradius
+  (`_has_nearby_node()`), sinkt die Rate nur auf 35 % statt komplett
+  auszusetzen - die Resource-Nodes sind primär für die sichtbare/spürbare
+  Erschöpfungs-Mechanik und die physische Frettchen-Bewegung verantwortlich.
+
 ---
 
 ## Tools & Engine
