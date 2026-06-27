@@ -1,5 +1,21 @@
 # FrettchenKolonie – Changelog
 
+## v10.15 (Bugfix: BuildingEntity-Parse-Crash)
+
+- **Fix: Komplettes Spiel startete nicht** (`Could not parse global class
+  "BuildingEntity"` und eine Kaskade von Folgefehlern in
+  `PopulationManager.gd`, `WaterSystem.gd`, `ExpeditionSystem.gd`,
+  `GameController.gd`, `WorldRenderer3D.gd`, `FerretEntity.gd`,
+  `BuildingInfo.gd`). Ursache: in `BuildingEntity.gd` war die Variable
+  `planting_radius` versehentlich zweimal deklariert (Zeile 39 und 41,
+  aus der v10.14-Försterei-Änderung) - GDScript lässt keine doppelten
+  Variablennamen in derselben Klasse zu, wodurch das Skript überhaupt
+  nicht compilierte. Da fast alle anderen Systeme `BuildingEntity` als
+  globale Klasse referenzieren, riss dieser eine Fehler die komplette
+  Kompilierung mit sich. Doppelte Deklaration entfernt, ebenso eine
+  redundante doppelte Zuweisung derselben Property in
+  `BuildingEntity.from_type()`.
+
 ## v10.14 (Bugfix-Sammlung: Baumenü-Sperre, Laden, Försterei, Expeditionen, Saves, Seed)
 
 Eine zweite KI hat den Code überprüft und mehrere echte Bugs gefunden, die
