@@ -1,5 +1,25 @@
 # FrettchenKolonie – Changelog
 
+## v10.17 (Hausmodell optimiert - Godot-Import-Freeze behoben)
+
+- **Fix: Godot hing beim Import nach v10.16 dauerhaft bei "Assets importieren"
+  / "Szene importieren" (0%, Fenstertitel "Keine Rückmeldung").** Ursache:
+  das von Leander gelieferte `house.glb` war mit **267.073 Vertices und
+  999.260 Dreiecken** (~15 MB) für ein einzelnes Gebäudemodell um
+  Größenordnungen zu schwer (zum Vergleich: `pine_tree.glb` hat nur wenige
+  Tausend Dreiecke). Zusätzlich enthielt es **465.131 entartete/doppelte
+  Nulldreiecke** (fast die Hälfte aller Faces) und gar keine Normalen -
+  Godot blieb beim Versuch, daraus Normalen zu berechnen und das Mesh zu
+  importieren, praktisch haengen. Modell bereinigt (entartete/doppelte
+  Faces entfernt, Vertices verschweißt) und per Quadric-Decimation auf
+  10.004 Vertices / 20.000 Dreiecke reduziert (Datei jetzt ~480 KB statt
+  ~15 MB), Normalen neu berechnet und eingebettet. Form/Silhouette bleibt
+  durch die Quadric-Decimation nahezu identisch zum Original, nur die
+  unnötige Detaildichte wurde entfernt.
+- Betroffene Spieler mit dem alten v10.16-Stand: vor dem erneuten Import
+  ggf. den `.godot/`-Cache-Ordner im Projektordner löschen, falls Godot
+  weiterhin haengt (alter fehlerhafter Import-Cache-Eintrag).
+
 ## v10.16 (Hausmodell, Vermehrungs-Bugfix, Wasser-Tuning)
 
 - **Neu: Echtes 3D-Modell für Wohnhäuser.** Fertig gebaute Gebäude mit der
