@@ -445,6 +445,36 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
 - **Grace-Period:** am allerersten Tag (`day_count == 0`) verursachen
   Hunger/Durst noch keinen Gesundheitsschaden - ergaenzt den bereits
   bestehenden, grosszuegigeren Verbrauch aus Phase 11/v10.12.
+### Phase 12 – Bugfix-Sammlung: Baumenue-Sperre, Laden, Foersterei,
+### Expeditionen, Saves, Seed (v10.14)
+- **Baumenue-Sperre:** BuildMenu.refresh() lief nur bei Bauen/Verkaufen,
+  nicht wenn Ressourcen rein durch Produktion nachwuchsen - Buttons blieben
+  nach einmal leerem Lager dauerhaft gesperrt. Jetzt im 1-Sekunden-HUD-Takt
+  mit aktualisiert.
+- **Laden:** Main.gd setzte PLAYING-Zustand VOR dem eigentlichen
+  load_game()-Versuch - bei fehlendem/defektem Save blieb eine leere Szene
+  sichtbar im Spielmodus haengen. Jetzt zustand nur bei Erfolg umschalten.
+- **Foersterei:** BuildingEntity.update() hat den Typ FORESTER nie behandelt.
+  Neue _plant_trees(): pflanzt periodisch neue WOOD-Resource-Nodes auf
+  leeren Waldtiles; WorldRenderer3D.refresh_vegetation() spawnt dafuer
+  automatisch ein Baum-Modell.
+- **Expeditionen erreichbar gemacht:** ExpeditionPanel/GraveyardPanel
+  existierten als Skripte, waren aber nirgends im UI-Baum - jetzt in Main.gd
+  erzeugt, zwei neue HUD-Buttons (🗺️/🪦) oeffnen sie.
+- **Expeditionen werden gespeichert:** SaveSystem.gd hat
+  ExpeditionSys.serialize()/deserialize() nie aufgerufen, deserialize() hat
+  seinen Parameter zudem ignoriert. Expedition serialisiert sich jetzt
+  komplett inkl. mitgereister Frettchen.
+- **Alte Saves verlieren keine Ressourcen-Keys mehr:** deserialize() startet
+  jetzt mit dem aktuellen Default-Set und ueberschreibt nur vorhandene
+  Save-Werte, statt das Dictionary hart zu ersetzen.
+- **Welt-Seed vollstaendig reproduzierbar:** WorldGenerator.generate() seedet
+  jetzt zusaetzlich zum Perlin-Noise auch den globalen RNG - Resource-Nodes,
+  Ruinen, Baum-/Busch-Varianz und Frettchen-Startpositionen sind dadurch bei
+  gleichem Seed jetzt ebenfalls reproduzierbar.
+- Eingeschaetzt als KEIN Bug: Sammler-Frettchen gehen bei Holz/Stein/Beeren/
+  Eisen direkt zur Resource-Node statt erst zum Gebaeude - das ist
+  beabsichtigtes Design (siehe Anfrage zu v10.10).
 
 ---
 
