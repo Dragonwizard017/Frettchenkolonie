@@ -1,5 +1,23 @@
 # FrettchenKolonie – Changelog
 
+## v10.18 (Custom-Modell jetzt für ALLE Gebäudetypen)
+
+- **Feature: Das Custom-3D-Modell gilt jetzt für jeden Gebäudetyp**, nicht
+  mehr nur für Wohnhäuser. Ursache der Rückmeldung "Gebäude zeigen wieder
+  das alte Modell": die v10.16/v10.17-Logik beschränkte den Modell-Tausch
+  bewusst auf Gebäude mit der id `HOUSE` - Brunnen, Werkstatt, Holzfäller,
+  Beerensammler & Co. zeigten dadurch weiterhin die generische Box+Dach-
+  Darstellung (kein Bug, aber nicht das, was Leander wollte). Jetzt nutzt
+  jedes fertig gebaute Gebäude `assets/house.glb`, eingefärbt passend zu
+  seiner jeweiligen `BUILDING_VISUALS`-Farbe. Damit unterschiedliche
+  Gebäudetypen trotz identischem Modell nicht alle gleich groß wirken,
+  wird die Skalierung jetzt aus der individuellen Ziel-Höhe `bh` jedes
+  Gebäudetyps berechnet (`HOUSE_MODEL_RAW_HEIGHT` als Referenz-Rohhöhe des
+  Modells, multipliziert mit `HOUSE_MODEL_SCALE_FACTOR` als globalem
+  Korrekturfaktor) statt eines festen Skalierungswerts. Während der
+  Bauphase bleibt es weiterhin bei der bekannten halbtransparenten
+  Baugerüst-Box für alle Gebäudetypen.
+
 ## v10.17 (Hausmodell optimiert - Godot-Import-Freeze behoben)
 
 - **Fix: Godot hing beim Import nach v10.16 dauerhaft bei "Assets importieren"
