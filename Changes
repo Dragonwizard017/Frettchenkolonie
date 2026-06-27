@@ -1,5 +1,66 @@
 # FrettchenKolonie – Changelog
 
+## v10.14 (Bugfix-Sammlung: Baumenü-Sperre, Laden, Försterei, Expeditionen, Saves, Seed)
+
+Eine zweite KI hat den Code überprüft und mehrere echte Bugs gefunden, die
+hier behoben wurden, plus den vom Spieler gemeldeten Bau-Sperre-Bug:
+
+- **Fix: Nach Verbrauch der Startressourcen ließ sich nichts mehr bauen,
+  obwohl genug Ressourcen vorhanden waren.** Ursache: `BuildMenu.refresh()`
+  (berechnet die "kann ich mir leisten"-Sperre der Bau-Buttons) lief NUR
+  beim Platzieren/Verkaufen eines Gebäudes, nicht wenn Ressourcen rein durch
+  Produktion nachwuchsen. War das Menü einmal wegen leerem Lager gesperrt,
+  blieb es dauerhaft eingefroren - selbst nachdem längst wieder genug da
+  war. `GameController._process_construction()`-Takt (1x/Sek) ruft jetzt
+  zusätzlich `_on_build_menu_update()` auf.
+- **Fix: Laden konnte in einen kaputten Spielzustand führen.** `Main.gd`
+  setzte den Zustand auf `PLAYING`, BEVOR `SaveSys.load_game()` überhaupt
+  versucht wurde. Gab es irgendeinen Save, aber keinen `quicksave`, oder war
+  die Datei defekt, lief das Spiel trotzdem sichtbar im Spielmodus weiter -
+  mit einer leeren/kaputten Szene. Jetzt wird zuerst geladen, der Zustand
+  nur bei Erfolg umgeschaltet, und es gibt eine Fehlermeldung statt eines
+  stillen Hängenbleibens.
+- **Fix: Försterei war freigeschaltet, hatte aber keine Funktion.**
+  `BuildingEntity.update()` hat den Gebäudetyp `FORESTER` im `match`-Block
+  nie behandelt. Neue Funktion `_plant_trees()`: die Försterei pflanzt jetzt
+  regelmäßig neue WOOD-Resource-Nodes auf leeren FOREST-Tiles in ihrem
+  `planting_radius` (hält den Wald langfristig am Leben, statt selbst zu
+  ernten). `WorldRenderer3D.refresh_vegetation()` erkennt solche neu
+  entstandenen Quellen automatisch und spawnt dafür einen Baum/Busch.
+- **Fix: Expeditionen waren praktisch nicht erreichbar.**
+  `ExpeditionPanel.gd`/`GraveyardPanel.gd` existierten als vollständige
+  Skripte, wurden aber nirgends im UI-Baum erzeugt und es gab keinen Weg,
+  sie zu öffnen. Beide Panels werden jetzt in `Main.gd` erzeugt, zwei neue
+  Buttons (🗺️/🪦) in der HUD-Leiste öffnen sie.
+- **Fix: Expeditionen wurden nicht gespeichert.** `SaveSystem.gd` hat
+  `ExpeditionSys.serialize()`/`deserialize()` nie aufgerufen, und
+  `ExpeditionSystem.deserialize()` hat seinen Parameter ignoriert und immer
+  auf eine leere Liste zurückgesetzt - laufende Expeditionen (inkl. der
+  mitgereisten Frettchen) verschwanden beim Speichern/Laden. Jetzt
+  serialisiert `Expedition` sich selbst komplett (inkl. Frettchen via
+  `FerretEntity.serialize()`), und der Save/Load-Zyklus schließt
+  Expeditionen mit ein.
+- **Fix: Alte Saves konnten Ressourcen-Schlüssel verlieren.**
+  `ResourceSystem.deserialize()` hat `resources` komplett durch das
+  Save-Dictionary ersetzt - fehlten dort neuere Keys (z.B. `WHEAT` in einem
+  Save von vor v10.13), schlug `add()` für diese Ressource danach dauerhaft
+  und ohne Fehlermeldung fehl. Jetzt wird mit dem aktuellen Default-Set
+  (alle Keys = 0) gestartet und nur mit vorhandenen Save-Werten überschrieben.
+- **Fix: Welt-Seed erzeugte keine vollständig reproduzierbare Welt.** Bisher
+  wurde nur das Perlin-Noise geseedet; Resource-Node-Platzierung, Ruinen,
+  Baum-/Busch-Größenvarianz und Frettchen-Startpositionen liefen über
+  Godots globalen, unabhängigen RNG. `WorldGenerator.generate()` seedet
+  jetzt zusätzlich den globalen RNG (`seed(seed_val)`) - derselbe Seed
+  liefert jetzt durchgängig dieselbe komplette Welt.
+- **Kein Bug (Einschätzung):** "Frettchen laufen bei Node-Sammlern nicht
+  zuerst zum Gebäude" - das ist beabsichtigtes Design (siehe ursprüngliche
+  Anfrage: Sammler sollen direkt zur Ressourcenquelle laufen, wie
+  Holzfäller in Timberborn auch direkt zum Baum gehen, nicht erst zu einer
+  Hütte). Bewusst nicht geändert.
+- Betroffen: `GameController.gd`, `Main.gd`, `HUD.gd`, `BuildingData.gd`,
+  `BuildingEntity.gd`, `WorldRenderer3D.gd`, `ExpeditionSystem.gd`,
+  `SaveSystem.gd`, `ResourceSystem.gd`, `WorldGenerator.gd`.
+
 ## v10.13 (Bau-Frettchen, Tag/Nacht sichtbar + Schlafzyklus, Beeren-Fix, Wheat-Bug)
 
 - **Fix: Beerensammler produzierte keine Beeren.** Ursache: `production_speed`
