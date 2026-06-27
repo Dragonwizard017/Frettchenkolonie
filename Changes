@@ -1,5 +1,41 @@
 # FrettchenKolonie – Changelog
 
+## v10.16 (Hausmodell, Vermehrungs-Bugfix, Wasser-Tuning)
+
+- **Neu: Echtes 3D-Modell für Wohnhäuser.** Fertig gebaute Gebäude mit der
+  id `HOUSE` nutzen jetzt das von Leander gelieferte Custom-GLB-Modell
+  (`assets/house.glb`) statt der generischen Box+Dach-Platzhalterdarstellung.
+  Da das Rohmodell ohne eigenes Material/Texturen geliefert wurde, wird es
+  zur Laufzeit per `material_override` eingefärbt (`_tint_model()`, rekursiv
+  über alle MeshInstance3D-Kindknoten), passend zur bisherigen HOUSE-Farbe.
+  Während der Bauphase bleibt es bei der bekannten halbtransparenten
+  Baugerüst-Box. Skalierung/Rotation über `HOUSE_MODEL_SCALE` /
+  `HOUSE_ROT_OFFSET` in `WorldRenderer3D.gd` anpassbar, falls das Modell im
+  Editor zu klein/groß oder falsch ausgerichtet wirkt.
+- **Fix: Frettchen vermehrten sich praktisch nie.** Gebäude mit
+  `happiness_bonus`/`happiness_radius` (Versammlungsplatz, Taverne, Wohnhaus,
+  Statue, …) lasen ihre Werte aus `BuildingData.gd` ein, wendeten sie aber
+  nirgends auf `needs["happiness"]` an. Dieser Bedarf sank seit Spielstart
+  nur (-0.4/Sek.) und blieb dauerhaft bei 0 - dadurch lag `total_happiness`
+  (Durchschnitt aus Nahrung/Wasser/Glück) fast immer unter der
+  50%-Wachstumsschwelle in `_try_grow()`, unabhängig von der
+  Nahrungsversorgung. Neue Funktion `_apply_happiness_bonuses()` in
+  `PopulationManager.gd` lässt Frettchen im Radius eines fertigen
+  Glücks-Gebäudes kontinuierlich Glück gewinnen (Wohnhaus gleicht die
+  Abklingrate genau aus, Versammlungsplatz/Taverne erzeugen Überschuss).
+- **Wasser breitet sich jetzt deutlich schneller aus.** `FLOW_RATE` in
+  `WaterSystem.gd` von 0.9 auf 3.2 erhöht (ca. 4x schnellerer
+  Höhenausgleich zwischen Tiles), zusätzlich der maximale Abfluss pro
+  Nachbar-Tile und Schritt (`MAX_OUTFLOW_FRACTION`) von 0.25 auf 0.35.
+- **Weichere Übergänge zwischen Wassertiles.** Die Wasseroberfläche wurde
+  bisher als unabhängige, pro Tile FLACHE Quad-Fläche gerendert - bei
+  unterschiedlichem `water_level` benachbarter Tiles entstanden dadurch
+  sichtbare Stufen. `_build_water_mesh()` in `WorldRenderer3D.gd` berechnet
+  jetzt pro Gitter-ECKE eine gemeinsame, aus den bis zu 4 angrenzenden
+  Wasser-Tiles gemittelte Höhe (`_water_corner_data()`) und Tiefenfarbe -
+  benachbarte Quads treffen exakt an dieser Ecke zusammen, wodurch die
+  Oberfläche kontinuierlich und ohne Treppenstufen wirkt.
+
 ## v10.15 (Bugfix: BuildingEntity-Parse-Crash)
 
 - **Fix: Komplettes Spiel startete nicht** (`Could not parse global class
