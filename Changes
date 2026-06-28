@@ -804,3 +804,24 @@ Vier vom Spieler gemeldete Probleme behoben:
   Steinbruch aus Epoche 1 direkt erreichbar.
 - Betroffen: `rendering/WorldRenderer3D.gd`, `game/GameController.gd`,
   `systems/TechTree.gd`, `systems/BuildingData.gd`.
+
+## v10.20 (Wand-spezifisches Einfärben mit überarbeitetem Gebäude-Modell)
+
+Nutzer hat ein überarbeitetes `building.glb` hochgeladen, bei dem die
+Geometrie (identisch zu v10.19, gleiche Bounding-Box) jetzt auf 7 getrennte
+Material-Flächen verteilt ist: "Dach", "Pfeiler_Holzbalken", "Wand",
+"Gras_Busch", "Fenster_Dunkel", "Schornstein", "Sockel_Stein".
+
+- `assets/building.glb` durch die neue Multi-Material-Version ersetzt
+  (gleicher Dateipfad, kein Code-Pfad-Update nötig).
+- `_tint_model()` (faerbte bisher die GESAMTE MeshInstance3D per
+  `material_override`, da das alte Modell nur ein einziges Material hatte)
+  ersetzt durch `_tint_building_wall()`: sucht rekursiv die Surface, deren
+  importiertes Material den Namen "Wand" trägt, und ersetzt NUR diese per
+  `set_surface_override_material()`. Alle anderen Teile (Dach, Holzbalken,
+  Fensterrahmen, Schornstein, Sockel, Büsche) behalten ihr Original-Material
+  und damit ihren ursprünglichen Look.
+- Ergebnis: Gebäude sehen jetzt wie das Originalmodell aus (Dach/Fenster/
+  Sockel unverändert), nur die Wandfläche zeigt weiterhin die
+  `BUILDING_VISUALS`-Farbe des jeweiligen Gebäudetyps zur Unterscheidung.
+- Betroffen: `rendering/WorldRenderer3D.gd`, `assets/building.glb`.
