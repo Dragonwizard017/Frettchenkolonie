@@ -757,3 +757,50 @@ gestalterische Freiheit (Beleuchtung, Modelle, Kamerawinkel) zu ermöglichen:
   ExpeditionSystem, Tile-Cache- und Frustum-Culling-Performance-Optimierung
 - FrettchenKolonie_Freddy.html (4972 Zeilen): SoundSystem, Terrain-Editing,
   neue Gebäude, Wasser-Tank-System
+
+## v10.19 (Bugfix-Sammlung: Gebäude-Modell, UI-Klick, Epoche-1-Deadlock)
+
+Vier vom Spieler gemeldete Probleme behoben:
+
+- **Fix: Gebäude versanken im Boden.** `_spawn_building()` setzte das
+  instanzierte 3D-Modell ohne jeden Y-Offset auf den Gebäude-Root - der
+  Mesh-Ursprung beider Custom-Modelle (`house.glb` UND `building.glb`) liegt
+  aber in der MITTE des Modells (Y-Bounding-Box ca. -1.0 bis +1.0), nicht am
+  Boden. Dadurch ragte die untere Hälfte jedes Gebäudes permanent unter die
+  Tile-Oberfläche. Neue Konstante `BUILDING_MODEL_BOTTOM_OFFSET` (aus den
+  Vertex-Positionen ermittelt) wird nach dem Skalieren als `model.position.y`
+  angewendet, sodass die Unterkante des Modells exakt auf der Tile-Oberfläche
+  aufsteht statt zu versinken.
+- **Feature: Gebäude-Modell zurück auf das "Building"-Asset.** Auf Wunsch
+  ersetzt `assets/building.glb` (das ursprüngliche Gebäudemodell aus
+  Phase 3/v9, ein einzelnes texturiertes Mesh) wieder `assets/house.glb`
+  (seit v10.16/v10.18 verwendet) als Darstellung für ALLE fertig gebauten
+  Gebäudetypen. `house.glb` wurde aus `assets/` entfernt, da es nirgends mehr
+  referenziert wird. Die Einfärbung passend zur jeweiligen
+  `BUILDING_VISUALS`-Gebäudefarbe (`_tint_model()`, `material_override`)
+  bleibt erhalten - da `building.glb` nur ein einzelnes Mesh ohne separate
+  Wand-/Dach-Teile ist, färbt sie weiterhin das gesamte Modell einheitlich
+  ein.
+- **Fix: Klicks auf Gebäude-UI-Buttons (z.B. "+" für Frettchenzahl) schlossen
+  sofort wieder die UI.** `GameController._input()` wurde unabhängig davon
+  aufgerufen, ob ein Control (Button) das Klick-Event bereits als
+  GUI-Eingabe verarbeitet hatte - jeder UI-Klick löste deshalb ZUSÄTZLICH
+  einen Welt-Raycast/`_handle_click()` an derselben Bildschirmposition aus,
+  der über `_select_tile()`/`building_deselected` die gerade benutzte UI
+  meist sofort wieder schloss. Umbenannt zu `_unhandled_input()`, das die
+  Engine garantiert nur aufruft, wenn kein Control das Event zuvor
+  konsumiert hat.
+- **Fix: Aufstieg von Epoche 1 nach Epoche 2 war für JEDEN Spielstand
+  unmöglich (kompletter Deadlock, kein Balance-Problem).** Der
+  Epoche-2-Aufstieg kostet PLANKS+TOOLS, aber SAWMILL (produziert PLANKS)
+  und WORKSHOP (produziert TOOLS) waren bisher selbst erst mit Epoche 2
+  freigeschaltet - ohne eine einzige Epoche-1-Quelle für PLANKS/TOOLS war der
+  Aufstieg nie erreichbar. Zusätzlich kosteten SAWMILL und WORKSHOP beim Bau
+  selbst PLANKS (die es ja noch gar nicht gibt) - ihre eigene Errichtung wäre
+  also selbst nach einem reinen Unlock-Fix noch unmöglich gewesen. Beide
+  Fixes kombiniert: SAWMILL/WORKSHOP sind jetzt bereits in Epoche 1
+  freigeschaltet (`TechTree.gd`), und ihre Baukosten wurden von PLANKS auf
+  rohes WOOD/STONE umgestellt (`BuildingData.gd`) - beide mit Holzfäller/
+  Steinbruch aus Epoche 1 direkt erreichbar.
+- Betroffen: `rendering/WorldRenderer3D.gd`, `game/GameController.gd`,
+  `systems/TechTree.gd`, `systems/BuildingData.gd`.
