@@ -825,3 +825,49 @@ Material-Flächen verteilt ist: "Dach", "Pfeiler_Holzbalken", "Wand",
   Sockel unverändert), nur die Wandfläche zeigt weiterhin die
   `BUILDING_VISUALS`-Farbe des jeweiligen Gebäudetyps zur Unterscheidung.
 - Betroffen: `rendering/WorldRenderer3D.gd`, `assets/building.glb`.
+
+---
+
+## v11.0 – Lager- & Logistiksystem (Timberborn-Style)
+
+**Großes neues System** (Nutzeranfrage: vernünftig dimensioniertes
+Timberborn-artiges Lagersystem statt globalem Ressourcen-Teleport):
+
+- **Lokales Lager pro Produktionsgebäude**: COLLECTOR/PROCESSOR/
+  MULTIPROCESSOR/HUNTER/FARM (außer Wasser-Sammler) haben jetzt ein eigenes,
+  begrenztes lokales Lager (Standard 50.0) für ihren eigenen Output. Ist es
+  voll, stoppt die Produktion komplett, bis ein Frettchen den Bestand
+  abgetragen hat – Fortschritt geht dabei nicht verloren.
+- **Füllstandsanzeige am Gebäude**: 5-Segment-Balken über jedem
+  Produktionsgebäude (grün → rot je voller), zusätzlich Text im
+  BuildingInfo-Panel ("Lager: 32/50").
+- **Frettchen-Inventar**: jedes Frettchen kann jetzt bis zu 30 Einheiten
+  einer Ressource tragen (einheitlich für alle Rollen).
+- **Selbst-Abtransport**: ist das lokale Lager voll, trägt automatisch EIN
+  zugewiesener Arbeiter es zum nächstgelegenen Lagerhaus – währenddessen
+  produziert dieser Arbeiter nichts (bei 1 Arbeiter: Produktion pausiert
+  komplett; bei 2 Arbeitern: läuft wie mit nur einem).
+- **Lagerarbeiter (neu)**: Lagergebäude haben jetzt Arbeitsplätze (Lager 2,
+  Großes Lager 3, Lebensmittellager 2, Warenlager 4 – Wasserreservoir
+  weiterhin 0). Lagerarbeiter holen proaktiv Ressourcen aus nahen
+  Produktionsgebäuden UND liefern Baumaterial direkt an Baustellen.
+- **Baustellen-Materiallogistik**: Baukosten werden nicht mehr sofort beim
+  Platzieren abgezogen. Eine Baustelle braucht jetzt ALLE Materialien
+  vollständig angeliefert (von Bau- oder Lagerfrettchen), bevor überhaupt
+  Baufortschritt entsteht. Fehlt etwas und ist nirgends Vorrat vorhanden,
+  wartet das Bau-Frettchen einfach an der Baustelle.
+- **Verkaufserstattung angepasst**: erstattet wird jetzt, was tatsächlich
+  angeliefert wurde, nicht mehr pauschal die vollen Baukosten (bei fertigen
+  Gebäuden unverändert, da dort alles geliefert wurde).
+- **Koloniestart mit Lagerhaus**: die Kolonie startet jetzt zusätzlich zum
+  Bauhof mit einem fertigen Lagergebäude direkt daneben, gefüllt mit den
+  Startressourcen – verhindert einen Softlock.
+- **Bug-Fix: Wassertank-Anzeige**: die TopBar zeigt den Wasserstand jetzt
+  zusätzlich als deutlich sichtbares Text-Label ("💧 24/50") an, da die
+  bisherige unbeschriftete ProgressBar leicht übersehen wurde.
+
+**Geänderte/neue Dateien**: ResourceSystem.gd, BuildingEntity.gd,
+BuildingSystem.gd, BuildingData.gd, FerretEntity.gd, GameController.gd,
+WorldRenderer3D.gd, HUD.gd, Main.gd, BuildingInfo.gd.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_0_lagersystem.zip`

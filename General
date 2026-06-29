@@ -484,3 +484,82 @@ Steinbruch-Strukturen bis zu Maschinenfabrik, Hochofen und Statue.
 - **Frühere Prototypen**: Vanilla JavaScript / HTML5 Canvas (kein Framework)
 - **Versionsverwaltung**: GitHub-Repository `Dragonwizard017/Frettchenkolonie`,
   Updates per GitHub REST API (Contents-Endpoint)
+
+---
+
+## Lager- & Logistiksystem (v11.0, Timberborn-Style)
+
+Mit v11.0 wurde die bis dahin rein abstrakte, globale Ressourcenverwaltung um
+ein physisches Lager- und Logistiksystem erweitert. Kernidee: Ressourcen
+muessen jetzt tatsaechlich von Frettchen transportiert werden, statt einfach
+in einen globalen Topf zu "teleportieren".
+
+**Lokales Lager pro Produktionsgebaeude** (`BuildingEntity.local_storage`,
+`local_storage_capacity`, Standardwert 50.0 fuer alle COLLECTOR/PROCESSOR/
+MULTIPROCESSOR/HUNTER/FARM-Gebaeude ausser reinen Wasser-Sammlern):
+- Jedes Produktionsgebaeude legt seinen Output zunaechst in diesem lokalen
+  Lager ab (`BuildingEntity.local_add()`), statt ihn sofort in den globalen
+  Pool (ResourceSystem) zu schreiben.
+- Ist das lokale Lager voll, STOPPT die Produktion komplett, bis wieder Platz
+  ist - es gibt keinen Sonderfall, in dem trotzdem weiterproduziert wird.
+- Der Fuellstand wird direkt am Gebaeude als kleiner 5-Segment-Balken
+  (Label3D, gruen → rot) angezeigt (`WorldRenderer3D.refresh_storage_labels()`)
+  und im BuildingInfo-Panel als Text ("Lager: 32/50").
+
+**Frettchen-Inventar & Tragekapazitaet** (`FerretEntity.carry_inventory`,
+`CARRY_CAPACITY = 30.0`, einheitlich fuer ALLE Frettchen-Rollen):
+- Simuliertes Inventar als Dictionary (Ressource → Menge), genutzt von drei
+  Rollen (siehe unten).
+
+**Rolle 1 - Produktions-Arbeiter als Selbst-Traeger**: ist das lokale Lager
+eines Gebaeudes voll und traegt noch kein anderes zugewiesenes Frettchen
+gerade ab (`BuildingEntity.has_hauler()`), wird automatisch EIN zugewiesenes
+Frettchen zum Traeger (`work_state` HAUL_TO_WAREHOUSE/HAUL_RETURN). Es laeuft
+zum naechstgelegenen Lagerhaus (nach Distanz), liefert ab und kehrt zurueck.
+Waehrenddessen zaehlt es NICHT zur aktiven Produktions-Belegschaft
+(`BuildingEntity.get_active_worker_count() = assigned_workers.size() - 1`,
+wenn ein Hauler aktiv ist) - bei nur einem Arbeiter heisst das: Produktion
+pausiert komplett, solange er traegt.
+
+**Rolle 2 - Bau-Frettchen holen Baumaterial**: Baustellen starten jetzt mit
+`delivered_resources = {}` und brauchen ALLE Kosten vollstaendig angeliefert
+(`BuildingEntity.is_fully_supplied()`), bevor ueberhaupt Baufortschritt
+entsteht (siehe GameController._process_construction()). Fehlt Material, holt
+ein zugewiesenes Bau-Frettchen es vom naechsten Lagerhaus
+(FETCH_TO_WAREHOUSE/FETCH_TO_SITE) - ist nirgends Vorrat vorhanden oder
+existiert kein Lagerhaus, wartet das Frettchen einfach an der Baustelle,
+statt sinnlos hin- und herzulaufen.
+
+**Rolle 3 - Lagerarbeiter** (neu: STORAGE-Gebaeude haben jetzt
+`max_workers > 0`, ausser dem reinen Wasserreservoir): Frettchen, die einem
+Lagerhaus zugewiesen sind, suchen sich selbststaendig eine Aufgabe
+(`FerretEntity._update_warehouse_work()`), priorisiert:
+  1. Eine Baustelle in Reichweite (`WAREHOUSE_SEARCH_RANGE = 70`), die noch
+     verfuegbares Material braucht → liefert direkt vom Lagerpool dorthin.
+  2. Sonst: das naechste Produktionsgebaeude mit gefuelltem lokalem Lager in
+     Reichweite abklappern und dessen Bestand ins Lagerhaus bringen - das
+     entlastet die Produktions-Arbeiter, die dann nicht mehr selbst zum
+     Lager laufen muessen.
+
+**Baukosten werden nicht mehr sofort abgezogen**: `BuildingSystem.build()`
+prueft weiterhin `can_afford()` als grobes Gate, zieht die Kosten aber NICHT
+mehr sofort vom globalen Pool ab - das passiert jetzt schrittweise, sobald
+Material physisch an der Baustelle ankommt (`BuildingEntity.deliver_resource()`,
+mit automatischer Rueckgabe von Ueberschuss in den globalen Pool). Beim
+Verkaufen (`BuildingSystem.sell()`) wird entsprechend nur erstattet, was
+tatsaechlich angeliefert wurde (`delivered_resources`), nicht die vollen
+Baukosten - bei fertigen Gebaeuden ist das identisch zum alten Verhalten.
+
+**Koloniestart mit Lagerhaus**: die Kolonie startet jetzt nicht mehr nur mit
+Ressourcen im abstrakten globalen Pool, sondern zusaetzlich mit einem
+physisch gebauten Lagergebaeude direkt neben dem Bauhof
+(`GameController._find_free_tile_near()`) - verhindert einen Softlock, falls
+das erste Produktionsgebaeude sein lokales Lager fuellt, bevor jemand zum
+Abtransportieren da ist.
+
+**Wassertank-Anzeige (Bug-Fix)**: Wasser bleibt bewusst AUSSERHALB dieses
+Systems - es fliesst weiterhin direkt in den globalen Wassertank
+(`ResourceSystem.water`/`water_capacity`), da es nicht von Frettchen
+getragen wird. Die TopBar zeigt den Fuellstand jetzt zusaetzlich als
+garantiert sichtbares Text-Label ("💧 24/50") statt sich nur auf eine kleine,
+unbeschriftete ProgressBar zu verlassen.
