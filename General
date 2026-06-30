@@ -563,3 +563,45 @@ Systems - es fliesst weiterhin direkt in den globalen Wassertank
 getragen wird. Die TopBar zeigt den Fuellstand jetzt zusaetzlich als
 garantiert sichtbares Text-Label ("💧 24/50") statt sich nur auf eine kleine,
 unbeschriftete ProgressBar zu verlassen.
+
+---
+
+## Betten & Logistik-Feinschliff (v11.1)
+
+**Betten/Obdachlosigkeit**: Frettchen ohne zugewiesenes Bett (`home == null`)
+verlieren zusaetzlich zur normalen Abklingrate Glueck
+(`HOMELESS_HAPPINESS_PENALTY = 0.3/Sek` in `FerretEntity.update()`) - macht
+ausreichenden Wohnraum strategisch relevant statt nur "nice to have" fuers
+Wachstum. Die TopBar zeigt jetzt durchgehend belegte/gesamte Betten
+("🛏️ 7/9"), faerbt sich rot bei Obdachlosigkeit (mehr Frettchen als Betten).
+BuildingInfo zeigt bei Wohnhaeusern zusaetzlich die Belegung direkt im
+Status-Label.
+
+**Lagerhaus-Spezialisierung** (`BuildingEntity.storage_filter`,
+`BuildingData.STORAGE_FILTER_OPTIONS`): jedes Lagerhaus kann ueber ein
+Dropdown im BuildingInfo-Panel auf genau eine Ressource spezialisiert werden
+("" = Standard, nimmt alles an). Ein spezialisiertes Lagerhaus:
+- wird von `FerretEntity._find_nearest_storage_building(pos, res)` ignoriert,
+  wenn die zu tragende Ressource nicht passt (`BuildingEntity.accepts_resource()`)
+- als Lagerarbeiter-Heimatbasis sucht es nur noch Produktionsgebaeude ab,
+  deren lokales Lager die passende Ressource enthaelt
+- liefert als Lagerarbeiter nur noch Baumaterial der eigenen Spezialisierung
+  an Baustellen
+
+**Hauler-Prioritäts-Overlay** (`WorldRenderer3D.refresh_haul_lines()`):
+ein periodisch neu gezeichneter ImmediateMesh-Node zeigt fuer JEDES aktuell
+transportierende Frettchen eine farbcodierte Linie von seiner Position zum
+Transportziel (gelb = Produktions-Hauler→Lagerhaus, blau = Bau-Frettchen
+holt vom Lagerhaus, gruen = Material auf dem Weg zur Baustelle, lila =
+Lagerarbeiter holt von Produktionsgebaeude ab). Wird in
+`GameController._process()` alle 30 Frames aktualisiert (`PopMgr.ferrets`).
+
+**Gebäude-Ketten-Visualisierung** (`WorldRenderer3D.refresh_chain_lines()`):
+separates, gedimmtes Overlay, das beim Anklicken eines Gebaeudes (`_select_tile()`
+in GameController.gd) dessen POTENZIELLE Lieferkette zeigt, unabhaengig von
+aktiven Transporten:
+- Produktionsgebaeude → naechstes passendes Lagerhaus
+- Lagerhaus → alle Produktionsgebaeude in Reichweite (lila) + alle
+  unterversorgten Baustellen in Reichweite (gruen)
+- Baustelle → naechstes Lagerhaus mit potenziell verfuegbarem Material
+Wird per `clear_chain_lines()` geleert, sobald die Auswahl aufgehoben wird.

@@ -871,3 +871,44 @@ BuildingSystem.gd, BuildingData.gd, FerretEntity.gd, GameController.gd,
 WorldRenderer3D.gd, HUD.gd, Main.gd, BuildingInfo.gd.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_0_lagersystem.zip`
+
+---
+
+## v11.0 Hotfix – ZIP-Packfehler behoben
+
+Die hochgeladene v11.0-ZIP enthielt keine `project.godot` - das Exclude-Pattern
+beim Packen (`-x '*.godot*'`) traf versehentlich auch die Projektdatei selbst
+statt nur einen `.godot`-Cache-Ordner, dadurch liess sich das Projekt in
+Godot gar nicht öffnen. ZIP wurde mit korrektem Pattern (`*/.godot/*`) neu
+gepackt und unter demselben Dateinamen ersetzt.
+
+---
+
+## v11.1 – Betten & Logistik-Feinschliff
+
+**Betten/Obdachlosigkeit**:
+- Frettchen ohne eigenes Bett verlieren zusätzlich Glück über Zeit
+  (`HOMELESS_HAPPINESS_PENALTY`).
+- TopBar zeigt durchgehend belegte/gesamte Betten ("🛏️ 7/9"), färbt sich rot
+  bei Obdachlosigkeit.
+- BuildingInfo zeigt bei Wohnhäusern die Belegung direkt im Status.
+
+**Lagerhaus-Spezialisierung**:
+- Jedes Lagerhaus kann über ein neues Dropdown im BuildingInfo-Panel auf
+  genau eine Ressource spezialisiert werden ("Alles" = Standardverhalten).
+- Hauler, Bau-Frettchen und Lagerarbeiter respektieren die Spezialisierung
+  bei der Wahl des Ziel-/Quell-Lagerhauses.
+
+**Hauler-Prioritäts-Overlay**: farbcodierte Linien zeigen jetzt durchgehend,
+welches Frettchen gerade was wohin transportiert (gelb/blau/grün/lila je
+nach Transportart).
+
+**Gebäude-Ketten-Visualisierung**: beim Anklicken eines Gebäudes wird jetzt
+zusätzlich dessen potenzielle Lieferkette eingeblendet (Produktionsgebäude →
+Lagerhaus → Baustelle), auch wenn gerade niemand transportiert.
+
+**Geänderte/neue Dateien**: FerretEntity.gd, BuildingEntity.gd,
+BuildingData.gd, BuildingInfo.gd, HUD.gd, Main.gd, WorldRenderer3D.gd,
+GameController.gd.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_1_betten_logistik.zip`
