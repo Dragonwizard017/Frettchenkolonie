@@ -912,3 +912,49 @@ BuildingData.gd, BuildingInfo.gd, HUD.gd, Main.gd, WorldRenderer3D.gd,
 GameController.gd.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_1_betten_logistik.zip`
+
+---
+
+## v11.2 – First-Person-Modus mit Ressourcen-Minispielen
+
+**Großes neues System** (Nutzeranfrage: First-Person-Steuerung eines
+Frettchens, Kolonie laeuft dabei normal weiter, 5+ eigene Minispiele pro
+Ressourcentyp, Belohnungen direkt ins globale Lager):
+
+- **Steuerbares Spieler-Frettchen**: Taste [F] wechselt zwischen der
+  gewohnten Iso-Kolonie-Ansicht und First-Person-Steuerung. WASD bewegt,
+  Maus sieht um (gefangener Mauszeiger), ESC kehrt zurueck. Das
+  Spieler-Frettchen ist komplett getrennt vom Kolonie-NPC-System - die
+  Produktion, Bevoelkerung, Tag/Nacht-Zyklus etc. laufen waehrenddessen
+  unveraendert im Hintergrund weiter.
+- **Echte Terrain-Kollision**: nutzt die bereits vorhandene Terrain-/
+  Gebaeude-Kollisionsgeometrie - Huegel, Berge und Gebaeude blockieren/lenken
+  die Bewegung korrekt.
+- **Interaktions-Prompt**: in Reichweite einer Ressourcenquelle (Holz, Stein,
+  Beeren, Erz) oder eines Wasser-Tiles erscheint ein Hinweis ("[E] 🪓 Holz
+  faellen") oben mittig im Bildschirm.
+- **5 eigene Minispiele**:
+  - 🪓 Holz faellen / ⛏️ Erz abbauen: Timing-Leiste (Erz deutlich schwerer:
+    schmalere Zone, schnellerer Marker, mehr Treffer noetig).
+  - 🪨 Stein brechen: rhythmisches Druecken gegen eine staendig absackende
+    Fuellleiste.
+  - 🫐 Beeren pfluecken: kurzlebige Klick-Ziele, Maus wird automatisch
+    freigegeben.
+  - 💧 Wasser schoepfen: Balance-Minispiel gegen eine zufaellige Stroemung.
+- **Belohnung landet direkt im globalen Lager**: bei den vier knotenbasierten
+  Ressourcen wird zusaetzlich die jeweilige Quelle in der Welt um den
+  geernteten Betrag erschoepft (gleiches Erschoepfungs-/Regenerations-
+  verhalten wie bei der normalen NPC-Ernte).
+- **Pause-kompatibel**: Pausiert man waehrend des First-Person-Modus, wird
+  die Maus automatisch freigegeben (Pause-Menue bleibt bedienbar) und beim
+  Fortsetzen wieder gefangen.
+
+**Neue Dateien**: game/PlayerController.gd, ui/MinigameOverlay.gd,
+ui/FPHud.gd, systems/minigames/TimingBarMinigame.gd,
+systems/minigames/MashMinigame.gd, systems/minigames/ReactionClickMinigame.gd,
+systems/minigames/BalanceMinigame.gd.
+
+**Geänderte Dateien**: GameController.gd, Main.gd, project.godot
+(neue Input-Aktionen toggle_fp_mode/interact).
+
+**Datei**: `FrettchenKolonie_Godot4_v11_2_first_person.zip`

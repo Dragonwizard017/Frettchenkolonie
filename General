@@ -605,3 +605,71 @@ aktiven Transporten:
   unterversorgten Baustellen in Reichweite (gruen)
 - Baustelle → naechstes Lagerhaus mit potenziell verfuegbarem Material
 Wird per `clear_chain_lines()` geleert, sobald die Auswahl aufgehoben wird.
+
+---
+
+## First-Person-Modus (v11.2)
+
+**Ziel**: das Frettchen-Kolonie-Spiel ergaenzt um einen steuerbaren
+First-Person-Modus, in dem man EIN Frettchen frei durch die Welt steuert,
+waehrend die Kolonie-Simulation im Hintergrund normal weiterlaeuft (Nutzer-
+entscheidung: "realistischer"). Ressourcenquellen lassen sich per Minispiel
+zusaetzlich zur normalen NPC-Ernte abbauen, Belohnungen landen direkt im
+globalen Lagerpool (Nutzerentscheidung, keine eigene Spieler-Inventar-
+Mechanik).
+
+**Architektur-Entscheidung**: das Spieler-Frettchen (`PlayerController.gd`,
+`CharacterBody3D`) ist KOMPLETT getrennt vom Kolonie-NPC-System (PopMgr/
+FerretEntity) - kein Beduerfnis-System, keine Arbeitszuweisung, rein
+spielergesteuert. Nutzt dasselbe `ferret.glb`-Modell wie die Kolonie-
+Frettchen fuer optische Konsistenz, ist aber waehrend der First-Person-Kamera
+unsichtbar (typisches FPS-Pattern, vermeidet Clipping), und wieder sichtbar
+sobald man zur Iso-Ansicht zurueckkehrt (steht dann sichtbar in der Welt).
+
+**Bewegung & Kollision**: nutzt das bereits vorhandene Terrain-Trimesh
+(Collision-Layer 1) und die Gebaeude-Kollisionsformen (Layer 2) - dadurch
+funktioniert das Laufen ueber Huegel/Berge automatisch korrekt, ohne eigene
+Hoehenlogik. Eigener Collision-Layer 4 fuer den Spieler selbst, damit
+bestehende Tile-Klick-Raycasts (collision_mask=1) den Spieler nicht
+versehentlich treffen.
+
+**Modus-Wechsel** (Taste F, `GameController._toggle_fp_mode()`):
+- Zweite `Camera3D` (Kind des PlayerController) wird per `.current = true`
+  aktiv, Maus wird gefangen (`MOUSE_MODE_CAPTURED`) fuer freies Umsehen.
+- Kolonie-HUD und Baumenue werden ausgeblendet, FPHud (Fadenkreuz,
+  Interaktions-Prompt) eingeblendet.
+- ESC verlaesst den Modus wieder (oder bricht zuerst ein laufendes Minispiel
+  ab, falls eines aktiv ist - siehe Prioritaetslogik in `_unhandled_input()`).
+- Bei PAUSED-Zustand wird die Maus automatisch freigegeben (sonst waere das
+  Pause-Menue unbedienbar) und beim Fortsetzen wieder gefangen
+  (`_on_state_changed_fp()`, verbunden mit `GameState.state_changed`).
+
+**Interaktion** (`GameController._update_fp_interaction()`, Taste E):
+periodische Umkreissuche (`INTERACT_RANGE`) nach `resource_node`-Eintraegen
+(WOOD/STONE/BERRIES/IRON, gleiche Datenstruktur wie bei der NPC-Ernte) sowie
+nach WATER-Biom-Tiles. Naechstes gueltiges Ziel wird im FPHud als Prompt
+angezeigt ("[E] 🪓 Holz faellen").
+
+**Fuenf Minispiele** (`systems/minigames/`, RefCounted-Klassen, gehostet von
+`ui/MinigameOverlay.gd`):
+- `TimingBarMinigame.gd`: oszillierender Marker, Aktionstaste im Sweet-Spot
+  druecken. Wird sowohl fuer Holz (breite Zone, langsam, 5 Treffer) als auch
+  Erz (schmale Zone, schnell, 7 Treffer) genutzt - gleiche Mechanik, klar
+  unterschiedliche Schwierigkeit/Gefuehl durch Parametrisierung.
+- `MashMinigame.gd` (Stein): Fuellstand steigt durch wiederholtes Druecken,
+  faellt gleichzeitig kontinuierlich ab - braucht stetigen Rhythmus.
+- `ReactionClickMinigame.gd` (Beeren): bis zu 4 gleichzeitige, kurzlebige
+  Klick-Ziele in einem Bereich, Maus wird dafuer automatisch freigegeben.
+- `BalanceMinigame.gd` (Wasser): Eimer-Wert wird durch zufaellige "Stroemung"
+  aus der Mitte gedrueckt, A/D haelt dagegen - Belohnung nach durchschnitt-
+  licher Naehe zur Mitte ueber die Zeit.
+
+Jedes Minispiel meldet ueber `get_reward()` eine Belohnungsmenge (0 bis
+max_reward) zurueck. `GameController._on_minigame_finished()` zieht bei den
+vier knotenbasierten Ressourcen den entsprechenden Betrag vom `resource_node`
+ab (inkl. Erschoepfung/Regeneration wie bei NPC-Ernte) und addiert ihn per
+`ResourceSys.add()`/`add_water()` direkt zum globalen Lagerpool.
+
+**Neue Input-Aktionen** (`project.godot`): `toggle_fp_mode` (F),
+`interact` (E, auch per InputMap-Action in MinigameOverlay.gd fuer
+Timing-/Mash-Minispiele gepollt).
