@@ -958,3 +958,10 @@ systems/minigames/BalanceMinigame.gd.
 (neue Input-Aktionen toggle_fp_mode/interact).
 
 **Datei**: `FrettchenKolonie_Godot4_v11_2_first_person.zip`
+
+
+## v11.3 – Tile-Seiten-Fix + Box-Kollision
+- CULL_DISABLED auf allen Side-Materials: garantiert sichtbar von allen Richtungen
+- side_counts Guard: leere SurfaceTool-Commits (kein Tile dieser Biom-Kategorie erhoehen) werden uebersprungen statt den Kollisions-Trimesh zu beschaedigen
+- generate_normals() auf Side-Surfaces entfernt: manuell gesetzte Normals bleiben erhalten
+- _build_collision(): pro erhoehetem Tile eine solide BoxShape3D als Seiten-Kollision statt nur duenne Trimesh-Wand-Quads (CharacterBody3D kann diese bei schragem Aufprall durchdringen)
