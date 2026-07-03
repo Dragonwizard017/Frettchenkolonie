@@ -673,3 +673,32 @@ ab (inkl. Erschoepfung/Regeneration wie bei NPC-Ernte) und addiert ihn per
 **Neue Input-Aktionen** (`project.godot`): `toggle_fp_mode` (F),
 `interact` (E, auch per InputMap-Action in MinigameOverlay.gd fuer
 Timing-/Mash-Minispiele gepollt).
+
+## Speicherslot-System (v11.4)
+
+Ersetzt den bisherigen festen "quicksave"-Slot durch beliebig viele,
+benennbare Speicherstände:
+
+- Kolonie-Name (aus `WorldCreation`-Eingabefeld) wird zu einem eindeutigen
+  Speicherslot-Dateinamen (`GameController._make_unique_save_slot()`,
+  Kollisionen bekommen " (2)", " (3)", ... angehängt).
+- Jede Speicherdatei enthält Metadaten auf oberster Ebene (Name, Seed, Tag,
+  Jahreszeit, Bevölkerung, Weltgröße, Zeitstempel), gefüllt über
+  `GameController.get_save_metadata()`.
+- Neuer Bildschirm "Welt laden" (`GameState.State.LOAD_SCREEN`,
+  `Main._build_load_screen()`) listet alle Speicherstände mit Kurzinfo,
+  anklickbar zum Laden, mit zweistufig gesichertem Löschen-Button
+  (`SaveSystem.get_save_info()` / `delete_save()`).
+- Pause-Menü: "Speichern" schreibt in den aktuellen, benannten Slot zurück;
+  "Speichern unter" (Namensfeld) legt einen zusätzlichen, separaten
+  Speicherstand an, ohne den aktuellen zu überschreiben.
+- Aktueller Slot/Name wird beim Laden automatisch im `GameController`
+  gemerkt (`current_save_slot`, `current_world_name`).
+
+## Tile-Texturen: Sand & Gras (v11.4)
+
+`assets/tiles/beach.png`, `beach_side.png`, `plains.png` und
+`plains_side.png` wurden durch vom Nutzer bereitgestellte Pixel-Art-Texturen
+ersetzt (Sand-Muster + helle Sand-Schichtseite fürs Strand-Biom, grüne Wiese
+mit Grasbüscheln/Steinen/Blümchen + dunkle Erdschichtseite fürs Grasland).
+Auf 64×64 skaliert, per Offset-Blend-Verfahren kachelbarer gemacht.

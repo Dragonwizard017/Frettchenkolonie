@@ -965,3 +965,60 @@ systems/minigames/BalanceMinigame.gd.
 - side_counts Guard: leere SurfaceTool-Commits (kein Tile dieser Biom-Kategorie erhoehen) werden uebersprungen statt den Kollisions-Trimesh zu beschaedigen
 - generate_normals() auf Side-Surfaces entfernt: manuell gesetzte Normals bleiben erhalten
 - _build_collision(): pro erhoehetem Tile eine solide BoxShape3D als Seiten-Kollision statt nur duenne Trimesh-Wand-Quads (CharacterBody3D kann diese bei schragem Aufprall durchdringen)
+---
+
+## v11.4 – Speicherslot-System (unbegrenzt viele, benennbare Welten) + neue Sand-/Gras-Texturen
+
+**Nutzeranfrage**: Speichersystem überarbeiten, sodass nicht nur eine Welt
+per Quicksave gesichert werden kann, sondern beliebig viele, benennbare
+Speicherstände, die über eine Weltauswahl mit Kurzinfo (Fortschritt, Seed,
+usw.) wieder geladen werden können. Außerdem neue Texturen für Sand und Gras.
+
+**Speicherslot-System**:
+- Der beim Erstellen einer Kolonie eingegebene Name (`WorldCreation`-Eingabe-
+  feld, wurde bisher komplett verworfen) wird jetzt tatsächlich verwendet und
+  in einen eindeutigen Speicherslot-Dateinamen umgewandelt
+  (`GameController._make_unique_save_slot()` - entfernt ungültige Datei-
+  systemzeichen, hängt bei Namenskollision automatisch " (2)", " (3)", ... an).
+- Jede Speicherdatei trägt jetzt kompakte Metadaten auf oberster Ebene
+  (Kolonie-Name, Seed, Tag, Jahreszeit, Bevölkerung, Weltgröße, Zeitstempel -
+  `GameController.get_save_metadata()` / `SaveSystem.save()`), damit die
+  Weltauswahl sie lesen kann, ohne jedes Mal den kompletten Spielstand zu
+  deserialisieren (`SaveSystem.get_save_info()`).
+- **Neuer Bildschirm "Welt laden"** (`Main._build_load_screen()`, nutzt den
+  bisher ungenutzten `GameState.State.LOAD_SCREEN`): listet alle Speicher-
+  stände (neueste zuerst) mit Name, Tag, Jahreszeit-Icon, Bevölkerung,
+  Weltgröße, Seed und Speicherzeitpunkt auf. Pro Eintrag ein "Laden"- und ein
+  "Löschen"-Button (zweistufige Sicherung: erster Klick auf "Löschen" fragt
+  "Wirklich?!" nach, erst der zweite Klick löscht wirklich).
+- Hauptmenü: "Laden (Quicksave)" ersetzt durch "Welt laden", führt zum neuen
+  Bildschirm statt direkt einen festen Slot zu laden.
+- Pause-Menü: "Quicksave"-Button heißt jetzt "Speichern: <Kolonie-Name>" und
+  schreibt automatisch in den zur aktuellen Kolonie gehörenden, benannten
+  Slot zurück (`PauseMenu._on_save()`). Neu: Zeile "Speichern unter" (Namens-
+  feld + Button) legt zusätzlich einen komplett neuen, separaten Speicher-
+  stand unter einem neuen Namen an, ohne den aktuellen Slot zu überschreiben
+  (`PauseMenu._on_save_as()`) - so lassen sich beliebig viele Zwischenstände/
+  Welten parallel behalten.
+- `SaveSystem.delete_save()` neu: entfernt einen benannten Speicherstand
+  unwiderruflich von der Festplatte.
+- Beim Laden merkt sich der `GameController` jetzt automatisch Slot-Name und
+  Kolonie-Name des geladenen Spielstands (`SaveSystem.load_game()`), damit
+  weiteres Speichern wieder in denselben Slot geht.
+
+**Neue Texturen (Sand & Gras)**: `assets/tiles/beach.png`, `beach_side.png`,
+`plains.png` und `plains_side.png` wurden durch vom Nutzer bereitgestellte
+Pixel-Art-Texturen ersetzt (verziertes Sand-Muster + helle Sand-Schichtung
+als Seitenwand für den Strand-Biom, grüne Wiese mit Grasbüscheln/Steinen/
+Blümchen + dunkle Erdschichtung als Seitenwand fürs Grasland). Zuschnitt aus
+der Nutzer-Vorlage, auf 64×64 skaliert und mit einem Offset-Blend-Verfahren
+kachelbarer gemacht.
+
+**Geänderte Dateien**: `game/GameController.gd` (Slot-Verwaltung, Metadaten),
+`systems/SaveSystem.gd` (Metadaten, `get_save_info`, `delete_save`),
+`scenes/Main.gd` (neuer Welt-Auswahl-Bildschirm, Pause-Menü-Erweiterung),
+`ui/PauseMenu.gd` (Speichern/Speichern-unter), `assets/tiles/beach.png`,
+`assets/tiles/beach_side.png`, `assets/tiles/plains.png`,
+`assets/tiles/plains_side.png`.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_4_speicherslots_texturen.zip`
