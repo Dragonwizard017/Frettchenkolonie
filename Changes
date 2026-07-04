@@ -1077,3 +1077,36 @@ Fallbacks für ältere Spielstände ohne diese Felder.
 `ui/TechTreePanel.gd` (neu), `scenes/Main.gd`.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_5_techtree.zip`
+
+---
+
+## v11.6 – Tech Tree: Upgrades gleichmäßig auf Epochen verteilt
+
+Reaktion auf Nutzer-Feedback zu v11.5: die 60 Tech-Knoten waren bisher rein
+nach Themenbereich organisiert und unabhängig von der Epoche erforschbar.
+Jetzt:
+
+- Jeder Knoten gehört fest zu einer Epoche (15 Knoten pro Epoche, exakt
+  gleichmäßig verteilt über alle 4 Epochen).
+- Ein Knoten kann erst erforscht werden, wenn seine Epoche bereits
+  freigeschaltet ist (zusätzlich zur bisherigen Voraussetzung, den
+  vorherigen Tier-Knoten derselben Sektion schon zu haben).
+- Titel und Beschreibung aller 60 Knoten wurden neu geschrieben, damit sie
+  zur Epoche passen, in der sie freigeschaltet werden (Steinzeit/
+  Mittelalter/Industrialisierung/Moderne) – z.B. wurden Bergbau-Upgrades so
+  umsortiert, dass Eisenmine/Kohlemine/Schmelze-Boni erst in Epoche 3
+  auftauchen.
+- Der nächste Epochen-Aufstieg wird jetzt käuflich, sobald ca. 80% der
+  Knoten DER AKTUELLEN Epoche erforscht sind (statt einer festen
+  Sektions-Bedingung) – zusätzlich zu den weiterhin progressiven
+  Wissenspunkte-Kosten (150/400/900).
+- Tech-Tree-Panel zeigt jetzt 4 Epochen-Reiter (mit 🔒 für noch nicht
+  freigeschaltete, Fortschritt „X/15") statt 6 Themenbereich-Reiter;
+  zukünftige Epochen lassen sich als Vorschau ansehen. Eine Kopfzeile zeigt
+  den Fortschritt Richtung 80%-Schwelle. Innerhalb einer Epoche weiterhin
+  nach Themenbereich (mit Icon) sortiert.
+
+**Geänderte Dateien**: `systems/TechTree.gd` (komplett neu), `ui/TechTreePanel.gd`
+(komplett neu). Keine anderen Dateien betroffen.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_6_epochentech.zip`

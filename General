@@ -806,3 +806,51 @@ Sperr-Hinweis „Benötigt zuerst: …“).
 (einfaches Array aus Epochen-IDs) und migriert sie automatisch auf das neue
 Dictionary-Format; `BuildingEntity.deserialize()` liest `is_rebuild`/
 `rebuild_target_id`/`costs` mit sicheren Fallbacks.
+
+## Tech Tree – Upgrades gleichmäßig auf Epochen verteilt (v11.6)
+
+Auf Nutzerwunsch wurde das Tech-Tree-Datenmodell aus v11.5 grundlegend
+umgebaut: die 60 Knoten waren bisher rein nach Themenbereich gruppiert und
+unabhängig von der Epoche erforschbar; die Epoche selbst hing an einer
+Sektions-Fortschritts-Bedingung. Jetzt gilt:
+
+- **Jeder Knoten gehört fest zu genau einer Epoche** (`NODES[id].epoch`,
+  1-4) – 15 Knoten pro Epoche, exakt gleichmäßig verteilt (60 gesamt). Die
+  „section" dient nur noch der optischen Gruppierung/Einfärbung.
+- **Ein Knoten ist erst erforschbar, wenn seine Epoche bereits
+  freigeschaltet ist** (`TechTree.can_unlock_node()` prüft jetzt zusätzlich
+  `nd.epoch <= get_epoch()`), UND (wie zuvor) der vorherige Tier-Knoten
+  derselben Sektion bereits erforscht ist.
+- **Titel/Beschreibung aller 60 Knoten wurden neu geschrieben**, um zur
+  jeweiligen Epoche zu passen: Epoche 1 (Steinzeit) = einfache Werkzeuge/
+  Grundbedürfnisse, Epoche 2 (Mittelalter) = Zünfte/Ausbauten, Epoche 3
+  (Industrialisierung) = Dampfmaschinen/Fabriken/Schichtarbeit, Epoche 4
+  (Moderne) = Automatisierung/Meister-Abschlüsse. Inhalte wurden dabei so
+  umsortiert, dass z.B. Eisenmine/Kohlemine/Schmelze-Boni erst in Epoche 3
+  auftauchen (wenn diese Gebäude überhaupt existieren).
+- **Epochen-Aufstieg**: die feste `section_req`-Voraussetzung aus v11.5
+  wurde ersetzt durch eine dynamische ~80%-Schwelle
+  (`TechTree.get_epoch_unlock_requirement()` = `ceil(Anzahl Knoten der
+  aktuellen Epoche * 0.8)`, bei 15 Knoten/Epoche also 12) – man muss also
+  ca. 80% der Knoten DER AKTUELLEN Epoche erforscht haben, bevor die
+  nächste Epoche überhaupt käuflich wird (weiterhin zusätzlich zu den
+  progressiven Wissenspunkte-Kosten 150/400/900).
+- **`TechTreePanel.gd` umgebaut**: primäre Reiter sind jetzt die 4 Epochen
+  (zeigen 🔒 falls noch nicht freigeschaltet, „X/15" Fortschritt), man kann
+  auch zukünftige Epochen als Vorschau ansehen (Knoten dort sind sichtbar,
+  aber gesperrt mit Hinweis „Benötigt Epoche N"). Oben eine
+  Fortschritts-Kopfzeile („Fortschritt 9/15 (60%), benötigt 12 für den
+  nächsten Aufstieg"). Innerhalb einer Epoche sind die Knoten weiterhin nach
+  Themenbereich (mit Icon-Überschrift) sortiert.
+- **Geänderte Dateien**: `systems/TechTree.gd` (Datenmodell + Logik komplett
+  neu), `ui/TechTreePanel.gd` (UI komplett neu). Alle anderen v11.5-Dateien
+  (Ressourcen, Gebäude, Umbau-Mechanik, globale Boni-Anwendung in
+  FerretEntity/PopulationManager/WaterSystem/DayNightSystem/
+  GameController/BuildingSystem) sind unverändert kompatibel, da sich nur
+  die Freischalt-Bedingung und Zuordnung der Knoten geändert hat, nicht ihre
+  Effekt-Struktur.
+- **Speicherstand-Kompatibilität**: unverändert – `unlocked`/
+  `unlocked_epochs` werden weiterhin als Knoten-/Epochen-ID-Listen
+  gespeichert; alte v11.5-Spielstände laden ohne Migration weiter (bereits
+  erforschte Knoten-IDs bleiben gültig, auch wenn ihre Epoche sich
+  inhaltlich verschoben haben könnte).
