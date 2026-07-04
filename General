@@ -702,3 +702,107 @@ benennbare Speicherstände:
 ersetzt (Sand-Muster + helle Sand-Schichtseite fürs Strand-Biom, grüne Wiese
 mit Grasbüscheln/Steinen/Blümchen + dunkle Erdschichtseite fürs Grasland).
 Auf 64×64 skaliert, per Offset-Blend-Verfahren kachelbarer gemacht.
+
+## Tech Tree – Wissenspunkte, Themenbereiche, Gebäude-Umbau (v11.5)
+
+Der bisherige, sehr einfache Epochen-Tech-Tree (`TechTree.gd`, nur 4 Knoten,
+Kosten in normalen Baumaterialien) wurde komplett durch ein umfangreiches
+System ersetzt.
+
+**Neue Ressource „Wissenspunkte“ (SCIENCE)**
+- Eigenes, ungedeckeltes Feld `ResourceSystem.science` (analog zu `water` –
+  fließt NICHT durchs normale Lagernetzwerk/Frettchen-Tragesystem).
+- Neues Gebäude **Forschungsstube** (`RESEARCH_HUT`, Epoche 1, 🔬, Typ
+  COLLECTOR mit `collects_resource = "SCIENCE"`) produziert sie; in
+  `BuildingEntity._collect()` fließt der Output direkt in `ResourceSys.science`
+  statt in ein lokales Lager (dritter Sonderfall neben WATER).
+- TopBar zeigt den Bestand über ein neues `ScienceTextLabel`
+  (`HUD._update_bars()`).
+
+**60 Tech-Knoten in 6 Themenbereichen** (`TechTree.SECTIONS`/`NODES`):
+Holzwirtschaft, Bergbau & Steinwirtschaft, Wasserwirtschaft, Landwirtschaft &
+Ernährung, Zucht & Bevölkerung, Bauwesen & Logistik – je 10 Knoten (Tier 1-10).
+Jeder Knoten hat einen individuellen Namen + Beschreibung, progressiv
+steigende Wissenspunkte-Kosten (15→20→25→35→45→60→80→105→140→185) und
+erfordert den jeweils vorherigen Tier-Knoten DERSELBEN Sektion (außer Tier 1)
+– echtes „erst A skillen, dann B verfügbar“-Prinzip.
+
+**Effekt-Typen pro Knoten** (`TechTree.NODES[id].effects`, generisch
+ausgewertet, kein Hardcoding pro Knoten in der Spiellogik nötig):
+- `bstat`: direkter Stat-Bonus auf einen Gebäudetyp (Produktionsgeschwindigkeit,
+  Sammelradius, Lagerkapazität, Arbeiterplätze, ...) – angewendet in
+  `TechTree.apply_building_bonuses()`, aufgerufen aus
+  `BuildingEntity.from_type()`/`finish_rebuild()`.
+- `global`: permanenter globaler Bonus, abgefragt über
+  `TechTreeSys.get_global_bonus(key)` an der jeweiligen Wirkstelle:
+  Tragkraft (`FerretEntity.get_carry_capacity()`), Lauftempo
+  (`get_effective_move_speed()`), Bedürfnis-Verfall/Obdachlosen-Malus
+  (`FerretEntity.update()`), Bautempo (`GameController._process_construction()`),
+  Damm-Rückhalt/Dürre-Verdunstung (`WaterSystem._simulate_step()`),
+  Wasserrad-Boost (`BuildingSystem.update()`), Wachstumsschwelle/-rate/
+  Neugeborenen-Bonus/Sterblichkeit (`PopulationManager.gd`), verlängerte
+  Wachzeit (`DayNightSystem.update()`, verschiebt die Tag/Nacht-Schwelle).
+- `unlock`: schaltet ein komplett neues, direkt baubares Gebäude frei (Beispiel:
+  Knoten „Kinderstube“ in Zucht & Bevölkerung schaltet die neue **Kinderstube**
+  (`NURSERY`) frei) – landet automatisch in `TechTree.get_unlocked_buildings()`.
+- `rebuild`: schaltet den **Umbau** eines bereits gebauten Gebäudes frei
+  (siehe unten).
+
+**Epochen-Aufstiege kosten jetzt AUSSCHLIESSLICH Wissenspunkte** (keine
+Baumaterialien mehr) und setzen zusätzlich einen Mindestfortschritt in einem
+bestimmten Themenbereich voraus (`EPOCHS[id].section_req`): Epoche 2 braucht
+Holzwirtschaft-Tier-4, Epoche 3 Bergbau-Tier-6, Epoche 4 Logistik-Tier-8.
+Kosten steigen progressiv (150 → 400 → 900 Wissenspunkte). Der
+Epochen-Button im BuildMenu (`BuildMenu._update_epoch_btn()`) funktioniert
+unverändert, zeigt jetzt aber Wissenspunkte-Kosten statt Baumaterial.
+
+**Gebäude-Umbau (Rebuild)** – neues generisches System, das bewusst
+dieselbe Baustellen-Logistik wie ein Neubau wiederverwendet:
+- `BuildingData.REBUILDS`: ordnet einem Gebäudetyp (z.B. `WORKSHOP`) sein
+  Umbau-Ziel zu (`WORKSHOP_ADV` = Großwerkstatt), den nötigen Tech-Knoten,
+  eigene (günstigere) Umbau-Kosten und Bauzeit. 7 Umbau-Ziele implementiert:
+  Werkstatt→Großwerkstatt, Steinbruch→Großsteinbruch, Damm→Schleuse,
+  Garten→Gewächshaus, Wohnhaus→Großes Wohnhaus, Bauhof→Großbauhof,
+  Lager→Großlagerhaus.
+- `BuildingEntity.start_rebuild()` setzt `is_rebuild = true` UND
+  `is_under_construction = true` und befüllt `costs`/`delivered_resources`/
+  `construction_work_needed` mit den Umbau-Werten – Bau-Frettchen und
+  Lagerarbeiter behandeln die Baustelle dadurch automatisch exakt wie einen
+  Neubau (keine Änderung an `FerretEntity`/`BuildingSystem.get_construction_sites()`
+  nötig). Während des Umbaus produziert das Gebäude nichts (regulärer
+  `is_under_construction`-Frühausstieg in `BuildingEntity.update()`).
+- `GameController._process_construction()` ruft bei Fertigstellung einer
+  Rebuild-Baustelle `BuildingEntity.finish_rebuild()` auf statt einfach nur
+  `is_under_construction = false` zu setzen – das übernimmt alle Basiswerte
+  des Zielgebäudetyps (inkl. eventueller Tech-Boni), behält aber Position,
+  Bewohner (relevant beim Wohnhaus-Umbau) und Arbeiterzuweisung so weit wie
+  möglich bei.
+- Neuer **„Umbauen“-Button** im Gebäude-Infopanel (`BuildingInfo.gd`,
+  eigene `RebuildRow`), sichtbar sobald der nötige Tech-Knoten freigeschaltet
+  ist; ruft `GameController.rebuild_selected_building()` →
+  `BuildingSystem.start_rebuild()` auf.
+- Umbau-Ziel-Gebäude (`*_ADV`) stehen in `BuildingData.BUILDINGS`, erscheinen
+  aber bewusst in KEINER Epochen-`unlocks`-Liste – nur über den
+  Umbau-Button erreichbar.
+
+**Neues Tech-Tree-Panel** (`ui/TechTreePanel.gd`, nach dem Muster von
+`ExpeditionPanel.gd`/`GraveyardPanel.gd` dynamisch selbst aufgebaut): neuer
+🔬-Button im HUD öffnet es. Zeigt oben eine Epochen-Übersicht (aktuelle
+Epoche, Freischalt-Button für die nächste inkl. Sektions-Voraussetzung),
+darunter 6 Themenbereich-Reiter, darunter die 10 Knoten des gewählten
+Bereichs als Liste (Name, Beschreibung, Kosten, Freischalt-Button bzw.
+Sperr-Hinweis „Benötigt zuerst: …“).
+
+**Geänderte/neue Dateien**: `systems/TechTree.gd` (komplett neu geschrieben),
+`systems/ResourceSystem.gd`, `systems/BuildingData.gd`,
+`systems/BuildingEntity.gd`, `systems/BuildingSystem.gd`,
+`systems/FerretEntity.gd`, `systems/PopulationManager.gd`,
+`systems/DayNightSystem.gd`, `systems/WaterSystem.gd`,
+`game/GameController.gd`, `ui/BuildingInfo.gd`, `ui/HUD.gd`,
+`ui/TechTreePanel.gd` (neu), `scenes/Main.gd`.
+
+**Speicherstand-Kompatibilität**: `ResourceSystem.deserialize()` liest
+`science` mit Fallback 0.0; `TechTree.deserialize()` erkennt alte Saves
+(einfaches Array aus Epochen-IDs) und migriert sie automatisch auf das neue
+Dictionary-Format; `BuildingEntity.deserialize()` liest `is_rebuild`/
+`rebuild_target_id`/`costs` mit sicheren Fallbacks.

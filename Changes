@@ -1022,3 +1022,58 @@ kachelbarer gemacht.
 `assets/tiles/plains_side.png`.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_4_speicherslots_texturen.zip`
+
+---
+
+## v11.5 – Tech Tree: Wissenspunkte, Themenbereiche, Gebäude-Umbau
+
+**Neue Ressource „Wissenspunkte“**: neues Gebäude Forschungsstube
+(`RESEARCH_HUT`, 🔬, Epoche 1) produziert sie; sie fließen wie Wasser direkt
+in einen globalen Pool (`ResourceSystem.science`), ohne von Frettchen
+getragen zu werden. Anzeige in der TopBar.
+
+**Kompletter Tech-Tree-Neubau** (`systems/TechTree.gd`): 60 Knoten in 6
+Themenbereichen (Holzwirtschaft, Bergbau & Steinwirtschaft, Wasserwirtschaft,
+Landwirtschaft & Ernährung, Zucht & Bevölkerung, Bauwesen & Logistik), je 10
+progressiv aufeinander aufbauende Stufen mit individuellem Namen, individueller
+Beschreibung und steigenden Wissenspunkte-Kosten (15 bis 185). Effekte:
+Produktionsboni auf einzelne Gebäudetypen, permanente globale Boni (Tragkraft,
+Lauftempo, Bautempo, langsamerer Bedürfnis-Verfall, geringere Verdunstung in
+Dürren, höherer Damm-Rückhalt, kürzere Schlafenszeit/länger arbeitende
+Frettchen, schnelleres Bevölkerungswachstum u.v.m.), Freischaltung neuer
+Gebäude (z.B. Kinderstube) sowie Freischaltung von Gebäude-Umbauten.
+
+**Epochen-Aufstiege kosten nur noch Wissenspunkte** (keine Baumaterialien
+mehr) und setzen zusätzlich einen Mindestfortschritt in einem passenden
+Themenbereich voraus (z.B. Epoche 2 braucht Holzwirtschaft-Stufe 4). Kosten
+steigen progressiv: 150 / 400 / 900 Wissenspunkte für Epoche 2/3/4.
+
+**Gebäude-Umbau (neues generisches System)**: 7 Umbau-Ziele (Werkstatt→
+Großwerkstatt, Steinbruch→Großsteinbruch, Damm→Schleuse, Garten→Gewächshaus,
+Wohnhaus→Großes Wohnhaus, Bauhof→Großbauhof, Lager→Großlagerhaus), jeweils
+über einen eigenen Tech-Knoten freigeschaltet. Neuer „Umbauen“-Button im
+Gebäude-Infopanel startet den Umbau; dieser läuft über exakt dieselbe
+Baustellen-Logistik wie ein Neubau (Material anliefern, Bau-Frettchen
+zuweisen) - während des Umbaus produziert das Gebäude nichts. Nach
+Fertigstellung übernimmt das Gebäude die neuen Werte, behält aber Position,
+Bewohner und Arbeiterzuweisung so weit wie möglich.
+
+**Neues Tech-Tree-Panel** (`ui/TechTreePanel.gd`, neuer 🔬-Button im HUD):
+Epochen-Übersicht oben, 6 Themenbereich-Reiter, darunter scrollbare
+Knoten-Liste mit Name, Beschreibung, Kosten und Freischalt-Button bzw.
+Sperr-Hinweis.
+
+**Speicherstand-Kompatibilität**: alte Saves (einfaches Epochen-Array) werden
+beim Laden automatisch auf das neue Tech-Tree-Format migriert; neue Felder
+(`science`, `is_rebuild`, `rebuild_target_id`, Umbau-`costs`) haben sichere
+Fallbacks für ältere Spielstände ohne diese Felder.
+
+**Geänderte/neue Dateien**: `systems/TechTree.gd` (komplett neu),
+`systems/ResourceSystem.gd`, `systems/BuildingData.gd`,
+`systems/BuildingEntity.gd`, `systems/BuildingSystem.gd`,
+`systems/FerretEntity.gd`, `systems/PopulationManager.gd`,
+`systems/DayNightSystem.gd`, `systems/WaterSystem.gd`,
+`game/GameController.gd`, `ui/BuildingInfo.gd`, `ui/HUD.gd`,
+`ui/TechTreePanel.gd` (neu), `scenes/Main.gd`.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_5_techtree.zip`
