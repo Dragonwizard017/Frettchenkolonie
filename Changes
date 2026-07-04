@@ -1110,3 +1110,41 @@ Jetzt:
 (komplett neu). Keine anderen Dateien betroffen.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_6_epochentech.zip`
+
+---
+
+## v11.7 – Bugfix-Durchgang über den Tech-Tree-Code
+
+Auf Nutzeranfrage vollständig durchsuchter Code auf Logikfehler/Bugs.
+Gefunden und behoben:
+
+- 3 falsche Umbau-Voraussetzungen in `BuildingData.REBUILDS` (Tier-Verweise
+  nach der v11.6-Epochen-Umsortierung nicht mitaktualisiert: QUARRY, 
+  CONSTRUCTION_YARD_1, STORAGE zeigten auf falsche Tech-Knoten).
+- `apply_building_bonuses()` war nicht wiederholt aufrufbar und wurde nur bei
+  der Gebäude-Erstellung angewendet - bereits gebaute Gebäude bekamen später
+  erforschte Produktionsboni nie. Jetzt idempotent (liest immer die reinen
+  Basiswerte) und wird nach jedem Knoten-Unlock sowie nach jedem Laden auf
+  alle bestehenden Gebäude neu angewendet.
+- Umgebaute Gebäude konnten nach `finish_rebuild()` nie wieder mit
+  Verkaufserstattung verkauft werden (`delivered_resources` wurde fälschlich
+  geleert statt auf die neuen Kosten gesetzt).
+- Zwei tote Tech-Effekte (`wood_regen_speed`, `hunger_decay_reduction`)
+  wirkten nirgends - jetzt in Baumnachwachsen bzw. Hunger-Verfall verdrahtet.
+- **Kritischer Regressionsbug seit v11.5**: der Epochen-Button im
+  BuildMenu-Header rief eine nicht mehr existierende Methode
+  (`TechTreeSys.unlock()`) auf und griff auf eine nicht mehr existierende
+  Property (`TechTreeSys.nodes`) zu - er war seit dem Tech-Tree-Umbau
+  praktisch unbenutzbar. Jetzt korrekt auf `unlock_epoch()`/`EPOCHS`
+  umgestellt, zeigt zusätzlich den Forschungsfortschritt zur 80%-Schwelle an.
+- Totes Code-Fragment mit derselben veralteten API in
+  `BuildMenu._add_tech_btn()` (unbenutzt, aber sicherheitshalber gefixt).
+- Kosmetische Korrektur: `NURSERY`-Epochenangabe (2 → 4, passend zum
+  tatsächlichen Freischalt-Knoten `BREEDING_9`).
+
+**Geänderte Dateien**: `systems/BuildingData.gd`, `systems/TechTree.gd`,
+`systems/BuildingEntity.gd`, `systems/BuildingSystem.gd`,
+`systems/SaveSystem.gd`, `systems/FerretEntity.gd`,
+`world/WorldGenerator.gd`, `ui/BuildMenu.gd`.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_7_bugfixes.zip`

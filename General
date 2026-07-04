@@ -854,3 +854,64 @@ Sektions-Fortschritts-Bedingung. Jetzt gilt:
   gespeichert; alte v11.5-Spielstände laden ohne Migration weiter (bereits
   erforschte Knoten-IDs bleiben gültig, auch wenn ihre Epoche sich
   inhaltlich verschoben haben könnte).
+
+## Bugfix-Durchgang über den gesamten Tech-Tree-Code (v11.7)
+
+Auf Nutzeranfrage ("durchsuche den Code nach Logikfehlern, Bugs, ...")
+wurde der komplette Tech-Tree-Code (v11.5/v11.6) systematisch geprüft.
+Gefundene und behobene Probleme:
+
+1. **Drei falsche `requires_tech`-Verweise** in `BuildingData.REBUILDS`: durch
+   die Epochen-Neuverteilung in v11.6 hatten sich die Tier-Positionen der
+   Umbau-Knoten verschoben, die Verweise wurden aber nicht mitaktualisiert:
+   `QUARRY` zeigte auf `MINING_9` statt `MINING_5`, `CONSTRUCTION_YARD_1` auf
+   `LOGISTICS_7` statt `LOGISTICS_6`, `STORAGE` auf `LOGISTICS_8` statt
+   `LOGISTICS_7`. Die jeweiligen „Umbauen"-Buttons wären dadurch erst viel
+   später (oder nie sauber zuordenbar) erschienen.
+2. **`TechTree.apply_building_bonuses()` war nicht idempotent** und wurde nur
+   einmalig bei `BuildingEntity.from_type()` aufgerufen: bereits gebaute
+   Gebäude bekamen NACH ihrer Fertigstellung neu erforschte
+   Produktions-/Kapazitätsboni nie mehr appliziert. Behoben durch (a) die
+   Funktion liest jetzt IMMER die unveränderten Basiswerte aus
+   `BuildingData.BUILDINGS[id]` statt der ggf. bereits modifizierten
+   aktuellen Feldwerte (macht sie sicher wiederholt aufrufbar), und (b)
+   `BuildingSystem.recalculate_all_bonuses()` (neu) wird jetzt aus
+   `TechTree.unlock_node()` nach jedem Knoten-Unlock sowie nach jedem
+   Speicherstand-Laden (`SaveSystem.load_game()`) aufgerufen und wendet die
+   Boni auf ALLE bereits bestehenden Gebäude an.
+3. **`BuildingEntity.finish_rebuild()` leerte `delivered_resources`** nach
+   Abschluss eines Umbaus - da `BuildingSystem.sell()` die Verkaufserstattung
+   genau darauf stützt, hätte ein umgebautes Gebäude beim späteren Verkaufen
+   für immer 0 Erstattung bekommen. Wird jetzt stattdessen auf die neuen
+   (Ziel-)Kosten gesetzt, exakt wie bei einem normal fertiggestellten Neubau.
+4. **Zwei tote Tech-Effekte**: `wood_regen_speed` (Holzwirtschaft) und
+   `hunger_decay_reduction` (Landwirtschaft-Kapstein) wurden in
+   `TechTree.NODES` definiert, aber nirgends per `get_global_bonus()`
+   abgefragt - die Boni taten schlicht nichts. `wood_regen_speed` wirkt jetzt
+   in `WorldGenerator.tick_resource_nodes()` gezielt auf WOOD-Ressourcen-
+   Knoten, `hunger_decay_reduction` in `FerretEntity.update()` zusätzlich auf
+   den Hunger-Bedarf.
+5. **Kritischer Regressions-Bug in `BuildMenu.gd`** (stammt bereits aus dem
+   v11.5-Umbau, unbemerkt bis zu diesem Audit): `_on_epoch_btn_pressed()`
+   rief die nicht mehr existierende Methode `TechTreeSys.unlock()` auf (seit
+   dem Umbau aufgeteilt in `unlock_node()`/`unlock_epoch()`), und
+   `_update_epoch_btn()` griff auf die nicht mehr existierende Property
+   `TechTreeSys.nodes` zu und interpretierte die Epochen-Kosten fälschlich
+   als Ressourcen-Dictionary (`"costs"`) statt als einzelnen
+   Wissenspunkte-Betrag (`"cost"`). Der Epochen-Button im BuildMenu-Header
+   wäre dadurch praktisch nutzlos gewesen. Beide Funktionen wurden auf die
+   aktuelle API umgestellt; `_update_epoch_btn()` zeigt jetzt zusätzlich den
+   Forschungsfortschritt an, wenn die 80%-Schwelle noch nicht erreicht ist.
+6. **Toter Code mit derselben veralteten API** in `BuildMenu._add_tech_btn()`
+   (aktuell von nirgends aufgerufen, seit `TechTreePanel.gd` existiert) -
+   sicherheitshalber ebenfalls auf die aktuelle API umgestellt, falls die
+   Funktion je wieder verdrahtet wird.
+7. **Kosmetische Inkonsistenz**: `NURSERY` hatte `"epoch": 2` in
+   `BuildingData.BUILDINGS`, wird aber tatsächlich erst über den Tech-Knoten
+   `BREEDING_9` (Epoche 4) freigeschaltet. Das Feld wird aktuell nirgends
+   ausgewertet (rein informativ), wurde aber auf `4` korrigiert.
+
+**Geänderte Dateien**: `systems/BuildingData.gd`, `systems/TechTree.gd`,
+`systems/BuildingEntity.gd`, `systems/BuildingSystem.gd`,
+`systems/SaveSystem.gd`, `systems/FerretEntity.gd`,
+`world/WorldGenerator.gd`, `ui/BuildMenu.gd`.
