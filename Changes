@@ -1148,3 +1148,69 @@ Gefunden und behoben:
 `world/WorldGenerator.gd`, `ui/BuildMenu.gd`.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_7_bugfixes.zip`
+
+---
+
+## v11.8 – Langzeit-Content Phase 1: Achievement-System + Frettchen-Persönlichkeiten
+
+Erste Etappe des großen Langzeit-Content-Pakets (Achievements, Katastrophen,
+Zufallsereignisse, Persönlichkeiten, Legendäre Frettchen). Phase 2
+(Katastrophen, Zufallsereignisse, Legendäre Frettchen) folgt in einer
+späteren Session, da Legendäre Frettchen auf der hier eingeführten
+Trait-Grundlage aufbauen.
+
+**Achievement-System** (neuer Autoload `AchievementSys`, `systems/AchievementSystem.gd`):
+- Architektur analog zu `TechTree.gd`: `const ACHIEVEMENTS`-Dictionary,
+  `unlocked`-Array, `serialize()/deserialize()`, Hook in `SaveSystem.gd`.
+- 18 Achievements über 5 Kategorien (Bevölkerung, Wirtschaft, Überleben,
+  Erkundung, Tech), z.B. „Erste 100 Frettchen“, „Dürre ohne Todesfall
+  überstanden“, „Alle 6 Themenbereiche zu 100% erforscht“, „Epoche 4
+  erreicht“, „10 Umbauten abgeschlossen“, „50 Tage ohne Frettchen-Tod“.
+  Belohnungen bewusst rein kosmetisch/leer – keine Ressourcen- oder
+  Produktionsboni (Powercreep-Vermeidung).
+- Prüfung komplett event-getrieben über bestehende `GameState`-Signale
+  (`ferret_born`, `ferret_died`, `day_changed`, `tech_unlocked`,
+  `drought_started/_ended`, `expedition_returned`, `building_placed`,
+  `resource_changed`, `season_changed`) sowie zwei neue Signale
+  (`building_rebuilt`, `achievement_unlocked_toast`) – kein zusätzlicher
+  `_process()`-Tick.
+- Neues Panel `ui/AchievementPanel.gd` (🏆-Button im HUD, `ExtraButtons`-Reihe):
+  zeigt alle Achievements nach Kategorie gruppiert, gesperrte Einträge grau
+  mit 🔒-Icon.
+- Neuer auffälligerer Freischalt-Effekt `ui/AchievementToast.gd`
+  (Fade-In/-Out-Popup oberhalb der Bildschirmmitte), zusätzlich zur normalen
+  unauffälligen Notification-Zeile.
+
+**Frettchen-Persönlichkeiten** (`systems/FerretTraits.gd`, neu):
+- Jedes neu geborene Frettchen bekommt gewichtet-zufällig genau einen von 5
+  Traits: „Fleißig“ (+10% Produktion am Arbeitsplatz je Fleißigem im
+  Gebäude, dafür +15% eigener Bedürfnisverfall), „Glückspilz“ (+60%
+  Wirkung von Glücklichkeits-Gebäuden), „Naturtalent“ (sofortige
+  Spezialisierung ohne die übliche 5-Tage-Wartezeit, seltenster Trait),
+  „Eigenbrötler“ (nur 60% Wirkung von Glücklichkeits-Gebäuden), „Zäh“ (30%
+  langsamerer Gesundheitsverfall bei Hunger/Durst).
+- `trait_id` in `FerretEntity.serialize()/deserialize()` integriert, mit
+  Fallback (zufällige Nachzuteilung) für alte Saves ohne dieses Feld.
+- Neue Funktion `BuildingEntity.get_worker_trait_bonus()` mittelt den
+  Produktions-Bonus „Fleißiger“ Arbeiter in ein Gebäude ein (angewendet in
+  `_collect()/_process()/_multi_process()/_hunt()/_farm()`).
+- Sichtbarkeit: neues Roster-Panel `ui/FerretsPanel.gd` (🐹-Button im HUD)
+  mit Name, aktueller Spezialisierung und Trait-Icon + Tooltip-Beschreibung
+  je lebendem Frettchen – da es im 3D-Port (anders als in der alten
+  HTML-Version) noch keine Klick-Interaktion auf einzelne Frettchen gibt
+  (kein Collision-Setup im Renderer), ist das der pragmatische Ersatz für
+  ein vollwertiges Profil-Panel.
+
+**Geänderte Dateien**: `autoloads/GameState.gd`, `systems/FerretEntity.gd`,
+`systems/BuildingEntity.gd`, `systems/PopulationManager.gd`,
+`systems/SaveSystem.gd`, `game/GameController.gd`, `scenes/Main.gd`,
+`ui/HUD.gd`, `project.godot`.
+**Neue Dateien**: `systems/AchievementSystem.gd`, `systems/FerretTraits.gd`,
+`ui/AchievementPanel.gd`, `ui/AchievementToast.gd`, `ui/FerretsPanel.gd`.
+
+**Bekannter gdparse-False-Positive** (wie bei `BuildingInfo.gd`/
+`ExpeditionPanel.gd`/`GraveyardPanel.gd`/`TechTreePanel.gd`): einzeilige
+Lambdas mit `if` in `ui/AchievementPanel.gd` und `ui/FerretsPanel.gd` –
+ignoriert.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_8.zip`
