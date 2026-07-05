@@ -915,3 +915,124 @@ Gefundene und behobene Probleme:
 `systems/BuildingEntity.gd`, `systems/BuildingSystem.gd`,
 `systems/SaveSystem.gd`, `systems/FerretEntity.gd`,
 `world/WorldGenerator.gd`, `ui/BuildMenu.gd`.
+
+
+## Langzeit-Content Phase 1: Achievement-System + Frettchen-Persönlichkeiten (v11.8)
+
+Erste von zwei geplanten Etappen eines größeren Langzeit-Content-Pakets
+(Achievements, Katastrophen, Zufallsereignisse, Frettchen-Persönlichkeiten,
+Legendäre Frettchen). Phase 1 wurde bewusst zuerst umgesetzt, da sie am
+wenigsten mit bestehenden Timing-Systemen (Dürre/Jahreszeiten/Expeditionen)
+interferiert und die Trait-Grundlage für die für Phase 2 vorgesehenen
+Legendären Frettchen liefert. Phase 2 (Katastrophen, Zufallsereignisse mit
+Progression, Legendäre Frettchen) ist für eine spätere Session vorgesehen.
+
+### Achievement-System
+
+Neuer Autoload `AchievementSys` (`systems/AchievementSystem.gd`), Architektur
+bewusst analog zu `TechTree.gd`:
+- `const ACHIEVEMENTS: Dictionary` mit 18 Einträgen über 5 Kategorien
+  (`CATEGORIES`: Bevölkerung/Wirtschaft/Überleben/Erkundung/Tech). Jeder
+  Eintrag hat `name`, `desc`, `icon`, `category`, `condition_type`
+  (`stat_threshold`/`event_flag`/`survive_disaster`/`tech_progress`, rein
+  informativ/dokumentierend - die eigentliche Prüf-Logik sitzt in den
+  Signal-Handlern, nicht datengetrieben wie bei `TechTree.NODES.effects`)
+  und `reward` (aktuell überall leer - bewusst kein Powercreep).
+- **Event-getriebene Prüfung**: keine `_process()`-Schleife. Stattdessen
+  Handler für die bereits vorhandenen `GameState`-Signale `ferret_born`,
+  `ferret_died`, `day_changed`, `tech_unlocked`, `drought_started/_ended`,
+  `expedition_returned`, `building_placed`, `resource_changed`,
+  `season_changed`, sowie zwei neue Signale:
+  - `GameState.building_rebuilt(building)` - wird am Ende von
+    `BuildingEntity.finish_rebuild()` emittiert (gab es vorher nicht, wurde
+    für das "Modernisierer"-Achievement gebraucht).
+  - `AchievementSystem.achievement_unlocked_toast(id)` - eigenes Signal
+    (nicht auf `GameState`, da rein UI-seitig relevant) für den auffälligen
+    Popup-Effekt, siehe unten.
+- Interne, NICHT in `ACHIEVEMENTS` selbst gespeicherte Zähler/Snapshots
+  (Teil von `serialize()`): `lifetime_births` (kumulierte Geburten für
+  „Erste 100 Frettchen“, unabhängig von der aktuellen, ggf. kleineren
+  lebenden Population), `rebuilds_completed`, `expeditions_completed`,
+  `last_death_day` (für die 50-Tage-ohne-Verlust-Streak), `seen_winter`.
+  `drought_death_snapshot` ist bewusst NICHT persistiert (Laufzeitzustand
+  einer ggf. gerade aktiven Dürre - wird beim Laden auf -1 zurückgesetzt).
+- „Alle 6 Themenbereiche zu 100% erforscht" nutzt
+  `TechTreeSys.get_section_progress(section) >= 10` für jede Sektion in
+  `TechTreeSys.SECTION_ORDER` (10 Tiers pro Sektion, siehe `TechTree.gd`).
+  „Meister aller Zünfte" zählt alle nicht-Epochen-IDs in
+  `TechTreeSys.unlocked` (>= 60 = kompletter Baum).
+- UI: `ui/AchievementPanel.gd` (🏆-Button, `HUD.ExtraButtons`-Reihe,
+  Muster identisch zu `GraveyardPanel.gd`) zeigt alle Achievements nach
+  Kategorie gruppiert mit Fortschrittszähler je Kategorie; gesperrte
+  Einträge grau mit 🔒 statt Icon (Beschreibung bleibt sichtbar - dient der
+  Motivation, ist kein Spoiler-Problem, da keine versteckten
+  Zahlenschwellen in der Beschreibung stehen).
+- Zusätzlich `ui/AchievementToast.gd`: eigene Full-Rect-Ebene
+  (`Main._build_achievement_toast()`), auffälligeres Fade-In/-Out-Popup
+  oberhalb der Bildschirmmitte (y≈130-150px) bei jeder Freischaltung -
+  ergänzt, nicht ersetzt, die normale unauffällige Notification-Zeile
+  (`GameState.notify()`, weiterhin bei jeder Freischaltung ebenfalls
+  ausgelöst).
+
+### Frettchen-Persönlichkeiten (Traits)
+
+Neue Datei `systems/FerretTraits.gd` (reine Datenquelle + gewichtete
+Zufallsauswahl, analog zu `TechTree.NODES` als "Konstanten-Dictionary"-
+Pattern, aber als eigenständige `RefCounted`-Klasse statt Autoload, da
+keine Laufzeit-Zustand nötig ist - nur statische `TRAITS`-Daten +
+`pick_random_trait_id()`).
+
+5 Traits, gewichtet (höheres `weight` = häufiger, `TALENTED` bewusst am
+seltensten wegen des stärksten Effekts):
+- **Fleißig** (`DILIGENT`, weight 3): mittelt sich über
+  `BuildingEntity.get_worker_trait_bonus()` in den Produktions-Multiplikator
+  jedes Gebäudes ein (+10% je fleißigem zugewiesenem Arbeiter, gemittelt
+  über ALLE `assigned_workers` - nicht nur aktive). Angewendet in
+  `_collect()/_process()/_multi_process()/_hunt()/_farm()`. Als Ausgleich:
+  eigener Bedürfnisverfall (`decay_mult` in `FerretEntity.update()`) +15%.
+- **Glückspilz** (`LUCKY`, weight 2) / **Eigenbrötler** (`LONER`, weight 2):
+  wirken über `FerretEntity.get_happiness_bonus_multiplier()` (1.6× bzw.
+  0.6×) auf die bestehende Glücklichkeits-Gebäude-Wirkung in
+  `PopulationManager._apply_happiness_bonuses()` - dieselbe Stelle, die
+  bereits in v10.16 den ursprünglichen Bug (Happiness-Boni wurden nie
+  angewendet) gefixt hatte.
+- **Naturtalent** (`TALENTED`, weight 1): in `FerretEntity.update()` wird
+  der `spec_threshold` (normalerweise 5.0 Tage bis zur Spezialisierung) für
+  diesen Trait auf 0.0 gesetzt - Spezialisierung erfolgt praktisch sofort
+  bei Zuweisung zu einem neuen Gebäudetyp.
+- **Zäh** (`TOUGH`, weight 3): reduziert den bestehenden
+  `mortality_mult`-Faktor in `FerretEntity.update()` um weitere 30%
+  (multiplikativ mit dem bereits vorhandenen Tech-Tree-Bonus
+  `mortality_reduction`).
+- Zuweisung bei Geburt in `FerretEntity.create_random()`. `trait_id` ist
+  Teil von `serialize()/deserialize()`; alte Saves ohne dieses Feld
+  bekommen beim Laden per Fallback nachträglich einen zufälligen Trait
+  zugewiesen (kein leeres/ungültiges `trait_id` möglich).
+- **Sichtbarkeit**: der 3D-Port hat (anders als die alte HTML-Version mit
+  Klick-auf-Frettchen-Profil) noch KEINE Klick-Interaktion auf einzelne
+  Frettchen - `GameController._unhandled_input()`/`_raycast_plane()`
+  arbeiten nur gegen die `Buildings`-Physiklayer, Frettchen haben keine
+  Collision-Shapes im Renderer. Ein vollwertiges Profil-Panel mit
+  Klick-Interaktion hätte ein neues Collision-/Picking-Setup in
+  `WorldRenderer3D` gebraucht - als pragmatischer Ersatz (wie in der
+  Anfrage als Option vorgesehen: "falls keins existiert, kurz eins
+  ergänzen") gibt es stattdessen `ui/FerretsPanel.gd` (🐹-Button): ein
+  einfaches Roster aller lebenden Frettchen mit Name, aktueller
+  Spezialisierung und Trait-Icon + Tooltip-Beschreibung. Sollte in einer
+  späteren Session tatsächliches Klicken auf Frettchen gewünscht sein,
+  wäre das ein separates, in sich geschlossenes Feature (3D-Picking gegen
+  bewegte Meshes statt statischer Gebäude-Kollider).
+- **HUD-Layout-Änderung**: `ExtraButtons`-Reihe (`Main._build_hud()`) von
+  164px auf 208px verbreitert, um die zwei neuen Buttons (🏆, 🐹) neben
+  den bestehenden drei (🗺️🪦🔬) unterzubringen, ohne deren Größe zu
+  ändern.
+
+### Balance-Hinweis für Phase 2
+
+Der Nutzer hat für "Legendäre Frettchen" (Phase 2) einen strengeren
+Schwellwert als der ursprüngliche Vorschlag bestätigt: 45-60 Tage
+ununterbrochene Tätigkeit im selben Beruf statt der vorgeschlagenen 30
+Tage. Für die Seuche-Katastrophe (ebenfalls Phase 2) wurde die Variante
+mit einem eigenen Gegenmaßnahmen-Gebäude ("Krankenstube") statt eines
+reinen Tech-Knoten-Effekts bestätigt. Beides noch nicht implementiert -
+nur als Entscheidung für die nächste Session festgehalten.
