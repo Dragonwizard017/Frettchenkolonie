@@ -1156,3 +1156,136 @@ Phase 2 weiterhin offen: Katastrophen (Dammbruch/Jahrhundertdürre/Seuche/
 Schädlinge, inkl. der bereits bestätigten Krankenstube fuer die Seuche) und
 das Zufallsereignis-System mit Tier-Progression aus dem ursprünglichen
 Phase-2-Auftrag sind noch NICHT umgesetzt.
+
+
+## Skilltree-Redesign, Dev Mode, Bugfixes, Roster-Panel-Rückbau (v11.10)
+
+### Tech-Tree-Redesign
+
+Nutzer gab ein Referenzbild vor (Legends of Aethereus "Skill Tree"):
+horizontale Reihen pro Kategorie (LANTERNS/MINES/BOMBARDS/... im Bild),
+quadratische Icon-Zellen verbunden durch dünne Linien, Kopfleiste mit Titel +
+"POINTS LEFT", Undo/Confirm-Buttons unten. `ui/TechTreePanel.gd` wurde
+komplett neu geschrieben, um diese STRUKTUR zu übernehmen (eigene
+Rahmen-Grafiken/Illustrationen wie im Bild sind ohne Kunst-Assets nicht
+möglich - stattdessen `StyleBoxFlat`-Rahmen mit Zustandsfarben).
+
+Layout-Entscheidung: unser System ist kein "X Punkte verteilen, dann
+bestätigen"-Modell wie im Referenzbild, sondern schaltet Knoten SOFORT gegen
+`ResourceSys.science` frei (`TechTreeSys.unlock_node()`, unverändert seit
+v11.x). Undo/Confirm-Buttons aus der Referenz entfallen deshalb bewusst -
+die Wissenspunkte-Anzeige im Kopfbereich übernimmt die Rolle von "POINTS
+LEFT". Epochen-Reiter (aus der alten Version übernommen, in der Referenz
+nicht vorhanden, aber für unser epochen-gestuftes System notwendig) sitzen
+über den Kategorie-Reihen.
+
+Pro Sektion (`TechTreeSys.SECTION_ORDER`) werden nur die Knoten der
+AKTUELL AUSGEWÄHLTEN Epoche als Kette gezeigt (`tid = "%s_%d" % [sid,
+tier]` für tier 1-10, gefiltert nach `NODES[tid].epoch == _current_epoch`),
+nicht die volle 10-Tier-Kette eines Themenbereichs auf einmal - das
+entspricht eher der Referenz, wo jede Zeile überschaubar viele Zellen zeigt,
+statt einer sehr langen Kette über alle Epochen hinweg.
+
+### Bugfix: Frettchen-Profil-Panel X-Button
+
+Root Cause zweifelsfrei identifiziert: `_process()` rief `_refresh()`
+bedingungslos JEDEN Frame auf, was via `for c in get_children():
+c.queue_free()` + kompletten Neubau auch den X-Button jeden Frame durch eine
+STRUKTURELL IDENTISCHE, aber NEUE Node-Instanz ersetzt hat. Godots
+`BaseButton` verfolgt den Drück-Zustand (gedrückt/losgelassen) am
+KONKRETEN Node - bei ~60 Ersetzungen/Sekunde lag zwischen dem Frame des
+Mausklicks (Drücken) und dem Frame des Loslassens praktisch immer schon ein
+anderer Button an derselben Stelle, der vom Drücken nichts wusste. Dadurch
+feuerte "pressed" nie zuverlässig.
+
+Diese Bug-Klasse betraf NUR `FerretProfilePanel.gd`, da es als einziges der
+neu hinzugefügten Panels `_process()` statt eines seltener feuernden Signals
+für sein Live-Update genutzt hat (andere Panels wie `AchievementPanel.gd`/
+`GraveyardPanel.gd`/`TechTreePanel.gd` refreshen nur bei tatsächlich
+relevanten Signalen wie `achievement_unlocked_toast`/`tech_unlocked` - viel
+seltener, daher praktisch nie mit einem Klick kollidierend).
+
+Fix: sauberer strukturiert in `_build_static_shell()` (einmalig bei
+`show_ferret()` bzw. bei einem Legendär-Statuswechsel, der Rahmenfarbe/
+Titel/Accessoire-Liste ändert - das rechtfertigt einen erneuten Aufbau, da
+es selten passiert) und `_update_dynamic()` (jeden Frame, aktualisiert NUR
+die `.value`-Felder bereits bestehender `ProgressBar`/`Label`-Referenzen,
+die als Member-Variablen gehalten werden - keine Nodes werden ersetzt).
+Dieses Muster (Referenzen auf dynamische Sub-Nodes als Member-Variablen,
+statischer Rahmen nur bei strukturellen Änderungen neu gebaut) sollte als
+Vorlage für künftige Panels mit Live-Updates UND klickbaren Buttons dienen,
+falls dieselbe Bug-Klasse woanders auftaucht.
+
+### Dev Mode
+
+Neuer Autoload `DevMode.gd` - simples `enabled: bool` + `try_enable(password)`
+mit hartcodiertem Passwort `"frettchendev"` (String-Vergleich, kein
+Hashing/Server-Auth nötig, da rein clientseitiges Test-Flag ohne
+Sicherheitsanspruch). Aktivierung über ein neues Passwort-Eingabefeld im
+Pause-/Einstellungen-Menü (`PauseMenu.gd`/`Main._build_pause_menu()`).
+
+Zwei Anwendungsstellen bisher:
+- `ui/DevToolsPanel.gd` (neu): global sichtbares kleines Panel oben links,
+  NUR wenn `DevMode.enabled` (reagiert auf `DevMode.dev_mode_changed`-Signal).
+  Aktuell 5 generische Test-Aktionen (Ressourcen/Wissenspunkte gutschreiben,
+  Epoche gratis freischalten, alle Achievements freischalten, Dev Mode
+  ausschalten).
+- `FerretProfilePanel.gd`: kontextueller "Sofort legendär machen"-Button
+  (nur bei Dev Mode + noch nicht legendärem Frettchen) - direkt im
+  Profil-Panel statt in einem separaten globalen Werkzeug, da eine konkrete
+  Frettchen-Auswahl dafür ohnehin schon vorhanden ist (das Panel zeigt ja
+  bereits genau EIN Frettchen).
+
+Konvention für künftige Dev-Mode-Erweiterungen: kontextuelle Test-Aktionen
+(die sich auf ein bereits ausgewähltes/sichtbares Objekt beziehen, wie ein
+Frettchen oder Gebäude) gehören direkt in dessen Panel (Muster wie oben),
+generische/globale Test-Aktionen ins zentrale `DevToolsPanel.gd`.
+
+### Rückbau: globales Frettchen-Roster-Panel entfernt
+
+`ui/FerretsPanel.gd` (v11.8 eingeführt als Ersatz für fehlende Klick-
+Interaktion, v11.9 überflüssig geworden durch `FerretProfilePanel.gd` +
+tatsächliche 3D-Klick-Interaktion) wurde auf expliziten Nutzerwunsch komplett
+entfernt: Datei gelöscht, 🐹-Button aus `HUD.ExtraButtons` entfernt, Aufruf
+in `Main.gd` entfernt. `ExtraButtons`-Reihenbreite (208px) bewusst NICHT
+wieder auf die alte 164px-Breite zurückgebaut, falls in Zukunft erneut ein
+Button ergänzt wird.
+
+### Bugfix: keine Wasserproduktion
+
+Root Cause: `WorldGenerator._place_water_sources()` markierte nur
+`component.size() / 35` Tiles eines zusammenhängenden Gewässers als
+"Quelle" (kontinuierlicher Zufluss). Alle ANDEREN Wasser-Tiles (Startpegel
+1.0, siehe `WorldGenerator.generate()`) haben KEINEN eigenen Zufluss außer
+langsamer Nachbar-Diffusion (`WaterSystem._flow_to()`, FLOW_RATE=3.2 aber
+gedeckelt durch MAX_OUTFLOW_FRACTION=0.35 pro Nachbar und Schritt) und
+verdunsten kontinuierlich mit `EVAP_RATE_WET=0.004`/Schritt (STEP=0.15s) -
+das trocknet einen isolierten Tile mit Startpegel 1.0 in ca. 250 Sekunden
+(≈4 Minuten Spielzeit) komplett aus. Ein Brunnen (`collection_radius=6`),
+der nicht zufällig innerhalb weniger Tiles eines der seltenen Quell-Tiles
+gebaut wurde, hatte nach kurzer Spielzeit keinen messbaren Wasserstand mehr
+in Reichweite (`WaterSys.get_avg_level_near()` nahe 0) und produzierte
+dadurch effektiv kein Wasser - genau das vom Nutzer gemeldete Symptom.
+
+Fix, zweigeteilt:
+1. Quelldichte in `_place_water_sources()` von `component.size()/35` auf
+   `component.size()/6` erhöht - deutlich mehr Tiles pro Gewässer bleiben
+   dauerhaft gespeist. Wirkt NUR bei neu generierten Welten, da
+   `is_water_source` als Teil der Tile-Daten mitgespeichert wird (siehe
+   `GameController.serialize_world()`/`deserialize_world()`) - bereits
+   bestehende Speicherstände behalten ihre alte, spärliche Verteilung.
+2. `EVAP_RATE_WET` von 0.004 auf 0.0022 pro Schritt reduziert (nasse Phase,
+   NICHT die Dürre-Verdunstung `EVAP_RATE_DROUGHT`, die bewusst unverändert
+   blieb) - das hilft ZUSÄTZLICH auch bestehenden Speicherständen mit der
+   alten Quellverteilung, da Wasser-Tiles insgesamt langsamer austrocknen.
+
+**Nicht in-Engine verifiziert** (kein Godot-Editor in dieser Session
+verfügbar) - die Diagnose beruht auf sorgfältiger Code-Analyse der
+Simulationskonstanten (Evaporations- vs. Zufluss-/Diffusionsrate
+durchgerechnet), nicht auf einem beobachteten Playtest. Falls das Problem
+nach diesem Fix weiterhin auftritt, wäre die naechste sinnvolle
+Diagnose-Frage: produziert ein Brunnen DIREKT NEBEN einem sichtbaren
+Gewässer (1-2 Tiles Abstand) auch nichts? Falls ja, liegt der Fehler
+tiefer (z.B. in `get_active_worker_count()`/`is_local_storage_full()`-
+artigen Vorbedingungen in `_collect()`) und nicht an der Wasserphysik
+selbst.
