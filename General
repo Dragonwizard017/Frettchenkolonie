@@ -1036,3 +1036,123 @@ Tage. Für die Seuche-Katastrophe (ebenfalls Phase 2) wurde die Variante
 mit einem eigenen Gegenmaßnahmen-Gebäude ("Krankenstube") statt eines
 reinen Tech-Knoten-Effekts bestätigt. Beides noch nicht implementiert -
 nur als Entscheidung für die nächste Session festgehalten.
+
+
+## Frettchen-Klick-Interaktion + Legendäre Frettchen (v11.9)
+
+Aufbauend auf den Traits aus v11.8 (Phase 1). Der User hat für diese Runde
+explizit gefordert: Klick-Interaktion auf Frettchen, goldenes Profil-Panel
+bei legendären Frettchen, Accessoires (mind. 10, kombinierbar, individuelles
+Set je legendärem Frettchen), Holy Glow auf der Karte, und ein klickbares
+Popup bei Legendär-Werden das zum Profil führt. Das ist mehr Vorgriff auf
+Phase 2 als ursprünglich geplant (Katastrophen/Zufallsereignisse aus Phase 2
+sind NOCH NICHT umgesetzt) - nur der Legendäre-Frettchen-Teil wurde jetzt
+vorgezogen.
+
+### Frettchen-Klick-Interaktion
+
+Frettchen haben (anders als Gebäude) keine Collision-Shapes im 3D-Renderer.
+Statt ein neues Physik-Layer für bewegte Meshes einzuführen, wurde
+Bildschirm-Projektion gewählt: `WorldRenderer3D.find_ferret_at_screen_pos(
+screen_pos, camera, ferrets)` iteriert über `_ferret_nodes` (Node-Pool,
+Index i entspricht `ferrets[i]` GENAU innerhalb desselben `update_ferrets()`-
+Frames - wichtig: der Aufrufer muss exakt das Array übergeben, das zuletzt an
+`update_ferrets()` ging, sonst driftet die Zuordnung), projiziert jede
+Position via `Camera3D.unproject_position()` und nimmt den nächsten Treffer
+innerhalb von `FERRET_CLICK_RADIUS_PX = 28.0`. `camera.is_position_behind()`
+filtert Frettchen hinter der Kamera vorab raus.
+
+`GameController._handle_click()` prüft das ZUERST (nur wenn
+`GameState.placement_mode` leer ist, sonst würde ein Klick auf ein Frettchen
+mitten in einem aktiven Bau-/Weg-Platzierungsmodus versehentlich etwas
+platzieren) und faellt bei keinem Treffer auf die normale
+`_screen_to_tile()`-Logik zurück.
+
+Ergebnis geht über das neue Signal `GameState.ferret_selected(ferret)` an
+`ui/FerretProfilePanel.gd` (neu, dynamisch selbstaufbauend wie
+`FerretsPanel.gd`/`GraveyardPanel.gd`). Auch `FerretsPanel.gd`-Roster-Zeilen
+sind jetzt klickbar und öffnen dasselbe Profil-Panel.
+
+### Legendäre Frettchen
+
+`FerretEntity.gd` bekam einen NEUEN, praeziseren Zähler `career_days` -
+bewusst getrennt von `spec_days` (das schon existierte, aber Tage
+kontinuierlicher Beschäftigung ALLGEMEIN zählt, nicht Tage im selben
+konkreten Gebäude). `career_days` wird nur hochgezählt, solange
+`assigned_building.id` unverändert bleibt; bei Wechsel auf ein anderes
+Gebäude (auch selbe Kategorie, z.B. zwei verschiedene Sägewerke) wird
+zurückgesetzt auf 0. Schwellwert `LEGENDARY_THRESHOLD_DAYS = 50.0` (die vom
+Nutzer bestätigte strengere Variante aus der v11.8-Session, 45-60 Tage
+Spanne).
+
+Titel-Generierung bewusst simpel gehalten: `"%s-Legende" % ab.name` (z.B.
+"Schmelze-Legende", "Holzfäller-Legende") - nutzt den bereits vorhandenen,
+deutschen `BuildingEntity.name`-Anzeigenamen statt einer eigenen
+Titel-Pool-Liste pro Beruf (das haette staerkere Kopplung an alle
+Gebäude-IDs gebraucht und war fuer den gewuenschten Umfang dieser Session
+nicht notwendig - falls gewuenscht, waere eine variantenreichere
+Titel-Pool-Liste ein guter kleiner Nachschlag).
+
+`PopulationManager.update()` erkennt den Übergang false→true PRO TICK (ein
+Vergleich vor/nach `fe.update()`, kein Zusatz-Loop) und emittiert
+`GameState.ferret_became_legendary(ferret)` - da `is_legendary` danach nie
+wieder false wird, feuert das Signal garantiert nur genau einmal pro
+Frettchen-Leben, auch nach dem Laden eines Spielstands, in dem das Frettchen
+schon legendär war (kein separates "announced"-Flag nötig).
+
+### Accessoires (10 Stück, `systems/FerretAccessories.gd` + `assets/accessories/*.glb`)
+
+Da im Repo keine 3D-Modellierungs-Software zur Verfügung steht, wurden alle
+10 Accessoire-Modelle PROZEDURAL per `trimesh` (Python) aus einfachen
+Primitiven (Kegel, Zylinder, Torus, Ikosphären, handgebaute Dreiecksnetze
+für Cape/Bandana) zusammengesetzt und direkt als `.glb` exportiert - jedes
+mit einem `trimesh.visual.material.PBRMaterial` fuer eine gleichmäßige
+Farbe (mehrteilige Accessoires wie Medaille/Zauberhut nutzen eine
+`trimesh.Scene` mit mehreren benannten Geometrien fuer mehrere Farben in
+einer Datei, genau wie `ferret.glb`/`building.glb` bereits als
+Multi-Node-Szenen importiert werden). Generator-Skript liegt NICHT im Repo
+(nur die fertigen .glb-Ergebnisse) - bei Bedarf fuer Anpassungen/weitere
+Accessoires in einer künftigen Session neu schreiben oder anfragen.
+
+4 Slots: HEAD (Krone/Zylinder/Zauberhut/Bandana), NECK (Fliege/Schal/
+Medaille), FACE (Monokel/Augenklappe), BACK (Umhang) -
+`FerretAccessories.pick_random_set()` würfelt pro Slot unabhängig (70%
+Chance auf ein Accessoire in diesem Slot), mindestens 1 Accessoire
+garantiert. Kombinierbarkeit bedeutet hier: mehrere Slots gleichzeitig
+belegt (bis zu 4), aber pro Slot nur eines (verhindert visuelle
+Überlagerung z.B. zweier Kopfbedeckungen).
+
+**Rendering-Ansatz** (`WorldRenderer3D.gd`): jedes gepoolte Frettchen-Node
+bekommt bei Erstellung einen Kind-Node `"LegendaryFX"` mit
+GEGEN-Skalierung (`1.0 / FERRET_MODEL_SCALE`), damit die in
+`FerretAccessories.ACCESSORIES` hinterlegten `offset`/Größen-Werte direkt
+in Metern gelten statt vom 2.2x-Modell-Scale mit aufgeblaeht zu werden.
+Accessoire-Instanzen + Holy-Glow-Nodes werden NUR bei tatsächlicher
+Änderung des Sets neu aufgebaut (String-Vergleich eines "legend_key" via
+Node-Metadata) - da sich das Set eines Frettchens nach dem Legendär-Werden
+nie wieder ändert, passiert der eigentliche Aufbau in der Praxis genau
+einmal pro legendärem Frettchen.
+
+**Holy Glow**: `OmniLight3D` (warmes Gold, sanft sinusförmig pulsierend,
+Phase pro Frettchen-Index gestreut) + eine zusätzliche kleine, additiv-
+transparente, unshaded `SphereMesh` mit Emission - bewusst NICHT auf
+HDR-Bloom/Postprocessing im Projekt angewiesen (nicht verifiziert, ob das
+Rendering-Environment das aktiviert hat), daher die zusätzliche
+eigenständig emissive Kugel als Sicherheitsnetz fuer einen sichtbaren
+Leucht-Effekt auch ohne Bloom.
+
+### Bekannte Einschränkung / offener Punkt für die nächste Session
+
+Alle Accessoire-Offsets (`FerretAccessories.ACCESSORIES[...]["offset"]`)
+sind SCHÄTZWERTE - `ferret.glb` hat kein Skelett/Bones, an denen sich Kopf-/
+Hals-/Rücken-Position exakt ablesen ließe, und es gibt keine
+Godot-Editor-Umgebung zum visuellen Testen in dieser Session. Falls die
+Platzierung in-game spürbar daneben liegt (zu hoch/tief/versetzt), bitte
+mit Screenshot + grober Korrekturrichtung zurückmelden - die Werte lassen
+sich dann gezielt in `FerretAccessories.gd` nachjustieren, ohne die
+.glb-Dateien selbst neu erzeugen zu müssen.
+
+Phase 2 weiterhin offen: Katastrophen (Dammbruch/Jahrhundertdürre/Seuche/
+Schädlinge, inkl. der bereits bestätigten Krankenstube fuer die Seuche) und
+das Zufallsereignis-System mit Tier-Progression aus dem ursprünglichen
+Phase-2-Auftrag sind noch NICHT umgesetzt.
