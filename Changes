@@ -1293,3 +1293,75 @@ Korrekturrichtung zurückmelden, dann werden die `offset`-Werte in
 bandana,bowtie,scarf,medal,monocle,eyepatch,cape}.glb`.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_9.zip`
+
+---
+
+## v11.10 – Skilltree-Redesign, Dev Mode, Bugfixes (Profil-X-Button, Wasserproduktion), Roster-Panel-Rückbau
+
+**Tech-Tree-Redesign** (`ui/TechTreePanel.gd`, komplett neu geschrieben):
+- UI orientiert sich jetzt am vom Nutzer vorgegebenen Referenzbild (Legends
+  of Aethereus "Skill Tree"): pro Themenbereich (Forstwirtschaft, Bergbau,
+  Wasserwirtschaft, Landwirtschaft, Zucht, Logistik) eine HORIZONTALE Reihe
+  aus quadratischen Knoten-Zellen, verbunden durch dünne Linien - statt der
+  vorherigen simplen vertikalen Liste.
+- Knoten-Zellen farbcodiert: grün=erforscht, gold=jetzt erforschbar,
+  grau=gesperrt (Epoche/Voraussetzung fehlt). Klick auf eine Zelle zeigt ein
+  Detail-Panel (Name/Beschreibung/Kosten/Freischalt-Button) darunter.
+  Kopfleiste zeigt Wissenspunkte prominent (Rolle der "POINTS LEFT"-Anzeige
+  aus der Referenz).
+- Da unser System Knoten SOFORT gegen Wissenspunkte freischaltet (kein
+  "Punkte verteilen dann Confirm/Undo"-Modell wie im Referenzbild), entfallen
+  Undo/Confirm-Buttons bewusst.
+- Kein eigenes Artwork/Rahmen-Grafiken (nicht möglich ohne Kunst-Assets) -
+  übernommen wurde die STRUKTUR (Zeilen pro Kategorie, verbundene Zellen).
+
+**Bugfix: Frettchen-Profil-Panel X-Button nicht klickbar** (`ui/FerretProfilePanel.gd`):
+- Ursache: `_process()` hat JEDEN Frame die komplette UI inkl. X-Button per
+  `queue_free()`+Neubau ersetzt. Ein Klick (Drücken+Loslassen) läuft über
+  mehrere Frames - der Button, der gedrückt wurde, existierte beim Loslassen
+  oft schon nicht mehr (durch einen strukturell identischen, aber neuen
+  Button ersetzt), wodurch "pressed" nie zuverlässig feuerte.
+- Fix: statischer Rahmen (Stil, Kopfzeile, X-Button) wird nur noch EINMAL
+  beim Öffnen bzw. bei einem Legendär-Statuswechsel neu gebaut.
+  `_update_dynamic()` aktualisiert danach nur noch die WERTE der bereits
+  bestehenden Balken/Labels, ohne Nodes zu ersetzen.
+
+**Dev Mode** (neuer Autoload `DevMode.gd`, Passwort `frettchendev`):
+- Passwort-Eingabefeld in den Einstellungen (Pause-Menü), bei korrekter
+  Eingabe wird `DevMode.enabled` gesetzt (rein clientseitig, kein
+  Sicherheitsfeature - nur Schutz vor versehentlichem Aktivieren).
+- Neues `ui/DevToolsPanel.gd` (nur sichtbar wenn Dev Mode aktiv): Buttons für
+  +500 Grundressourcen, +200 Wissenspunkte, nächste Epoche gratis
+  freischalten, alle Achievements freischalten, Dev Mode ausschalten.
+- Im Frettchen-Profil-Panel zusätzlicher Button "🛠️ Sofort legendär machen"
+  (nur sichtbar wenn Dev Mode aktiv und Frettchen noch nicht legendär),
+  vergibt sofort Titel + zufälliges Accessoire-Set.
+
+**Rückbau: globales Frettchen-Roster-Panel entfernt** (`ui/FerretsPanel.gd`
+gelöscht, 🐹-Button aus HUD entfernt) - auf Nutzerwunsch, die individuelle
+Klick-Interaktion (Profil-Panel, v11.9) deckt den Anwendungsfall ab.
+
+**Bugfix: keine Wasserproduktion** (`world/WorldGenerator.gd`,
+`systems/WaterSystem.gd`):
+- Ursache: Wasserquellen wurden extrem spärlich verteilt (nur 1 von 35
+  Wasser-Tiles), während Verdunstung einen Nicht-Quell-Tile (Startpegel 1.0)
+  in ca. 4 Minuten Spielzeit komplett austrocknete - Brunnen/Wasserpumpen
+  außerhalb des kleinen Radius um die wenigen Quell-Tiles hatten nach kurzer
+  Zeit keinen Wasserstand mehr zum Fördern.
+- Fix: Quelldichte auf 1 von 6 Tiles erhöht (nur bei NEU generierten Welten
+  wirksam, da `is_water_source` pro Tile gespeichert wird) + Verdunstungsrate
+  in der nassen Phase reduziert (0.004 → 0.0022/Sek., wirkt auch auf
+  bestehende Speicherstände).
+- **Nicht in-Engine getestet** (kein Godot-Editor verfügbar) - falls das
+  Problem nach diesem Fix weiterhin auftritt, bitte zurückmelden (idealerweise
+  mit Info, wie weit der Brunnen vom nächsten sichtbaren Wasser entfernt gebaut
+  wurde), dann wird weiter nachjustiert.
+
+**Geänderte Dateien**: `ui/TechTreePanel.gd` (neu geschrieben),
+`ui/FerretProfilePanel.gd` (neu geschrieben), `scenes/Main.gd`, `ui/HUD.gd`,
+`ui/PauseMenu.gd`, `world/WorldGenerator.gd`, `systems/WaterSystem.gd`,
+`project.godot`.
+**Neue Dateien**: `autoloads/DevMode.gd`, `ui/DevToolsPanel.gd`.
+**Entfernte Dateien**: `ui/FerretsPanel.gd`.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_10.zip`
