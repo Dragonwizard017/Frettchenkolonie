@@ -1214,3 +1214,82 @@ Lambdas mit `if` in `ui/AchievementPanel.gd` und `ui/FerretsPanel.gd` –
 ignoriert.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_8.zip`
+
+---
+
+## v11.9 – Frettchen-Klick-Interaktion + Legendäre Frettchen (Accessoires, Holy Glow)
+
+Zweite Etappe des Langzeit-Content-Pakets: Legendäre Frettchen (aufbauend auf
+den Traits aus v11.8) plus die dafür benötigte Klick-Interaktion auf
+einzelne Frettchen in der 3D-Welt.
+
+**Frettchen-Klick-Interaktion**:
+- Frettchen haben keine Collision-Shapes im Renderer - Klick-Erkennung läuft
+  daher über Bildschirm-Projektion: `WorldRenderer3D.find_ferret_at_screen_pos()`
+  projiziert jedes sichtbare Frettchen-Node auf den Bildschirm
+  (`Camera3D.unproject_position()`) und nimmt das nächste innerhalb von 28px
+  zur Klick-Position. `GameController._handle_click()` prüft das VOR der
+  normalen Tile-/Gebäude-Klick-Logik (nur außerhalb eines aktiven
+  Platzierungsmodus).
+- Neues Signal `GameState.ferret_selected(ferret)`, öffnet
+  `ui/FerretProfilePanel.gd` (neu) - Detail-Ansicht eines einzelnen
+  Frettchens (Name, Beruf, Alter, Gesundheit/Bedürfnis-Balken, Trait
+  +Beschreibung, bei Nicht-Legendären ein dezenter Karriere-Fortschrittsbalken
+  ohne exakte Zahl).
+- Roster-Panel (`ui/FerretsPanel.gd`, v11.8) ebenfalls klickbar gemacht -
+  öffnet dieselbe Profil-Ansicht.
+
+**Legendäre Frettchen** (`systems/FerretEntity.gd` erweitert):
+- Neuer, praeziserer Zähler `career_days` (Tage ununterbrochen im SELBEN
+  konkreten Gebäude, `ab.id` - nicht nur derselben Kategorie wie
+  `specialization`/`ab.btype`). Bei Job-Wechsel zurückgesetzt.
+- Schwellwert `LEGENDARY_THRESHOLD_DAYS = 50.0` (Nutzer-Entscheidung:
+  strenger als der ursprüngliche 30-Tage-Vorschlag).
+- Bei Erreichen: `is_legendary = true`, Titel `"<Gebäudename>-Legende"`
+  (z.B. "Schmelze-Legende"), individuelles Accessoire-Set gewürfelt (siehe
+  unten). Übergang false→true erkennt `PopulationManager.update()` und
+  emittiert `GameState.ferret_became_legendary(ferret)` - GENAU einmal, da
+  `is_legendary` danach dauerhaft wahr bleibt.
+- Neues, klickbares Popup `ui/LegendaryToast.gd`: "👑 Ein Frettchen wird
+  legendär!" mit Name + Titel, 5 Sekunden sichtbar, Klick darauf öffnet
+  direkt das Profil (emittiert `ferret_selected`).
+- `ui/FerretProfilePanel.gd` färbt sich bei einem legendären Frettchen
+  golden (Rahmenfarbe + dickerer Rand) statt der normalen neutralen Farbe.
+- Gedenkstätte (`ui/GraveyardPanel.gd`): legendäre Frettchen bekommen einen
+  prominenteren, ausführlicheren Eintrag (Titel + Karrieretage) statt nur
+  Name/Tag/Ursache.
+
+**Accessoires** (`systems/FerretAccessories.gd`, neu + 10 neue .glb-Dateien
+in `assets/accessories/`, prozedural per trimesh generiert):
+- 10 Accessoires über 4 Slots verteilt: Kopf (Krone, Zylinder, Zauberhut,
+  Bandana), Hals (Fliege, Schal, Medaille), Gesicht (Monokel, Augenklappe),
+  Rücken (Umhang).
+- "Kombinierbar" = max. 1 Accessoire pro Slot, aber Slots unabhängig
+  gewürfelt (70% Chance je Slot) - jedes legendäre Frettchen bekommt so ein
+  individuelles Set aus bis zu 4 gleichzeitig getragenen Accessoires,
+  mindestens 1 garantiert.
+- Rendering: `WorldRenderer3D` haengt Accessoire-Instanzen unter einen neuen
+  "LegendaryFX"-Anker-Node je Frettchen (mit Gegen-Skalierung zum 2.2x-
+  Modell-Scale, damit Offsets direkt in Metern gelten). Set wird nur bei
+  tatsächlicher Änderung neu aufgebaut (Performance).
+- **Holy Glow**: warmes goldenes `OmniLight3D` (sanft pulsierend) +
+  zusätzliche additiv-transparente, unshaded Glorienschein-Kugel (kein
+  HDR-Bloom im Projekt vorausgesetzt) über jedem legendären Frettchen auf
+  der Karte.
+
+**Bekannte Einschränkung** (dokumentiert, nicht testbar ohne Godot-Editor):
+Kopf-/Hals-/Gesichts-Offsets für die Accessoires sind Schätzwerte relativ
+zum Frettchen-Ursprung (kein Skelett/Bones in `ferret.glb` verfügbar) -
+falls sie in-game spürbar daneben liegen, bitte Screenshot + grobe
+Korrekturrichtung zurückmelden, dann werden die `offset`-Werte in
+`FerretAccessories.ACCESSORIES` nachjustiert.
+
+**Geänderte Dateien**: `autoloads/GameState.gd`, `systems/FerretEntity.gd`,
+`systems/PopulationManager.gd`, `rendering/WorldRenderer3D.gd`,
+`game/GameController.gd`, `scenes/Main.gd`, `ui/FerretsPanel.gd`,
+`ui/GraveyardPanel.gd`.
+**Neue Dateien**: `systems/FerretAccessories.gd`, `ui/FerretProfilePanel.gd`,
+`ui/LegendaryToast.gd`, `assets/accessories/{crown,top_hat,wizard_hat,
+bandana,bowtie,scarf,medal,monocle,eyepatch,cape}.glb`.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_9.zip`
