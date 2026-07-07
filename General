@@ -1289,3 +1289,105 @@ Gewässer (1-2 Tiles Abstand) auch nichts? Falls ja, liegt der Fehler
 tiefer (z.B. in `get_active_worker_count()`/`is_local_storage_full()`-
 artigen Vorbedingungen in `_collect()`) und nicht an der Wasserphysik
 selbst.
+
+
+## Distrikt-System – erste "mehr wie Timberborn"-Kernmechanik (v11.11)
+
+Nutzer bat allgemein "entwickle das Spiel sinnvoll weiter, dass es mehr wie
+Timberborn wird". Statt sofort loszulegen wurden 3 konkrete, in sich
+geschlossene Optionen aus der alten Ideen-Liste zur Wahl gestellt
+(Distrikt-System / Schleusen-Staudamm-Steuerung / Plattformen-mehrstöckiges
+Bauen) - Nutzer wählte Distrikt-System und bestätigte, dass nach Abschluss
+automatisch mit einem weiteren Paket fortgefahren werden soll (keine
+Zwischen-Rückfrage nötig).
+
+### Wichtiger Hinweis zur Entstehung dieser Version
+
+Beim Start der Arbeit an diesem Feature wurde festgestellt, dass im
+Arbeitsverzeichnis bereits eine WEITGEHEND VOLLSTÄNDIGE Implementierung des
+Distrikt-Systems vorlag (u.a. `systems/DistrictSystem.gd` mit dem
+Versionshinweis "v11.11" im Kopfkommentar, vollständige Integration in
+`BuildingEntity.gd`/`BuildingSystem.gd`/`FerretEntity.gd`/`BuildingData.gd`/
+`ui/BuildMenu.gd`/`ui/BuildingInfo.gd` inkl. der verwandten
+Lagerhaus-Filter-Funktion) - vermutlich Rest-Zustand eines vorherigen,
+unterbrochenen Versuchs an genau dieser Aufgabe (erkennbar u.a. an zwei
+aufeinanderfolgenden "chore: claim edit lock"-Commits ohne Release
+dazwischen im Git-Log, sowie am Dateizeitstempel). Diese Version wurde
+GRÜNDLICH gegengeprüft (jede Integrationsstelle einzeln nachvollzogen, nicht
+blind übernommen) statt verworfen zu werden, da Code-Qualität und
+-Konventionen mit dem etablierten Projektstil übereinstimmten. Dabei wurde
+EIN echter Bug gefunden und behoben (siehe unten) sowie die fehlenden
+Teile ergänzt: Bezirks-Anzeige im Gebäude-Info-Panel und das komplette
+Übersichts-Panel `ui/DistrictPanel.gd` (inkl. zwei neuer
+DistrictSystem-Hilfsfunktionen `rename_district()`/
+`count_buildings_in_district()`) existierten vorher noch nicht.
+
+**Falls in einer künftigen Session erneut ungewöhnliche Doppel-Lock-Commits
+oder unerwartet bereits vorhandener Code auftauchen**: das Vorgehen hier
+(gründlich verifizieren statt verwerfen ODER blind übernehmen) hat sich
+bewährt und sollte wiederholt werden.
+
+### Architektur
+
+`DistrictSystem.gd` verzichtet BEWUSST auf eine echte Pfad-/
+Konnektivitäts-Analyse (im Projekt gibt es kein Pathfinding-Graph-System
+dafür), sondern nutzt ein simples, distanzbasiertes Zuordnungsschema:
+
+- Jeder `BUILDER`-Gebäudetyp (Bauhof/Großer Bauhof) gründet beim Bau einen
+  neuen Bezirk (`_create_district()`), außer dem allerersten der Kolonie
+  (bekommt `district_id = 0`, "Hauptbezirk", damit Alt-Saves/der Standard-
+  Kolonie-Start ohne Migrations-Sonderfall auskommen).
+- Jedes andere Gebäude übernimmt bei Platzierung (`assign_district()`,
+  aufgerufen aus `BuildingSystem.build()`) den Bezirk des NÄCHSTGELEGENEN
+  Bauhofs (einfache euklidische Tile-Distanz).
+- `are_linked(a, b)` prüft Bezirks-Gleichheit ODER eine aktive Verknüpfung
+  in `active_links` (Dictionary, Schlüssel = eindeutige Tile-Position eines
+  Bezirkstors via `_gate_key()`, NICHT eine globale Bezirks-Paarliste - so
+  bleiben andere Tore, die zufällig dieselben zwei Bezirke verbinden, aktiv,
+  wenn eines davon leer wird/verkauft wird).
+- `update_gate_link(gate)` wird JEDEN Tick von einem besetzten Bezirkstor
+  aufgerufen (`BuildingEntity.update()`, dieselbe "muss besetzt sein"-Regel
+  wie bei Produktionsgebäuden) und verlinkt bis zu 2 der in Reichweite
+  gefundenen Bezirke (bei einer Drei-Wege-Kreuzung wird nur EIN Paar
+  gespeichert - Randfall, kein Regelfall).
+- `_find_nearest_storage_building()` in `FerretEntity.gd` bekam einen neuen
+  optionalen dritten Parameter `from_building` - nur wenn angegeben, greift
+  der Distrikt-Filter (`DistrictSys.are_linked(from_building.district_id,
+  be.district_id)`). Ohne Angabe (z.B. an Aufrufstellen ohne sinnvollen
+  "Herkunfts-Bezirk") gilt weiterhin nur die Distanz wie vor diesem Feature -
+  bewusst abwärtskompatibel gehalten statt an jeder Aufrufstelle einen
+  Distrikt-Kontext erzwingen zu müssen.
+
+**JSON-Speicher-Falle beachtet**: `JSON.stringify()` (siehe `SaveSystem.gd`)
+wandelt Dictionary-Keys immer zu Strings um - `DistrictSystem.deserialize()`
+konvertiert die `districts`-Keys beim Laden explizit zurück zu `int`, sonst
+würde jede spätere `get_district_name(0)`-Suche (int) gegen gespeicherte
+String-Keys ("0") ins Leere laufen. Dieselbe Fallstricke gilt grundsätzlich
+für jedes künftige Feature mit int-keyed Dictionaries im Speicherstand -
+bei Zweifel immer mit einem kurzen Round-Trip-Gedankenexperiment (Speichern
+→ JSON → Laden) gegenchecken.
+
+### Bugfix: Bezirkstor-Verknüpfung blieb nach Arbeiter-Abzug aktiv
+
+`BuildingEntity.remove_worker()` hat vorher NUR `assigned_workers.erase()`
+gemacht. Für ein Bezirkstor bedeutete das: wurde der letzte Arbeiter aus
+einem anderen Grund als Verkauf abgezogen (manuelle Umverteilung via
+Gebäude-Info "-"-Button, oder der Tod des Frettchens), blieb die zuletzt
+berechnete Verknüpfung in `DistrictSys.active_links` bestehen, obwohl das
+Tor laut Spieldesign nur SOLANGE verbindet, wie es besetzt ist (`update()`
+ruft `update_gate_link()` nur auf, wenn `assigned_workers` nicht leer ist -
+bei einem leeren Tor wird die Funktion schlicht nie mehr aufgerufen, weshalb
+sich die Verknüpfung auch nie von selbst korrigiert). Fix: `remove_worker()`
+prüft jetzt explizit `btype == "DISTRICT_GATE" and assigned_workers.is_empty()`
+und ruft in diesem Fall `DistrictSys.remove_gate_link(self)` selbst auf.
+
+### Ausblick: nächstes Paket
+
+Nutzer hat bestätigt, dass nach diesem Paket AUTOMATISCH mit einem weiteren
+Timberborn-Kernmechanik-Paket fortgefahren werden soll (keine
+Zwischen-Bestätigung nötig) - zur Auswahl standen ursprünglich noch
+"Schleusen/Staudamm-Steuerung" und "Plattformen/mehrstöckiges Bauen" (siehe
+altes Ideen-Dokument). Falls eine künftige Session hier weitermacht, sollte
+sie den Nutzer kurz fragen, welches der beiden verbleibenden Pakete (oder
+etwas ganz anderes) als Nächstes gewünscht ist, statt anzunehmen, dass die
+Reihenfolge aus der ursprünglichen 3er-Auswahl bindend war.
