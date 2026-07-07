@@ -1365,3 +1365,54 @@ Klick-Interaktion (Profil-Panel, v11.9) deckt den Anwendungsfall ab.
 **Entfernte Dateien**: `ui/FerretsPanel.gd`.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_10.zip`
+
+---
+
+## v11.11 – Distrikt-System (erste Timberborn-Kernmechanik)
+
+Erstes von mehreren geplanten "mehr wie Timberborn"-Feature-Paketen (Nutzer
+hat Distrikt-System aus 3 Optionen gewählt, danach automatische Fortsetzung
+mit weiteren Paketen bestätigt).
+
+**Bezirke** (neuer Autoload `DistrictSys`, `systems/DistrictSystem.gd`):
+- Jeder Bauhof/Große Bauhof gründet beim Bauen einen neuen Bezirk, außer dem
+  allerersten der Kolonie (wird "Hauptbezirk"). Jedes andere Gebäude
+  übernimmt automatisch den Bezirk des nächstgelegenen Bauhofs
+  (distanzbasiert, kein Pathfinding-Graph nötig).
+- Lagerhaus-Suche (`FerretEntity._find_nearest_storage_building()`)
+  berücksichtigt nur Lagerhäuser im selben oder einem per Bezirkstor
+  verbundenen Bezirk - Bau-/Produktionsmaterial wird nicht mehr quer über
+  die ganze Karte quer durch fremde Bezirke geholt.
+- Neues Gebäude **Bezirkstor** (`DISTRICT_GATE`, Epoche 2, 🚧, 30 Bretter +
+  25 Stein): verbindet, SOLANGE es mit einem Frettchen besetzt ist, alle
+  Bezirke in seiner Reichweite (5 Tiles) paarweise. Wird es leer oder
+  verkauft, fällt nur seine eigene Verbindung weg.
+- Neues Panel `ui/DistrictPanel.gd` (🏘️-Button im HUD): Übersicht aller
+  Bezirke mit Farbe, umbenennbarem Namen, Gebäudeanzahl und aktuellen
+  Bezirkstor-Verknüpfungen.
+- Gebäude-Info-Panel zeigt jetzt den zugehörigen Bezirk (farblich passend
+  zur Bezirksfarbe).
+- Speicherstand: Bezirke + aktive Verknüpfungen persistiert
+  (`serialize()/deserialize()`, inkl. Bugfix für JSON-Stringifizierung von
+  int-Keys).
+
+**Bonus (im selben Paket mitgeliefert, da eng verwandt): Lagerhaus-Filter**
+(`storage_filter` in `BuildingEntity.gd`, UI in `BuildingInfo.gd`) -
+Lagerhäuser können auf eine einzelne Ressource spezialisiert werden, damit
+z.B. ein Lager gezielt nur Nahrung sammelt statt "wild gemischt" zu werden.
+
+**Bugfix**: Bezirkstor-Verknüpfung blieb fälschlich aktiv, wenn der letzte
+Arbeiter das Tor aus anderen Gründen als Verkauf verließ (Umverteilung,
+Tod) - `BuildingEntity.remove_worker()` entfernt die Verknüpfung jetzt auch
+in diesem Fall.
+
+**Geänderte Dateien**: `systems/DistrictSystem.gd`, `systems/BuildingEntity.gd`,
+`systems/BuildingSystem.gd`, `systems/FerretEntity.gd`, `systems/BuildingData.gd`,
+`ui/BuildMenu.gd`, `ui/BuildingInfo.gd`, `systems/SaveSystem.gd`,
+`game/GameController.gd`, `scenes/Main.gd`, `ui/HUD.gd`, `project.godot`.
+**Neue Dateien**: `ui/DistrictPanel.gd`.
+
+**Nicht in-Engine getestet** (kein Godot-Editor verfügbar) - Logik wurde
+sorgfältig Zeile für Zeile durchgeprüft, aber ein echter Playtest steht aus.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_11.zip`
