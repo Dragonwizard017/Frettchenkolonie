@@ -1391,3 +1391,111 @@ altes Ideen-Dokument). Falls eine künftige Session hier weitermacht, sollte
 sie den Nutzer kurz fragen, welches der beiden verbleibenden Pakete (oder
 etwas ganz anderes) als Nächstes gewünscht ist, statt anzunehmen, dass die
 Reihenfolge aus der ursprünglichen 3er-Auswahl bindend war.
+
+
+## Skilltree Runde 2 + Bugfix Scroll-Zoom (v11.12)
+
+Bevor mit dem naechsten Timberborn-Paket (Schleusen/Staudamm oder
+Plattformen) weitergemacht wurde, kam Nutzer-Feedback zu drei Punkten:
+Scroll-Zoom-Bug, Skilltree zu statisch/soll wie das Referenzbild aussehen,
+und konzeptionelle Aenderungen am Skilltree-Layout selbst (ein grosser Baum,
+Epochen als Grenzen/Zonen statt Tabs, alle Kategorien in einem Baum der in
+verschiedene Richtungen abgeht).
+
+### Bugfix: Scrollen in Menüs zoomt die Karte
+
+Root Cause: die Iso-Kamera-Zoom-Logik sitzt in `GameController._unhandled_input()`
+und reagiert auf `MOUSE_BUTTON_WHEEL_UP/DOWN`. Godots `_unhandled_input()`
+wird fuer ein Event aufgerufen, wenn keine GUI-Control es als behandelt
+markiert hat - das passiert bei Mausrad-Events nicht automatisch fuer JEDES
+Control (z.B. Container mit `MOUSE_FILTER_IGNORE`, oder Bereiche ohne
+eigene Scroll-Logik), auch wenn man optisch "in einem Panel" ist. Statt jede
+einzelne Panel-Hierarchie nach problematischen `MOUSE_FILTER_IGNORE`-Stellen
+zu durchsuchen, wurde eine generische, zentrale Sperre direkt an der
+Zoom-Stelle eingebaut: `get_viewport().gui_get_hovered_control() != null`
+prüft, ob die Maus GERADE über irgendeinem GUI-Control steht (das trackt die
+Engine selbst fortlaufend, unabhaengig von Input-Consumption-Details) - wenn
+ja, wird das Mausrad-Event fuers Kamera-Zoom ignoriert. Das ist robuster als
+Container-fuer-Container zu reparieren und deckt auch zukuenftig neu
+hinzugefuegte Panels automatisch mit ab.
+
+### Tech-Tree-Redesign Runde 2
+
+Kernentscheidung: RADIALES Layout statt horizontaler Zeilen (v11.10). Die 6
+Themenbereiche (`TechTreeSys.SECTION_ORDER`) werden wie Speichen eines Rads
+um einen gemeinsamen Mittelpunkt verteilt (Winkel = `-90° + index * 60°`,
+Start oben, im Uhrzeigersinn) - das ist die woertliche Umsetzung von "alle
+Kategorien in einem Tree, aber in verschiedene Richtungen abgehen". Jede
+Speiche traegt die (bis zu) 10 Tiers dieses Bereichs vom Zentrum nach aussen.
+
+**Epochen-Ring-Normierung**: Die 6 Bereiche haben nicht exakt dieselbe
+Tier-zu-Epoche-Aufteilung (z.B. FORESTRY/MINING/WATER haben Epochenwechsel
+bei Tier 3/6/8, BREEDING/FARMING/LOGISTICS bei Tier 2/4/7 - vor der
+Implementierung per Skript nachgezaehlt, um das sauber zu behandeln). Damit
+trotzdem über ALLE Speichen hinweg sauber gemeinsame Epochen-Ring-Grenzen
+entstehen (Nutzerwunsch: "Epochen als Grenzen"), wird die radiale Position
+eines Knotens NICHT direkt aus dem rohen Tier-Index berechnet, sondern
+normiert: `radius_units = (epoche - 1) + (rang_innerhalb_der_epoche + 0.5) /
+anzahl_in_epoche`. Das garantiert, dass JEDE Epoche exakt eine Radius-Einheit
+breit ist (0..1 fuer Epoche 1, 1..2 fuer Epoche 2, usw.), unabhaengig davon,
+wie viele Knoten eine Sektion tatsaechlich in dieser Epoche hat - die
+Ring-Grenzen bei radius_units=1,2,3 sind dadurch fuer alle 6 Speichen
+identisch und ergeben sauber konzentrische Zonen statt einem Zickzack.
+
+**Epochen als Zonen**: `ui/TechTreeCanvas.gd` (neu, `extends Control,
+class_name TechTreeCanvas`) zeichnet 4 gefuellte Kreise per `draw_circle()`
+in `_draw()` - WICHTIG: absteigend nach Radius (groesster/Epoche-4-Kreis
+zuerst), damit kleinere, spaeter gezeichnete Kreise (Epoche 3, 2, 1) die
+groesseren korrekt ueberdecken und so sichtbare "Donut"-Zonen entstehen,
+statt dass nur der letzte (kleinste) Kreis sichtbar waere. Zusaetzlich
+duenne Kreis-UMRISSE (`draw_arc()`) an denselben Radien fuer eine klar
+erkennbare Grenzlinie zwischen den Zonen.
+
+**Knoten-Positionierung**: `TechTreeCanvas` ist ein einfaches `Control`
+(kein Container), daher werden Knoten-Buttons und das Sektions-Label als
+Kind-Nodes mit direkt gesetzter `.position` (absolute Pixel-Koordinaten
+relativ zum Canvas) hinzugefuegt - Container wie `HBoxContainer` wuerden
+eigene Positionen erzwingen und das radiale Layout zerstoeren. Ein kleiner
+alternierender senkrechter "Jitter" (±14px, wechselnd je nach
+Rang-innerhalb-Epoche) sorgt dafuer, dass die Knoten nicht in einer
+perfekt toten Geraden liegen, sondern leicht "wandern" - naeher am
+organischen Look des Referenzbilds als eine stocksteife Linie.
+
+**Panel-Groesse**: 640×520 → 960×760 (Nutzerwunsch "grosser Skilltree"),
+der eigentliche Baum liegt in einem 2000×2000px-Bereich innerhalb eines
+`ScrollContainer` (scrollbar/verschiebbar, kein Zoom/Scale eingebaut - waere
+ein sinnvoller naechster Schritt, falls der Baum sich trotz Scrollen zu
+unhandlich anfuehlt).
+
+**Verbindungslinien**: `draw_line()` zwischen den `Vector2`-Positionen
+aufeinanderfolgender Knoten derselben Sektion (Farbe: Gold wenn der
+vorherige Knoten freigeschaltet ist, sonst gedecktes Grau) - ersetzt den
+alten ColorRect-Balken-Ansatz aus v11.10, der nur fuer rein horizontale
+Ketten funktioniert haette.
+
+**Epochen-Tabs entfernt, ersetzt durch kompakte Fortschrittszeile**: zeigt
+je Epoche Icon (✅/🔒) + Name + Fortschritt (x/y Knoten), plus einen
+Freischalt-Button fuer die naechste Epoche, wenn die Voraussetzung erfuellt
+ist - functional identisch zu den alten Tab-Buttons, aber ohne eine ganze
+Ansicht auszublenden (passend zu "alle Epochen sichtbar, als Zonen im
+Baum").
+
+### Nicht verifizierte Annahmen (fuer naechste Session)
+
+- Lesbarkeit der Knoten-Icons/Zahlen auf den halbtransparenten
+  Zonenfarben wurde nicht visuell geprueft.
+- Ob 2000×2000px im Scrollbereich eine gute Groesse ist (zu gross/zu klein)
+  haengt vom tatsaechlichen Viewport des Spielers ab - noch nicht getestet.
+- Die "Jitter"-Idee (±14px alternierend) ist rein optisch motiviert und
+  nicht mit dem Referenzbild direkt abgeglichen (dort gibt es echte
+  rechtwinklige Verzweigungen, keinen Sinus-Jitter) - falls der Look nach
+  einem Playtest nicht ueberzeugt, waere eine naechste Iteration, echte
+  Abzweigungen (z.B. ein Bereich verzweigt sich bei einem bestimmten Tier in
+  zwei Unter-Aeste) nachzubilden, was aber eine Erweiterung der
+  TechTree-NODES-Datenstruktur um ein "branch"-Feld braeuchte.
+
+### Ausblick
+
+Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
+mehrstoeckiges Bauen) steht weiterhin aus - wurde in dieser Session durch
+das dringendere Nutzer-Feedback (Bugfix + Skilltree-Iteration) verschoben.
