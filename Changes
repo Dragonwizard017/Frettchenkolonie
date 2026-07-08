@@ -1416,3 +1416,49 @@ in diesem Fall.
 sorgfältig Zeile für Zeile durchgeprüft, aber ein echter Playtest steht aus.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_11.zip`
+
+---
+
+## v11.12 – Skilltree Runde 2 (radialer Großbaum, Epochen als Zonen) + Bugfix Scroll-Zoom
+
+**Bugfix: Scrollen in Menüs zoomte zusätzlich die Karte** (`game/GameController.gd`):
+- Mausrad-Events erreichten `_unhandled_input()` auch dann, wenn die Maus
+  gerade über einem UI-Panel stand (z.B. beim Scrollen im Tech Tree).
+- Fix: generische Sperre - wenn `get_viewport().gui_get_hovered_control()`
+  beim Mausrad-Event nicht `null` ist (Maus steht über irgendeinem
+  UI-Control), wird das Kamera-Zoom für dieses Event übersprungen.
+
+**Tech-Tree-Redesign Runde 2** (`ui/TechTreePanel.gd` erneut komplett neu
+geschrieben, neue Datei `ui/TechTreeCanvas.gd`): Nutzer-Feedback zur ersten
+Runde (v11.10) war, das Ergebnis wirke zu statisch und solle wieder näher
+am Referenzbild sein, EIN großer Baum statt kleiner Epochen-Unterseiten,
+Epochen als räumliche Grenzen statt Tabs, alle 6 Themenbereiche in einem
+gemeinsamen Baum, der in verschiedene Richtungen abgeht.
+
+- **Radiales Layout**: alle 6 Themenbereiche strahlen wie Speichen von einem
+  gemeinsamen Mittelpunkt aus (60° Versatz zwischen den Bereichen), Tier 1
+  nah am Zentrum, Tier 10 außen - "in verschiedene Richtungen abgehen"
+  wörtlich umgesetzt.
+- **Epochen als Ring-Zonen statt Tabs**: 4 konzentrische, unterschiedlich
+  eingefärbte Kreisflächen (Epoche 1 = innerster Ring/Steinzeit-Braun bis
+  Epoche 4 = äußerster Ring/Modernes Violett), gezeichnet über eine neue
+  `TechTreeCanvas.gd`-Zeichenfläche. Alle Epochen/Knoten gleichzeitig
+  sichtbar - kein Tab-Wechsel mehr nötig.
+- Panel deutlich vergrößert (640×520 → 960×760), der Baum selbst liegt in
+  einem 2000×2000px scrollbaren Bereich (Nutzerwunsch: "großer Skilltree").
+- Kompakte Epochen-Fortschrittszeile ersetzt die alten Tabs (zeigt
+  Fortschritt je Epoche + Freischalt-Button für die nächste Epoche).
+- Verbindungslinien zwischen Knoten (gold wenn Vorgänger freigeschaltet,
+  grau sonst) werden jetzt per `_draw()`/`draw_line()` gezeichnet statt über
+  ColorRect-Balken - funktioniert unabhängig von der Layout-Richtung.
+
+**Geänderte Dateien**: `game/GameController.gd`, `scenes/Main.gd` (Panel-Größe),
+`ui/TechTreePanel.gd` (neu geschrieben).
+**Neue Dateien**: `ui/TechTreeCanvas.gd`.
+
+**Nicht in-Engine getestet** (kein Godot-Editor verfügbar) - besonders die
+genaue Optik (Ring-Zonen-Transparenz, Knoten-Lesbarkeit auf den Zonenfarben,
+ob 2000×2000px sich gut scrollen lässt) sollte beim nächsten Playtest
+gegengecheckt werden.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_12.zip`
