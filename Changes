@@ -1462,3 +1462,29 @@ ob 2000×2000px sich gut scrollen lässt) sollte beim nächsten Playtest
 gegengecheckt werden.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_12.zip`
+
+---
+
+## v11.13 – Skilltree: draggable + zoombar, dichteres Layout
+
+Direktes Nutzer-Feedback zu v11.12 umgesetzt:
+
+- **Draggable**: Links-Klick + Ziehen im Baum verschiebt die Ansicht (ersetzt
+  den vorherigen ScrollContainer mit Scrollbalken durch ein Control mit
+  `clip_contents` + manuellem Pan über `_gui_input()`).
+- **Zoombar**: Mausrad über dem Baum zoomt rein/raus (skaliert die
+  `TechTreeCanvas` zwischen 0.4× und 1.8×). Funktioniert unabhängig vom
+  Scroll-Zoom-Bugfix aus v11.12 (der verhindert nur, dass die Mausrad-
+  Bewegung ZUSÄTZLICH die 3D-Kamera zoomt).
+- **Dichteres Layout**: Radien deutlich verkleinert (`RADIUS_ORIGIN` 90→55,
+  `RADIUS_PER_EPOCH` 210→120, `CELL_SIZE` 46→40), Canvas entsprechend von
+  2000×2000 auf 1400×1400 verkleinert.
+- Neuer 🎯-Button setzt Zoom/Position zurück, falls man sich "verirrt".
+- Zoom-/Pan-Zustand bleibt über Knoten-Freischaltungen hinweg erhalten
+  (Member-Variablen statt Neuaufbau bei jedem `_refresh()`).
+
+**Geänderte Dateien**: `ui/TechTreePanel.gd`.
+
+**Nicht in-Engine getestet.**
+
+**Datei**: `FrettchenKolonie_Godot4_v11_13.zip`
