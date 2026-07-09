@@ -1499,3 +1499,67 @@ Baum").
 Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
 mehrstoeckiges Bauen) steht weiterhin aus - wurde in dieser Session durch
 das dringendere Nutzer-Feedback (Bugfix + Skilltree-Iteration) verschoben.
+
+
+## Skilltree: draggable + zoombar, dichteres Layout (v11.13)
+
+### WICHTIGE SESSION-LEKTION: Container-Zustand nicht ueber Turns hinweg annehmen
+
+Zu Beginn dieser Session wurde festgestellt, dass das lokale Arbeitsverzeichnis
+(`/home/claude/work/extracted`) NICHT mehr den zuletzt gepushten Stand
+(v11.12, radialer Baum) enthielt, sondern einen veralteten Zwischenstand
+(v11.10, Zeilen-Layout mit Tabs) - vermutlich ein Container-Reset zwischen
+Turns. Das haette fast dazu gefuehrt, die v11.13-Aenderungen auf der FALSCHEN
+(alten) Version von `TechTreePanel.gd` vorzunehmen. Erkannt durch einen
+kurzen Sanity-Check (Datei-Zeitstempel + `grep -c "RADIUS_ORIGIN"` vor dem
+eigentlichen Edit) BEVOR Aenderungen vorgenommen wurden - das aktuelle
+`FrettchenKolonie_Godot4_v11_12.zip` wurde daraufhin explizit frisch per
+Git-Blob-API neu heruntergeladen und entpackt, statt dem lokalen Zustand zu
+vertrauen.
+
+**Konsequenz fuer kuenftige Sessions**: auch INNERHALB einer laufenden
+Session (nicht nur beim allerersten Pull) lohnt sich vor einem Edit an einer
+kuerzlich veraenderten Datei ein kurzer Gegencheck (z.B. ob eine erwartete,
+kuerzlich hinzugefuegte Konstante/Funktion tatsaechlich vorhanden ist),
+FALLS der Verdacht besteht, dass zwischen zwei Nutzer-Nachrichten viel Zeit
+vergangen sein koennte oder der Container neu gestartet wurde. Im Zweifel
+ist ein erneuter Blob-Download (ein paar Sekunden) deutlich billiger als ein
+Edit, das auf der falschen Dateiversion aufsetzt und den zuletzt gepushten
+Fortschritt stillschweigend wieder rueckgaengig macht.
+
+### Umsetzung Drag/Zoom
+
+`ScrollContainer` (v11.12) ersetzt durch ein einfaches `Control` mit
+`clip_contents = true` ("TreeViewport"), das per `gui_input`-Signal Mausrad-
+und Links-Klick-Drag-Events selbst auswertet (`_on_tree_viewport_input()`):
+
+- Mausrad: `_tree_zoom` (0.4–1.8, Schritt 0.12) wird angepasst und direkt als
+  `canvas.scale` gesetzt - Godots Control-Transform-System skaliert dabei
+  automatisch auch die Kind-Nodes (Knoten-Buttons) mit UND transformiert
+  Maus-Koordinaten fuer Klick-Erkennung korrekt mit, ohne dass die
+  Klick-Logik der Buttons selbst angepasst werden musste.
+- Links-Klick-Drag: `_tree_pan_offset += relative` wird als `canvas.position`
+  gesetzt.
+- Kollisionsfreiheit mit Knoten-Klicks: Godots GUI-Input-Bubbling sorgt
+  automatisch dafuer, dass ein Klick DIREKT auf einen Knoten-Button vom
+  Button selbst konsumiert wird (Button reagiert auf Press+Release) und NIE
+  bis zum Viewport-`_gui_input()` durchbubbelt - Drag-Pan wird nur bei
+  Klicks auf leeren Canvas-Bereich ausgeloest. Kein zusaetzlicher Guard
+  noetig.
+- Zoom-/Pan-Zustand als Member-Variablen (`_tree_zoom`, `_tree_pan_offset`)
+  statt lokaler Variablen in `_refresh()`, damit ein Knoten-Klick (der
+  `_refresh()` erneut aufruft) die Ansicht nicht zuruecksetzt. Ein 🎯-Button
+  im Header setzt beides bei Bedarf explizit zurueck.
+
+### Dichteres Layout
+
+`RADIUS_ORIGIN` 90→55, `RADIUS_PER_EPOCH` 210→120, `CELL_SIZE` 46→40,
+Canvas 2000×2000→1400×1400, `RING_CENTER` entsprechend (700,700). Die
+Radius-Normierungs-Logik aus v11.12 (siehe dortiger General-Eintrag - pro
+Epoche exakt 1 Radius-Einheit breit, unabhaengig von Knotenzahl je Sektion)
+blieb unveraendert, nur die Skalierungsfaktoren wurden verkleinert.
+
+### Ausblick
+
+Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
+mehrstoeckiges Bauen) steht weiterhin aus.
