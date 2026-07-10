@@ -1488,3 +1488,54 @@ Direktes Nutzer-Feedback zu v11.12 umgesetzt:
 **Nicht in-Engine getestet.**
 
 **Datei**: `FrettchenKolonie_Godot4_v11_13.zip`
+
+---
+
+## v11.14 – Testwelt-Generator, Skilltree-Drag-Bugfix, 60 individuelle Tech-Icons
+
+**Bugfix: Skilltree-Dragging funktionierte nicht** (`ui/TechTreePanel.gd`):
+- Ursache: `TechTreeCanvas` (Control, Standard-`mouse_filter=STOP`) deckt
+  praktisch den kompletten sichtbaren Viewport-Bereich ab und hat dadurch
+  JEDEN Maus-Klick/Drag komplett verschluckt, bevor er den Viewport-Container
+  (an dem der Drag-Handler haengt) erreichen konnte.
+- Fix: `canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE` macht den Canvas
+  fuer Maus-Events durchlaessig - Knoten-Buttons (Kind-Nodes) bleiben davon
+  unberuehrt und weiterhin normal klickbar.
+- Zusaetzlich robuster gemacht: Drag-Bewegung/-Ende laeuft jetzt über
+  `_input()` auf Panel-Ebene statt nur über `viewport.gui_input()`, damit ein
+  schnelles Ziehen über den Viewport-Rand hinaus nicht "hängen bleibt".
+
+**60 individuelle Tech-Tree-Icons** (`systems/TechTree.gd`): jeder der 60
+Knoten hat jetzt ein eigenes, thematisch passendes Emoji-Icon (z.B. 🪓 für
+"Geschärfte Äxte", ⛏️ für "Gehärtete Meißel", 🍼 für "Ammenpflege", ...)
+statt eines generischen Tier-Zahlen-Labels. Das Icon wird jetzt IMMER
+gezeigt (auch bei gesperrten/freigeschalteten Knoten - vorher wurde es durch
+✅/🔒 ersetzt); Status wird stattdessen durch Abdunkeln (gesperrt) +
+Rahmenfarbe + ein kleines ✅/🔒-Badge in der Ecke dargestellt.
+
+**Testwelt-Generator** (neuer Button "🛠️ Testwelt erstellen" im Hauptmenü):
+- Erzeugt automatisch eine neue Welt und baut per
+  `GameController.bootstrap_test_colony()` eine weit entwickelte Kolonie
+  auf: ~27 Gebäude über alle 4 Epochen verteilt (inkl. Bezirkstor, Brunnen
+  in Wassernähe), 15 Frettchen (einige davon Gebäuden zugewiesen, eines
+  direkt als legendär markiert samt Accessoire-Set), Tech Tree bis Epoche 3
+  mit den ersten 7 Stufen jedes Themenbereichs erforscht, großzügige
+  Ressourcen, Kolonie-Alter Tag 65.
+- Nutzt ausschließlich echte Spiel-APIs (`BuildingSys.build_free()`,
+  `TechTreeSys`, `PopMgr`, `ResourceSys.force_add()`) statt eine
+  Save-Datei von Hand zusammenzubauen - garantiert einen konsistenten,
+  ladbaren Zustand über dieselben Codepfade wie normales Spielen.
+- Wird danach ganz normal unter "Welt laden" gespeichert und ist von dort
+  jederzeit ladbar. Erneutes Klicken erzeugt eine weitere, separate
+  Testwelt (kein Überschreiben, gleiches Verhalten wie bei zwei Welten mit
+  demselben eingegebenen Namen).
+
+**Geänderte Dateien**: `ui/TechTreePanel.gd`, `systems/TechTree.gd`,
+`game/GameController.gd`, `scenes/Main.gd`.
+
+**Nicht in-Engine getestet** (kein Godot-Editor verfügbar) - insbesondere
+die Testwelt-Platzierungslogik (Spiralsuche nach freien Tiles) beruht auf
+sorgfältiger Code-Analyse der bestehenden `_find_free_tile_near()`-Vorlage,
+nicht auf einem beobachteten Playtest.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_14.zip`
