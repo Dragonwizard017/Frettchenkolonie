@@ -1563,3 +1563,107 @@ blieb unveraendert, nur die Skalierungsfaktoren wurden verkleinert.
 
 Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
 mehrstoeckiges Bauen) steht weiterhin aus.
+
+
+## Testwelt-Generator, Skilltree-Drag-Bugfix, 60 Tech-Icons (v11.14)
+
+### Bugfix: Skilltree-Dragging
+
+Root Cause: `TechTreeCanvas` ist ein `Control` mit dem Godot-Standardwert
+`mouse_filter = MOUSE_FILTER_STOP`. Da der Canvas (1400×1400px) den
+gesamten sichtbaren Viewport-Bereich (~900×420px) ueberdeckt, war praktisch
+JEDER Klick innerhalb des Viewports GEOMETRISCH ein Klick auf den Canvas
+selbst - und STOP bedeutet, dass ein Control das Event vollstaendig
+"schluckt" (siehe Godot-Doku: "will eat the input event... it will not
+reach any other node"). Der in v11.13 an `viewport.gui_input` angehaengte
+Drag-Handler bekam die Events dadurch NIE, ausser an den paar Rand-Pixeln,
+die zufaellig nicht vom Canvas ueberdeckt waren. Node-Buttons (Kinder des
+Canvas) funktionierten trotzdem weiter normal, weil jedes Kind-Control
+unabhaengig von seinem Eltern-Filter an der EIGENEN Position hit-getestet
+wird.
+
+Fix: `canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE` macht den Canvas
+selbst "unsichtbar" fuers Maus-Hit-Testing - Events fallen dadurch zum
+Elternteil (dem Viewport) durch, OHNE die Buttons zu beeintraechtigen.
+**Lektion fuer kuenftige Custom-Draw-Controls mit Kind-Buttons**: ein
+grossflaechiger Zeichenhintergrund-Control (wie hier fuer die Verbindungs-
+linien/Epochen-Ringe) sollte i.d.R. `mouse_filter = IGNORE` bekommen, wenn
+er selbst keine eigene Klick-Logik braucht, sonst blockiert er unsichtbar
+alles dahinter/darueber Liegende.
+
+Zusaetzliche Robustheits-Verbesserung: `_input()` auf Panel-Ebene uebernimmt
+jetzt Drag-Bewegung und -Ende, nicht mehr nur `viewport.gui_input()` -
+letzteres liefert Events nur, solange der Cursor GEOMETRISCH über dem
+Viewport-Rechteck bleibt; bei einer schnellen Ziehbewegung ueber den Rand
+hinaus (z.B. Richtung Kopfzeile) waere das Dragging sonst "haengen
+geblieben" (kein Loslassen registriert, `_dragging` faelschlich weiter
+`true`).
+
+### 60 individuelle Tech-Icons
+
+Icons wurden per einmaligem Python-Skript (nicht im Repo, nur das Ergebnis)
+in `systems/TechTree.gd` eingefuegt - fuer jeden der 60 Knoten ein
+thematisch zum Namen passendes Emoji (z.B. Forstwirtschaft: 🪓🪵🌱🌿🌲📦
+⚙️📋🏭🌳, Bergbau: ⛏️🪨🧱💥🏅👷🕳️⚫🔥💎, usw. - vollstaendige Liste im
+Skript-Kommentar bzw. direkt in `TechTree.gd` nachvollziehbar). Anzeige-
+Logik in `TechTreePanel._build_node_cell()` geaendert: das Icon ist jetzt
+IMMER sichtbar (vorher wurde es bei freigeschalteten Knoten durch ✅ und bei
+gesperrten durch 🔒 komplett ERSETZT) - Status wird stattdessen durch
+Abdunkeln (`modulate` mit reduzierter Alpha bei gesperrten Knoten) UND ein
+kleines Status-Badge (✅/🔒) oben rechts in der Zelle dargestellt, zusaetzlich
+zur ohnehin vorhandenen Rahmenfarbe (gruen/gold/grau).
+
+### Testwelt-Generator
+
+**Kernentscheidung**: KEINE von Hand geschriebene Save-JSON-Datei, sondern
+ein Bootstrap, der ausschliesslich echte, bereits existierende Spiel-APIs
+aufruft (`BuildingSys.build_free()`, `TechTreeSys.unlocked`/`unlocked_epochs`
+direkt befuellt, `PopMgr.ferrets.append()`, `ResourceSys.force_add()`) -
+das garantiert einen strukturell konsistenten Zustand (dieselben Codepfade
+wie ein echter Spielstand), ohne dass ich das Ergebnis in einer echten
+Godot-Instanz visuell gegenpruefen koennte. Eine von Hand gebastelte
+Save-Datei haette dagegen leicht z.B. Gebaeude auf ungueltigem Terrain oder
+inkonsistente Referenzen enthalten koennen, ohne dass ich das haette
+erkennen koennen.
+
+**Platzierung ohne Terrain-Vorwissen**: `BuildingSystem.build()`/
+`build_free()` selbst pruefen KEINERLEI Terrain-Gueltigkeit (das passiert
+normalerweise vorher in `GameController._place_building()`, dem UI-Klick-
+Pfad) - direkte Aufrufe haetten also theoretisch Gebaeude auf Wasser oder
+uebereinander platzieren koennen. Deshalb repliziert
+`_bootstrap_find_free_tiles()` dieselbe Grundvalidierung
+(`tile.building == null`, `biome != "WATER"`) spiralfoermig um den
+Kolonie-Mittelpunkt, exakt nach demselben Muster wie die bereits
+existierende `_find_free_tile_near()` (die schon fuer das Start-Lagerhaus
+beim normalen Koloniestart verwendet wird) - nur mit variablem Radius statt
+einer festen kleinen Offset-Liste, da hier deutlich mehr Gebaeude Platz
+brauchen. Ein `near_water`-Modus (Suche nach einem Tile mit einem
+Wasser-Tile in max. 4 Kacheln Entfernung) platziert gezielt einen Brunnen
+(WELL) sinnvoll fuer Wassersystem-Tests.
+
+**Bewusst NICHT platziert**: Gebaeude mit unklaren/spezielleren
+Adjazenz-Anforderungen (DAM, WATERWHEEL, AQUEDUCT, IRRIGATION, GARDEN) -
+ohne Godot-Editor zum Nachschlagen der exakten Platzierungsregeln fuer
+diese Spezialfaelle war das Risiko einer stillen Fehlplatzierung (z.B. ein
+Damm, der nicht wirklich auf einem Fluss steht) hoeher als der Nutzen fuer
+eine Test-Kolonie. Falls diese Gebaeudetypen ebenfalls in einer Testwelt
+gewuenscht sind, waere das ein guter Nachschlag fuer eine kuenftige Session
+MIT Moeglichkeit zum visuellen Gegenchecken.
+
+**Tech-Tree-Konsistenz**: da jede Sektion eine streng lineare
+Voraussetzungskette hat (Tier N braucht Tier N-1, siehe `requires_node`),
+reicht ein einfacher `range(1,8)`-Loop je Sektion fuer einen
+widerspruchsfreien "Tier 1-7 erforscht"-Zustand, ohne die Kettenlogik selbst
+nachbilden zu muessen.
+
+**Bekannte Einschraenkung**: `TechTreeSys.total_spent` bleibt bei diesem
+Bootstrap auf 0 (die Knoten werden direkt in `unlocked` eingetragen, nicht
+ueber `unlock_node()` mit echtem Wissenspunkte-Abzug erkauft) - rein
+kosmetisch, betrifft nur eine informative Fortschrittsanzeige, keine
+Spiellogik.
+
+### Ausblick
+
+Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
+mehrstoeckiges Bauen) steht weiterhin aus - wurde erneut durch dringenderes
+Nutzer-Feedback verschoben.
