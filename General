@@ -1667,3 +1667,111 @@ Spiellogik.
 Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
 mehrstoeckiges Bauen) steht weiterhin aus - wurde erneut durch dringenderes
 Nutzer-Feedback verschoben.
+
+
+## Bugfix Speicherstand-Absturz + Testwelt-Erstellung entzerrt (v11.15)
+
+### KRITISCHER Bugfix: TechTree Array/Dictionary-Cast
+
+Der Nutzer meldete zwei Fehler beim Testen der Testwelt (v11.14). Der
+zweite, mit konkretem Stacktrace versehene Fehler war eindeutig zu
+diagnostizieren:
+
+```
+E load_game: Invalid cast: could not convert value to 'Array'.
+  SaveSystem.gd:85 @ load_game()
+```
+
+`TechTreeSys.serialize()` (siehe `TechTree.gd`) gibt seit der Einfuehrung
+von `unlocked_epochs`/`total_spent` (vermutlich schon seit v11.x, deutlich
+vor dieser Session) ein **Dictionary** zurueck:
+```gdscript
+func serialize() -> Dictionary:
+    return {"unlocked": ..., "unlocked_epochs": ..., "total_spent": ...}
+```
+`SaveSystem.load_game()` hatte aber weiterhin den ALTEN, vermutlich nie
+aktualisierten Aufruf:
+```gdscript
+TechTreeSys.deserialize(data.get("tech", []) as Array)
+```
+Der erzwungene `as Array`-Cast auf ein tatsaechlich geladenes Dictionary
+schlaegt in GDScript mit einem harten Typfehler fehl - noch BEVOR
+`deserialize()` ueberhaupt aufgerufen wird. Das ist besonders tueckisch,
+weil `TechTreeSys.deserialize()` SELBST bereits vorausschauend beide
+Formate unterstuetzt (`if data is Array: ... else: var d: Dictionary = data
+as Dictionary`) - diese Abwaertskompatibilitaets-Logik wurde aber nie
+erreicht, weil der Fehler schon eine Zeile vorher beim Aufruf-Argument
+auftrat.
+
+**Tragweite**: dieser Bug betraf NICHT nur die Testwelt, sondern JEDEN
+Spielstand, der jemals Tech-Tree-Fortschritt gespeichert hatte (also
+praktisch jeden Spielstand ab einigen Spieltagen) - das Laden waere
+IMMER gecrasht. Es ist unklar, seit wann dieser Bug im Code steckt bzw. ob
+er schon vor dieser Session bestand oder durch eine der Zwischen-Sessions
+(z.B. die interrupted District-System-Session) eingeschleppt wurde - ohne
+Git-Blame-Analyse (nicht durchgefuehrt) laesst sich das nicht sicher
+sagen. **Lektion**: bei JEDER Aenderung an einer `serialize()`-Rueckgabe-
+Struktur unbedingt AUCH `SaveSystem.gd`s Aufruf-Stelle auf erzwungene
+Typ-Casts pruefen, nicht nur die betroffene `deserialize()`-Funktion selbst
+(die kann noch so robust sein, wenn der Aufrufer vorher schon crasht).
+Als Praeventivmassnahme fuer die Zukunft: erzwungene `as Array`/`as
+Dictionary`-Casts auf das Ergebnis von `data.get(key, default)` sollten
+grundsaetzlich vermieden werden, wenn die jeweilige `deserialize()`-Funktion
+ohnehin flexibel genug ist, den rohen Wert selbst zu pruefen (siehe
+`AchievementSys.deserialize(data.get("achievements", {}))` und
+`DistrictSys.deserialize(data.get("districts", {}))` als bereits richtig
+gemachte Beispiele OHNE erzwungenen Cast, beide aus dieser Session).
+
+### Testwelt-Erstellung entzerrt (Lambda-Crash-Mitigation)
+
+Der ERSTE gemeldete Fehler ("Lambda capture at index 0 was freed. Passed
+null instead.") liess sich mangels Godot-Editor NICHT mit derselben
+Sicherheit auf eine einzelne Zeile zurueckfuehren wie der Array-Cast-Bug.
+Ausgiebige Code-Analyse (`.bind()`-Aufrufe durchsucht, State-Change-
+Handler, Tween-/await-Stellen in Toast-Panels, Renderer-Aufbau) konnte
+keinen einzelnen eindeutigen Uebeltaeter isolieren. Die wahrscheinlichste
+Erklaerung: `_on_create_test_world()` fuehrte `start_new_game()` →
+`bootstrap_test_colony()` (inkl. eines ZWEITEN `_setup_renderer()`-Aufrufs,
+noetig um die neu hinzugefuegten Gebaeude/Frettchen sichtbar zu machen) →
+`save_now()` → `_show_main_menu()` komplett SYNCHRON in einem einzigen
+Frame aus - der Spielzustand wechselte von MAIN_MENU zu PLAYING und
+sofort wieder zurueck zu MAIN_MENU, ohne dass die Engine auch nur einen
+einzigen Frame Zeit hatte, irgendeinen der Aufbauschritte (Renderer-Mesh-
+Aufbau, HUD-Update, etc.) tatsaechlich fertig zu verarbeiten. Das ist ein
+bekanntes Godot-Fehlermuster: verzoegerte/asynchrone interne Callables
+(Tweens, `await`-Fortsetzungen) koennen durch einen sofortigen weiteren
+Zustandswechsel unterbrochen werden, bevor sie abgeschlossen sind.
+
+**Fix (Mitigation, nicht 100% verifizierte Ursachen-Behebung)**:
+`_on_create_test_world()` ist jetzt eine `await`-Funktion, die zwischen
+den Hauptphasen jeweils 1-2 `await get_tree().process_frame` einlegt:
+```gdscript
+_game_ctrl.call("start_new_game", ...)
+await get_tree().process_frame
+await get_tree().process_frame
+_game_ctrl.call("bootstrap_test_colony")
+await get_tree().process_frame
+await get_tree().process_frame
+_game_ctrl.call("save_now")
+await get_tree().process_frame
+GameState.notify(...)
+_show_main_menu()
+```
+Das gibt jeder Phase Zeit, sich vollstaendig abzuschliessen (inkl.
+eventueller interner Tweens/Callables), bevor die naechste beginnt bzw.
+der Zustand zurueckgesetzt wird.
+
+**Falls der Fehler nach diesem Fix weiterhin auftritt**: das waere ein
+starkes Signal, dass die Ursache NICHT (nur) am Synchronitaets-Timing lag,
+sondern an einer konkreten Stelle im Renderer-Aufbau oder einer der Toast-
+/Panel-Komponenten liegt - naechster Diagnose-Schritt waere dann, den
+zweiten `_setup_renderer()`-Aufruf in `bootstrap_test_colony()` versuchsweise
+zu entfernen (auf Kosten dessen, dass neue Gebaeude/Frettchen dann evtl.
+nicht sofort sichtbar sind, bis der Spieler die Welt einmal neu laedt) und
+zu pruefen, ob der Fehler dann verschwindet - das wuerde den Renderer-
+Neuaufbau als Ursache bestaetigen oder ausschliessen.
+
+### Ausblick
+
+Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
+mehrstoeckiges Bauen) steht weiterhin aus.
