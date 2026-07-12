@@ -1539,3 +1539,41 @@ sorgfältiger Code-Analyse der bestehenden `_find_free_tile_near()`-Vorlage,
 nicht auf einem beobachteten Playtest.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_14.zip`
+
+---
+
+## v11.15 – Bugfix: Speicherstand-Absturz beim Laden (TechTree-Cast) + Testwelt-Erstellung entzerrt
+
+**Kritischer Bugfix: JEDER Spielstand mit Tech-Fortschritt crashte beim
+Laden** (`systems/SaveSystem.gd`):
+- Fehler beim Testen der Testwelt entdeckt: `Invalid cast: could not
+  convert value to 'Array'` in `SaveSystem.gd:85`.
+- Root Cause: `TechTreeSys.serialize()` gibt seit der Einführung von
+  `unlocked_epochs`/`total_spent` ein **Dictionary** zurück (nicht mehr das
+  ursprüngliche einfache Array), aber `load_game()` erzwang weiterhin einen
+  `as Array`-Cast auf den geladenen Wert, BEVOR er an `deserialize()`
+  übergeben wurde - `deserialize()` selbst unterstützt zwar beide Formate
+  (Array für alte Saves, Dictionary für aktuelle), kam aber nie dazu, weil
+  der Cast schon vorher fehlschlug. Betraf nicht nur die Testwelt, sondern
+  **jeden** Spielstand mit gespeichertem Tech-Tree-Fortschritt.
+- Fix: `TechTreeSys.deserialize(data.get("tech", {}))` ohne erzwungenen Cast.
+
+**Testwelt-Erstellung entzerrt** (`scenes/Main.gd`): der zweite gemeldete
+Fehler ("Lambda capture at index 0 was freed") trat auf, weil
+Welterstellung → Kolonie-Aufbau → Speichern → Rücksprung ins Hauptmenü
+bisher komplett SYNCHRON in einem einzigen Frame abliefen (PLAYING- und
+MAIN_MENU-Zustand wechselten sich ab, bevor die Engine auch nur einen
+Frame Zeit hatte, Renderer-/UI-Aufbauschritte fertig zu verarbeiten). Fix:
+`_on_create_test_world()` wartet jetzt zwischen den Phasen jeweils 1-2
+Frames (`await get_tree().process_frame`), damit jeder Schritt sauber
+abgeschlossen wird, bevor der nächste beginnt.
+
+**Geänderte Dateien**: `systems/SaveSystem.gd`, `scenes/Main.gd`.
+
+**Nicht in-Engine getestet** (kein Godot-Editor verfügbar) - der
+Array/Dictionary-Cast-Bug war anhand der Fehlermeldung eindeutig
+identifizierbar, der Lambda-Fix ist eine gut begründete, aber nicht
+hundertprozentig verifizierte Mitigation. Bitte erneut testen und bei
+Bedarf zurückmelden, ob der zweite Fehler wirklich verschwunden ist.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_15.zip`
