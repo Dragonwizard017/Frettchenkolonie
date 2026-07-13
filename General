@@ -1865,3 +1865,101 @@ Accessoires befinden.
 
 Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
 mehrstoeckiges Bauen) steht weiterhin aus.
+
+
+## Bugfix: Lambda-Capture-Absturz endgueltig gefunden (v11.17)
+
+Nutzer meldete den "Lambda capture at index 0 was freed"-Fehler ERNEUT nach
+v11.15/v11.16 (die Frame-Timing-Mitigation aus v11.15 hat das Problem NICHT
+geloest - starkes Signal, dass die Ursache NICHT am State-Transition-Timing
+lag, wie in v11.15 vermutet). Auf Nachfrage bestaetigt: tritt weiterhin nur
+beim Testwelt-Erstellen auf.
+
+### Root Cause (diesmal mit hoher Zuversicht identifiziert)
+
+`ui/NotificationLayer.gd` (bereits VOR dieser Session existierender Code,
+nie in einer frueheren Session ueberarbeitet) hatte folgendes Muster:
+
+```gdscript
+if _notifs.size() >= MAX_NOTIFS:
+    var oldest = _notifs.pop_front()
+    oldest.queue_free()   # <- entfernt "oldest" SOFORT
+
+...
+var timer := get_tree().create_timer(NOTIF_DURATION)  # <- UNABHAENGIG vom Panel-Lebenszyklus
+timer.timeout.connect(func():
+    _notifs.erase(panel)
+    if is_instance_valid(panel): ...   # <- dieser Check kommt zu spaet!
+)
+```
+
+Der Testwelt-Aufbau (`bootstrap_test_colony()`) loest kurz hintereinander
+mehrere `GameState.notify()`-Aufrufe aus: die zwei eigenen
+Abschluss-Meldungen PLUS mindestens eine Achievement-Freischaltungs-
+Meldung (`AchievementSystem._unlock()` ruft ebenfalls `GameState.notify()`
+auf) - da beim Platzieren von ~28 Gebaeuden praktisch garantiert die
+Schwelle fuer "Baumeister" (20+ Gebaeude) ueberschritten wird, feuert
+`GameState.building_placed` 28x, `AchievementSys._on_building_placed()`
+prueft bei JEDEM Aufruf `BuildingSys.buildings.size() >= 20` und schaltet
+"Baumeister" frei, sobald das zutrifft - macht mindestens 3 Benachrichtigungen
+in schneller Folge. Ob das allein reicht, um `MAX_NOTIFS=5` zu ueberschreiten,
+oder ob noch weitere Meldungen (z.B. eine Willkommens-Meldung von
+`start_new_game()`) hinzukommen, war nicht abschliessend nachvollziehbar -
+aber der Mechanismus selbst (fruehzeitiges `queue_free()` eines Panels mit
+noch ausstehendem EXTERNEN Timer) ist ein einwandfrei nachvollziehbarer,
+reproduzierbarer Bug unabhaengig von der exakten Anzahl.
+
+**Zentrale technische Erkenntnis** (wichtig fuer kuenftige Aehnliche Faelle):
+Ein `is_instance_valid(panel)`-Check INNERHALB einer Lambda schuetzt NICHT
+vor "Lambda capture ... was freed" - dieser Fehler wird von Godots
+GDScript-Callable-System auf ENGINE-Ebene erkannt, BEVOR der GDScript-
+Funktionskoerper der Lambda ueberhaupt startet (`gdscript_lambda_callable.cpp
+@ call()`). Der `is_instance_valid()`-Check im GDScript-Code kommt schlicht
+zu spaet, um das zu verhindern - er wuerde nur einen NULL-Zugriff INNERHALB
+des Codes abfangen, nicht die Engine-interne Capture-Validierung selbst.
+
+### Fix: Timer als Kind-Node statt externer SceneTreeTimer
+
+Die strukturell korrekte Loesung (nicht nur ein Workaround): der `Timer`
+ist jetzt ein KIND-NODE des jeweiligen Panels/Buttons selbst
+(`panel.add_child(t)`), statt eines vom SceneTree global unabhaengigen
+`get_tree().create_timer()`. Godot gibt beim Freigeben eines Elternteils
+IMMER auch alle Kind-Nodes frei (inkl. aller darauf sitzenden Timer und
+deren Signal-Verbindungen) - der Timer kann dadurch NIEMALS mehr auf ein
+bereits freigegebenes Panel zeigen, weil er selbst mit freigegeben wird,
+BEVOR er ein zweites Mal feuern koennte. Das macht den Fehler strukturell
+unmoeglich statt ihn nur abzufangen.
+
+Angewendet auf alle 3 betroffenen Dateien mit demselben Muster:
+- `NotificationLayer.gd` (der eigentliche Ausloeser dieser Session)
+- `AchievementToast.gd` (dieselbe Verwundbarkeits-KLASSE, auch wenn hier
+  aktuell keine fruehzeitige externe Entfernung existiert - vorsorglich
+  gehaertet)
+- `LegendaryToast.gd` (hier zusaetzlich eine ECHTE zweite Luecke gefunden:
+  ein Klick auf den Toast selbst entfernt ihn vorzeitig ueber den
+  `pressed`-Handler - der alte externe Timer haette dann GARANTIERT auf ein
+  bereits freigegebenes `btn` gezeigt, wenn der Spieler den Toast anklickt,
+  bevor die 5 Sekunden um sind - unabhaengig von der Testwelt, das waere
+  auch im normalen Spielverlauf aufgetreten)
+
+### Lektion fuer kuenftige Sessions
+
+Beim Erstellen neuer Timer-basierter Popup-/Notification-Komponenten in
+diesem Projekt: **Timer immer als Kind-Node des Elements anlegen, auf das
+sie sich beziehen, niemals `get_tree().create_timer()` mit einer Lambda,
+die eine lokale Node-Referenz einfaengt**, wenn dieses Element auch auf
+einem ANDEREN Weg (Aufraeumlogik, Nutzer-Interaktion, Panel-Neuaufbau)
+vorzeitig entfernt werden koennte. Diese Session hatte selbst mehrere
+Toast-/Notification-Komponenten mit genau diesem (potenziell fehleranfaelligen)
+Muster eingefuehrt (v11.8 AchievementToast, v11.9 LegendaryToast) - beide
+folgten unbewusst dem bereits im Projekt vorhandenen fehlerhaften Vorbild
+aus `NotificationLayer.gd`, statt das robustere Kind-Timer-Muster von
+Anfang an zu verwenden.
+
+### Ausblick
+
+Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
+mehrstoeckiges Bauen) steht weiterhin aus. Der Accessoire-Rendering-Bug aus
+v11.16 ist ebenfalls noch nicht bestaetigt geloest - falls der Nutzer nach
+diesem Fix erneut testet, waeren beide Themen ein guter naechster
+Anknuepfungspunkt.
