@@ -1577,3 +1577,36 @@ hundertprozentig verifizierte Mitigation. Bitte erneut testen und bei
 Bedarf zurückmelden, ob der zweite Fehler wirklich verschwunden ist.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_15.zip`
+
+---
+
+## v11.16 – Accessoire-Rendering: Positionen neu kalibriert + Diagnose-Logging
+
+Nutzer meldete (mit Screenshot): legendäre Frettchen zeigen "Holy Glow"
+korrekt, aber die Accessoires (laut Profil-Panel korrekt zugewiesen, z.B.
+"Zylinder, Augenklappe, Umhang") erscheinen NICHT auf dem 3D-Modell.
+
+**Fehlersuche**: `.glb`-Dateien direkt analysiert (Material-Farbwerte,
+Mesh-Geometrie, vollständige glTF-Struktur inkl. Accessor-Bounds) - alles
+spezifikationskonform, kein erkennbarer Dateifehler. `ferret.glb` selbst
+erstmals vermessen (bisher nur geschätzte Werte verwendet) - echte
+Maße: Füße bei Y=0, Kopfmitte Y≈0.24/Z≈0.27, Ohren-Oberkante Y≈0.30-0.33.
+
+**Ohne Godot-Editor ließ sich die exakte Ursache nicht zweifelsfrei
+verifizieren** - zwei konkrete, klar begründete Verbesserungen trotzdem
+umgesetzt:
+- **Accessoire-Positionen neu kalibriert** (`systems/FerretAccessories.gd`)
+  anhand der jetzt tatsächlich gemessenen `ferret.glb`-Proportionen, statt
+  der ursprünglichen reinen Schätzung aus v11.9.
+- **Diagnose-Logging ergänzt** (`rendering/WorldRenderer3D.gd`): jeder
+  stille Fehlschlag beim Laden/Instanziieren einer Accessoire-Szene gibt
+  jetzt eine `push_warning()`-Meldung aus, statt kommentarlos übersprungen
+  zu werden - hilft, die Ursache beim nächsten Auftreten einzugrenzen.
+
+**Geänderte Dateien**: `systems/FerretAccessories.gd`, `rendering/WorldRenderer3D.gd`.
+
+⚠️ **Diese Version behebt das Problem möglicherweise nicht vollständig** -
+bitte erneut testen und bei Bedarf mit Godot-Konsolen-Ausgabe (falls jetzt
+Warnungen erscheinen) zurückmelden.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_16.zip`
