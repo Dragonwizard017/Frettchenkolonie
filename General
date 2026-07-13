@@ -1775,3 +1775,93 @@ Neuaufbau als Ursache bestaetigen oder ausschliessen.
 
 Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
 mehrstoeckiges Bauen) steht weiterhin aus.
+
+
+## Accessoire-Rendering-Bug: ausfuehrliche Fehlersuche-Dokumentation (v11.16)
+
+Nutzer meldete per Screenshot: legendaeres Frettchen "Frank Nase"
+("Testwelt-Legende", aus dem Testwelt-Bootstrap) zeigt korrekten Holy-Glow-
+Effekt und das Profil-Panel listet korrekt "Zylinder, Augenklappe, Umhang"
+als Accessoires - aber im 3D-Modell ist NICHTS davon zu sehen, nur der
+nackte Ferret + Glow.
+
+### Durchgefuehrte Fehlersuche (alle OHNE Godot-Editor, rein Datei-/Code-Analyse)
+
+1. **Material-Farbwerte geprueft**: Anfangsverdacht war, dass die
+   trimesh-Generierung (Sitzung mehrere Runden zurueck) RGB-Werte im
+   0-255-Bereich statt der von glTF geforderten 0.0-1.0-Normierung an
+   `baseColorFactor` uebergeben hat. Durch direktes Einlesen der GLB-JSON-
+   Chunks (Python, `struct`/`json`, kein trimesh noetig) widerlegt: trimesh
+   normiert intern automatisch - die exportierten Werte sind korrekt
+   (z.B. Krone: `[1.0, 0.8235, 0.1568, 1.0]`).
+2. **glTF-Struktur-Validitaet geprueft**: `asset.version`, Accessors
+   (inkl. Pflichtfeldern `min`/`max`), bufferViews, buffers - alles
+   spezifikationskonform. `doubleSided: false` vorhanden (Backface-Culling
+   aktiv, aber das allein erklaert keine KOMPLETTE Unsichtbarkeit aus allen
+   Blickwinkeln).
+3. **Mesh-Geometrie-Validitaet geprueft** (trimesh-Reload): keine
+   entarteten/leeren Meshes, plausible Bounding-Boxen (Krone z.B. 15×15×8cm).
+4. **Skalierungs-Kette nachgerechnet**: `inst.scale`(2.2) ×
+   `fx_anchor.scale`(1/2.2) × `acc_inst.scale`(1.0, Default) ≈ 1.0 - die
+   Gegen-Skalierung hebt sich rechnerisch korrekt auf.
+5. **Schluessel-Abgleich**: `FerretAccessories.ACCESSORIES`-Keys vs.
+   `WorldRenderer3D.ACCESSORY_SCENES`-Keys exakt verglichen (grep) - keine
+   Tippfehler/Case-Mismatches, alle 10 IDs stimmen exakt ueberein.
+6. **`ferret.glb` erstmals tatsaechlich vermessen** (trimesh, Szenengraph-
+   Transforms statt nur roher Mesh-lokaler Bounds): Fuesse bei Y=0 (Rig-
+   Ursprung an den Fuessen, wie angenommen), Koerper Y=0.13-0.27, Kopfmitte
+   Y≈0.24/Z≈0.27, Ohren-Oberkante Y≈0.30-0.33 (hoechster Punkt), Nasenspitze
+   Z≈0.339, Augen bei X≈±0.034/Y≈0.25/Z≈0.30. Die urspruenglichen (v11.9)
+   Accessoire-Offsets waren reine Schaetzungen ohne diese Daten - z.B. lag
+   der Kronen-Offset bei Z=0.10 (deutlich HINTER dem Kopf, eher Schulterhoehe)
+   statt Z≈0.24-0.27 (tatsaechliche Kopfposition).
+7. **`.import`-Dateien im Projekt geprueft**: keine einzige `.import`-Datei
+   im gesamten Repo vorhanden (auch nicht fuer `ferret.glb`/`building.glb`,
+   die nachweislich funktionieren) - das spricht GEGEN die Hypothese eines
+   fehlenden Godot-Asset-Reimports als alleinige Ursache, da derselbe
+   Mechanismus (Auto-Import beim Oeffnen des Projekts im Editor) fuer alle
+   `.glb`-Dateien gleichermassen gelten muesste.
+
+### Ergebnis: keine eindeutige Root Cause gefunden
+
+Trotz gruendlicher Pruefung aller nachvollziehbaren Fehlerquellen (Daten,
+Struktur, Mathematik, Schluessel-Konsistenz) liess sich KEIN eindeutiger
+struktureller Fehler identifizieren, der die komplette Unsichtbarkeit
+erklaeren wuerde. Zwei Verbesserungen trotzdem umgesetzt, die unabhaengig
+von der tatsaechlichen Ursache sinnvoll sind:
+
+1. **Neu kalibrierte Positionen** (`FerretAccessories.ACCESSORIES`) - auch
+   wenn die urspruenglichen Werte nicht die Unsichtbarkeits-Ursache waren
+   (eine falsch positionierte, aber sichtbare Krone waere ja trotzdem
+   IRGENDWO sichtbar gewesen, nicht komplett verschwunden), ist die
+   Kalibrierung anhand echter Messdaten strikt eine Verbesserung.
+2. **Diagnose-Logging** (`WorldRenderer3D._attach_ferret_accessories()`):
+   `push_warning()` an jeder Stelle, an der die Funktion bisher still
+   `continue`/`return` gemacht hat (fehlende Accessoire-Daten, fehlgeschlagene
+   Szenen-Ladung, `instantiate()` liefert kein Node3D). Godots Konsole zeigt
+   `push_warning()`-Ausgaben normalerweise auch in exportierten/release-
+   Builds an (nicht nur im Editor) - falls der Fehler beim naechsten
+   Test erneut auftritt, sollte jetzt mindestens eine dieser Warnungen in
+   der Godot-Konsole erscheinen und den naechsten Diagnose-Schritt klar
+   vorgeben (z.B. "Szene nicht geladen" → Godot-Import-Problem
+   wahrscheinlich; keine Warnung, aber trotzdem unsichtbar → Rendering-/
+   Kamera-/Verdeckungs-Problem wahrscheinlicher).
+
+### Empfehlung fuer die naechste Fehlersuche-Runde (falls Problem bestehen bleibt)
+
+Da diese Session ohne Godot-Editor arbeitet, waere der wertvollste naechste
+Schritt ein **Screenshot der Godot-Konsolen-Ausgabe** direkt nach dem
+Laden/Betreten der Testwelt (insbesondere ob eine der neuen `push_warning()`-
+Meldungen erscheint) - das wuerde zwischen "Godot kann die .glb-Datei nicht
+laden" (Import-/Pfad-Problem) und "die Datei laedt, ist aber aus anderen
+Gruenden nicht sichtbar" (Rendering-/Transform-/Verdeckungs-Problem)
+zweifelsfrei unterscheiden, was per reiner Datei-Analyse nicht moeglich war.
+Alternative Diagnose ohne Godot-Konsole: im Dev-Mode-Frettchen-Profil-Panel
+pruefen, ob sich unter "LegendaryFX" im Godot-Remote-Scene-Tree (falls der
+Nutzer Zugriff auf den Debugger hat) tatsaechlich Kind-Nodes fuer die
+Accessoires befinden.
+
+### Ausblick
+
+Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
+mehrstoeckiges Bauen) steht weiterhin aus.
