@@ -1610,3 +1610,38 @@ bitte erneut testen und bei Bedarf mit Godot-Konsolen-Ausgabe (falls jetzt
 Warnungen erscheinen) zurückmelden.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_16.zip`
+
+---
+
+## v11.17 – Bugfix: "Lambda capture at index 0 was freed" beim Testwelt-Erstellen
+
+Der Fehler aus v11.15/v11.16 trat weiterhin auf. Root Cause diesmal
+gefunden - **`ui/NotificationLayer.gd`**:
+
+- Jede Benachrichtigung nutzte einen vom SceneTree unabhängigen
+  `get_tree().create_timer(3.5)`, dessen Lambda das Notification-Panel von
+  AUSSEN einfängt. Wird `MAX_NOTIFS` (5) überschritten, entfernt die
+  Aufräumlogik das ÄLTESTE Panel sofort per `queue_free()` - dessen EIGENER,
+  noch ausstehender externer Timer feuerte dann später mit einer Lambda, die
+  auf ein bereits freigegebenes Panel zeigte.
+- Der Testwelt-Aufbau erzeugt kurz hintereinander mehrere Benachrichtigungen
+  (eigene Meldungen + Achievement-Freischaltungen durch die ~28 platzierten
+  Gebäude, z.B. "Baumeister"), wodurch dieser Fall wahrscheinlich ausgelöst
+  wurde.
+- **Wichtige Erkenntnis**: ein `is_instance_valid()`-Check INNERHALB der
+  Lambda schützt hier NICHT - Godot prüft freigegebene Lambda-Captures auf
+  Engine-Ebene, bevor der Funktionskörper überhaupt läuft.
+
+**Fix**: Timer sind jetzt KIND-NODES des jeweiligen Panels statt externer,
+unabhängiger `SceneTreeTimer`. Wird das Panel vorzeitig freigegeben, wird
+der Timer automatisch mitentfernt und kann nie mehr auf ein freigegebenes
+Panel zeigen - der Fehler wird dadurch strukturell unmöglich statt nur
+abgefangen. Gleiches Muster vorsorglich auch in `AchievementToast.gd` und
+`LegendaryToast.gd` angewendet (Letzteres hatte zusätzlich eine echte
+Lücke: ein Klick auf den Toast entfernte ihn vorzeitig, während der externe
+Timer noch aktiv war).
+
+**Geänderte Dateien**: `ui/NotificationLayer.gd`, `ui/AchievementToast.gd`,
+`ui/LegendaryToast.gd`.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_17.zip`
