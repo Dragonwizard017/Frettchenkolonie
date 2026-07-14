@@ -1645,3 +1645,36 @@ Timer noch aktiv war).
 `ui/LegendaryToast.gd`.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_17.zip`
+
+---
+
+## v11.18 – Accessoire-Rendering: neue Spur gefunden, GLBs neu generiert + Transform vereinfacht
+
+Neuer Screenshot des Nutzers zeigte diesmal ein **riesiges, falsch
+positioniertes grünes Objekt** statt gar nichts - Farbe passte exakt zum
+"Schal"-Accessoire. Das widerlegt die bisherige Theorie eines Lade-
+Fehlschlags (Datei lädt offensichtlich UND rendert, nur falsch skaliert)
+und deutet auf ein Transform-/Skalierungsproblem hin.
+
+**Zwei Maßnahmen umgesetzt:**
+
+1. **Echte Lücke gefunden und behoben**: die Accessoire-`.glb`-Dateien
+   wurden ohne Vertex-Normalen exportiert (`trimesh.exchange.gltf.export_glb`
+   hat `include_normals=None` als Default - keine Normalen im GLB, eine
+   Abweichung von der glTF-Spec-Empfehlung). Alle 10 Dateien mit
+   `include_normals=True` neu generiert.
+2. **Transform-Kette vereinfacht**: Accessoires hingen bisher an einem
+   gegen-skalierten `LegendaryFX`-Anker (zwei ineinander verschachtelte
+   Skalierungs-Stufen: 2.2x Frettchen → 1/2.2x Anker → Accessoire). Jetzt
+   hängen sie DIREKT am Frettchen-Root, mit Position und Skalierung
+   explizit vorberechnet (durch 2.2 geteilt) statt sich auf die
+   automatische Aufhebung durch die Elternkette zu verlassen - weniger
+   Verschachtelung, leichter nachvollziehbar, weniger mögliche
+   Fehlerquellen. `LegendaryFX` trägt jetzt nur noch den Holy-Glow-Effekt.
+
+**Geänderte Dateien**: `rendering/WorldRenderer3D.gd`,
+`assets/accessories/*.glb` (alle 10 neu generiert).
+
+⚠️ Weiterhin nicht in-Engine verifiziert - bitte erneut testen.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_18.zip`
