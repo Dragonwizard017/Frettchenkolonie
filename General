@@ -1963,3 +1963,98 @@ mehrstoeckiges Bauen) steht weiterhin aus. Der Accessoire-Rendering-Bug aus
 v11.16 ist ebenfalls noch nicht bestaetigt geloest - falls der Nutzer nach
 diesem Fix erneut testet, waeren beide Themen ein guter naechster
 Anknuepfungspunkt.
+
+
+## Accessoire-Rendering: neue Spur + konkrete Fixes (v11.18)
+
+### Neue Beweislage
+
+Zweiter Screenshot des Nutzers (nach v11.16) zeigte NICHT mehr "gar nichts",
+sondern ein grosses, seltsam platziertes GRUENES Objekt in der Naehe eines
+Hausdachs. Farbwert-Abgleich (`GREEN = (45,140,70)`, normiert
+`0.176,0.549,0.275`) bestaetigt exakt: das ist das "Schal"-Accessoire
+(SCARF). Das ist eine wichtige Erkenntnis: die Datei LAEDT und RENDERT
+tatsaechlich - die fruehere Diagnose-Session (v11.16, "keine eindeutige
+Root Cause gefunden") hatte noch angenommen, das Problem koennte am Laden/
+Importieren der Datei liegen. Diese neue Beobachtung schliesst das aus und
+verschiebt den Verdacht klar auf Transform/Skalierung.
+
+### Fix 1: Fehlende Vertex-Normalen (verifizierte, echte Luecke)
+
+`trimesh.exchange.gltf.export_glb()` hat den Parameter `include_normals`
+mit Default `None` - das bedeutet KEINE Normalen im exportierten GLB, wenn
+er nicht explizit auf `True` gesetzt wird. Bei der urspruenglichen
+Generierung (mehrere Sessions zurueck) wurde einfach `scene.export(path)`
+aufgerufen, was intern denselben Exporter mit Default-Parametern nutzt -
+alle 10 Accessoires hatten dadurch NUR die POSITION-Attribute, kein NORMAL.
+Verifiziert per direkter GLB-JSON-Inspektion (`"attributes": {"POSITION": 1}`,
+kein `"NORMAL"`-Eintrag). Whether das allein die "riesig"-Symptomatik
+erklaeren wuerde, ist nicht restlos sicher (fehlende Normalen fuehren in
+der Regel zu falscher SCHATTIERUNG, nicht zu falscher GROESSE) - aber es
+ist eine zweifelsfrei echte, jetzt behobene Abweichung von der glTF-Spec-
+Empfehlung, unabhaengig vom eigentlichen Skalierungs-Bug.
+
+Alle 10 Dateien mit `include_normals=True` neu generiert (Datei-Groessen
+sind dadurch spuerbar gewachsen, z.B. scarf.glb 8420→11128 Bytes - bestaetigt,
+dass tatsaechlich mehr Daten (Normalen) jetzt enthalten sind).
+
+### Fix 2: Transform-Kette vereinfacht (Hauptmassnahme)
+
+Die bisherige Konstruktion:
+```
+fn (Frettchen-Root, scale=2.2)
+ └─ LegendaryFX (Anker, scale=1/2.2)
+     └─ acc_inst (Accessoire, scale=1.0 Default)
+```
+Rechnerisch ergibt das eine Gesamt-Skalierung von 2.2 × (1/2.2) × 1.0 = 1.0 -
+von Hand mehrfach nachgerechnet und fuer korrekt befunden, ABER: zwei
+ineinander verschachtelte, sich gegenseitig aufhebende Skalierungs-Stufen
+sind unnoetig fehleranfaellig UND schwer zu debuggen, wenn doch irgendwo
+ein Fehler auftritt (z.B. falls Godots glTF-Import selbst einen zusaetzlichen,
+nicht aus der Datei ablesbaren Skalierungsfaktor einfuehrt - eine Hypothese,
+die sich per reiner Datei-Analyse nicht ausschliessen liess).
+
+Neue, direktere Konstruktion:
+```
+fn (Frettchen-Root, scale=2.2)
+ └─ acc_inst (Accessoire, scale=1/2.2, position=offset/2.2)
+```
+Nur noch EINE Skalierungs-Stufe, explizit vorberechnet
+(`var inv_scale: float = 1.0 / FERRET_MODEL_SCALE`), OHNE auf eine implizite
+Aufhebung durch eine mehrstufige Elternkette angewiesen zu sein. Mathematisch
+identisch zum vorherigen Ergebnis (falls die alte Rechnung stimmte), aber
+strukturell einfacher und damit robuster gegen unbekannte Godot-interne
+Effekte, die sich meiner Analyse entzogen haben koennten.
+
+**Wichtige Nebenwirkung, die mitgefixt wurde**: `_clear_ferret_accessories()`
+hat bisher NUR die Kinder von `LegendaryFX` geleert - da Accessoires jetzt
+direkt an `fn` haengen, musste diese Funktion angepasst werden, sonst waeren
+alte Accessoire-Instanzen beim naechsten Set-Wechsel NIE entfernt worden
+(Leck + doppelte Anzeige). Neue Instanzen werden jetzt mit einem erkennbaren
+Namens-Praefix (`"AccessoryItem_" + id`) versehen, damit die Aufraeum-Funktion
+sie gezielt unter den (potenziell vielen anderen) Kind-Nodes von `fn`
+(Frettchen-eigene Mesh-/Animation-Nodes) identifizieren kann, ohne
+faelschlich etwas anderes zu loeschen. `LegendaryFX` traegt jetzt
+ausschliesslich noch den Holy-Glow-Effekt (Licht + Sprite), dessen
+Rendering nachweislich seit Anfang an korrekt funktioniert hat.
+
+### Ehrlicher Stand
+
+Auch nach diesem Fix bin ich mir NICHT hundertprozentig sicher, dass das
+Problem behoben ist - die Vereinfachung der Transform-Kette ist eine
+plausible, gut begruendete Verbesserung, aber ohne Godot-Editor konnte ich
+die tatsaechliche Ursache des "riesig"-Phaenomens nicht mit letzter
+Sicherheit isolieren. Falls das Problem weiterhin besteht, waere der
+naechste sinnvolle Schritt, testweise die Accessoire-Skalierung
+`inv_scale` in `_attach_ferret_accessories()` testweise auf einen sehr
+kleinen Wert (z.B. `0.01`) zu setzen und zu beobachten, ob das Objekt dann
+kleiner wird (bestaetigt: Skalierungs-Rechnung wird korrekt angewendet,
+Problem liegt an der GROESSE der ausgangs-Werte) oder GLEICH GROSS bleibt
+(deutet auf ein tieferliegendes Problem hin, z.B. dass Godot beim Import
+selbst einen unerwarteten Skalierungsfaktor anwendet, der jede
+GDScript-seitige Rechnung ueberschreibt).
+
+### Ausblick
+
+Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
+mehrstoeckiges Bauen) steht weiterhin aus.
