@@ -2058,3 +2058,106 @@ GDScript-seitige Rechnung ueberschreibt).
 
 Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
 mehrstoeckiges Bauen) steht weiterhin aus.
+
+
+## Accessoire-Rendering: der eigentliche Logikfehler (v11.19)
+
+Nutzer korrigierte die vorherige Diagnose (v11.18): das vermeintlich
+riesige, gruene "Schal"-Objekt war in Wirklichkeit nur der Untergrund
+eines Gebaeudes - falsche Spur, Accessoires sind weiterhin komplett
+unsichtbar. Nutzer-Vorschlag war der entscheidende Hinweis: "lade die
+Accessoires einfach genauso wie die Frettchen, die sieht man ja."
+
+### Root Cause (mit hoher Zuversicht identifiziert)
+
+Ein systematischer Denkfehler, der sich seit der ALLERERSTEN Version des
+Features (v11.9) durch mehrere "Fixes" hindurchgezogen hat, OHNE dass er
+als solcher erkannt wurde:
+
+**Falsche Annahme (v11.9-v11.18)**: die `offset`-Werte in
+`FerretAccessories.ACCESSORIES` seien in "Metern" gemeint, die vor der
+2.2x-Modell-Vergroesserung des Frettchens (`FERRET_MODEL_SCALE`) geschuetzt
+werden muessten - daher eine Gegen-Skalierung (`1/2.2`) auf Position UND
+Groesse jedes Accessoires.
+
+**Tatsaechliche Situation**: Als die Offset-Werte in v11.16 neu kalibriert
+wurden, geschah das durch DIREKTE VERMESSUNG von `ferret.glb` per trimesh
+(Rohkoordinaten des Meshes, z.B. "Ohren bei Y=0.30-0.33") - also in
+GENAU DEMSELBEN unskalierten Koordinatensystem, in dem das gesamte
+Frettchen-Mesh selbst lebt, BEVOR `inst.scale = Vector3.ONE *
+FERRET_MODEL_SCALE` es beim Rendern auf das 2.2-fache vergroessert. Die
+"Meter"-Interpretation aus v11.9 war fuer die urspruenglichen (geschaetzten)
+Werte vielleicht noch stimmig gewesen, wurde aber in v11.16 durch die neue
+Kalibrierungs-Methode STILLSCHWEIGEND ungueltig, ohne dass die zugehoerige
+Gegen-Skalierungs-Logik in `WorldRenderer3D.gd` entsprechend mit angepasst
+wurde - ein klassischer "zwei Codestellen driften auseinander,
+weil eine Annahme geaendert wurde, ohne alle davon abhaengigen Stellen zu
+aktualisieren"-Fehler.
+
+**Konkrete Auswirkung der Gegen-Skalierung**:
+- Position: `(offset / 2.2)`, dann durch die Eltern-Transform von "fn"
+  (scale=2.2) wieder MIT 2.2 multipliziert → landet wieder beim
+  urspruenglichen `offset`-Wert. Die POSITION war also die ganze Zeit
+  KORREKT (das erklaert, warum reine Positions-Berechnungen beim
+  Nachrechnen in v11.16/v11.18 nie einen Fehler zeigten).
+- Groesse/Skalierung: `acc_inst.scale = 1/2.2` (lokal), dann durch die
+  Eltern-Transform von "fn" (2.2) multipliziert → ergibt effektiv GENAU
+  1.0 statt der beabsichtigten 2.2 (die JEDER ANDERE Teil des
+  Frettchen-Meshes automatisch bekommt, da er ganz normal Teil des
+  mit 2.2 skalierten `fn`-Meshes ist). Die Accessoire-GEOMETRIE selbst
+  (deren Vertices z.B. eine Krone von ~0.15 "trimesh-Einheiten" Breite
+  beschreiben) wurde dadurch nur mit Faktor 1.0 statt 2.2 gerendert - satte
+  55% kleiner, als es im Verhaeltnis zum (jetzt 2.2x-grossen) Frettchen
+  haette sein sollen. Bei einem ohnehin schon kleinen Objekt (~15cm
+  Ausgangsgroesse) UND einer typischen Kolonie-Kamera-Distanz war das
+  Ergebnis praktisch nicht wahrnehmbar - "unsichtbar", obwohl technisch
+  ein winziges, korrekt positioniertes, aber stark unterdimensioniertes
+  Objekt tatsaechlich gerendert wurde.
+
+### Warum das so lange unentdeckt blieb
+
+Die Positions-Rechnung wurde in mehreren vorherigen Sessions (v11.16,
+v11.18) sorgfaeltig von Hand nachgerechnet und war jedes Mal korrekt - das
+hat faelschlich Vertrauen in die GESAMTE Transform-Kette (inkl. der
+Skalierungs-Komponente) geschaffen, obwohl nur die Position tatsaechlich
+geprueft wurde, nicht die Konsequenz der Skalierung fuer die sichtbare
+GROESSE der Geometrie relativ zum umgebenden (skalierten) Frettchen-Mesh.
+Erst der explizite Vergleich mit dem PROBLEMLOS FUNKTIONIERENDEN
+Ferret-Lade-Muster (`FERRET_SCENE.instantiate()`, EINMALIGE Skalierung auf
+Root-Ebene, KEINE Gegen-Skalierung fuer irgendwelche Kind-Teile) - explizit
+vom Nutzer vorgeschlagen - hat den strukturellen Unterschied sichtbar
+gemacht: das Frettchen selbst wird NIE gegen-skaliert, seine Kopf-/Ohren-/
+Koerper-Geometrie erbt einfach ganz normal die 2.2x-Vergroesserung des
+Root-Nodes. Ein Accessoire, das an genau denselben "ferret-nativen"
+Koordinaten gemessen wurde, sollte sich exakt GLEICH verhalten - jede
+zusaetzliche Gegen-Skalierung ist bei diesem Modell ueberfluessig und
+schaedlich.
+
+### Fix
+
+`_attach_ferret_accessories()` in `WorldRenderer3D.gd`: `inv_scale`-Variable
+und alle darauf basierenden Multiplikationen entfernt.
+`acc_inst.position = offset` (unveraendert), `acc_inst.scale` bleibt auf
+dem Node3D-Standardwert `Vector3.ONE` (keine explizite Zuweisung mehr
+noetig). Die `LegendaryFX`-Gegen-Skalierung fuer den Holy-Glow-Effekt
+(Licht + Sprite) wurde BEWUSST NICHT angetastet, da dieser Effekt laut
+Nutzer nachweislich funktioniert (erstes Feedback vor mehreren Sessions
+bestaetigte den Glow als sichtbar) - hier besteht kein Aenderungsbedarf,
+und ein Eingriff haette das Risiko getragen, etwas kaputt zu machen, das
+bereits korrekt war.
+
+### Lektion fuer kuenftige Sessions
+
+Bei mehrstufigen Skalierungs-/Transform-Ketten IMMER explizit sowohl
+POSITION als auch GROESSE getrennt gegenpruefen, nicht nur eine der beiden
+Komponenten - eine korrekt nachgerechnete Position kann faelschlich
+Vertrauen in die gesamte Transform-Logik erzeugen, waehrend die Skalierungs-
+Komponente einen unabhaengigen, eigenstaendigen Fehler enthaelt. Bei
+Unklarheit ist der Vergleich mit einer NACHWEISLICH FUNKTIONIERENDEN,
+strukturell aehnlichen Referenz (hier: wie das Frettchen selbst geladen
+wird) oft aufschlussreicher als erneutes Nachrechnen derselben Formel.
+
+### Ausblick
+
+Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
+mehrstoeckiges Bauen) steht weiterhin aus.
