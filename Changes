@@ -1678,3 +1678,35 @@ und deutet auf ein Transform-/Skalierungsproblem hin.
 ⚠️ Weiterhin nicht in-Engine verifiziert - bitte erneut testen.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_18.zip`
+
+---
+
+## v11.19 – Accessoire-Rendering: eigentlicher Logikfehler gefunden und behoben
+
+Nutzer stellte klar: das grüne Objekt aus dem letzten Screenshot war nur
+der Untergrund eines Gebäudes (falsche Spur) - Accessoires werden
+weiterhin gar nicht angezeigt. Vorschlag des Nutzers: Accessoires genauso
+laden wie das Frettchen selbst (das sieht man ja zuverlässig).
+
+**Der eigentliche Fehler** (`rendering/WorldRenderer3D.gd`): seit der
+allerersten Version (v11.9) wurde auf Position UND Größe jedes Accessoires
+eine Gegen-Skalierung (`1 / FERRET_MODEL_SCALE`, also `1/2.2`) angewendet -
+in der Annahme, die Positions-Werte seien in "echten Metern" gemeint. Diese
+Annahme war falsch: die Werte wurden in v11.16 per direkter Vermessung von
+`ferret.glb` ermittelt - also in genau demselben UNSKALIERTEN
+Koordinatensystem, in dem auch der Rest des Frettchen-Meshes lebt und ganz
+normal mit dem Frettchen mitskaliert wird (2.2x). Die zusätzliche
+Gegen-Skalierung hat die Accessoire-GEOMETRIE dadurch effektiv nur mit
+Faktor 1.0 statt der beabsichtigten 2.2x gerendert - relativ zum
+(2.2x-großen) Frettchen wirkten Krone, Schal & Co. dadurch nur ca. 45% so
+groß wie vorgesehen und waren in der Praxis kaum wahrnehmbar.
+
+**Fix**: die Gegen-Skalierung wurde komplett entfernt. Accessoires hängen
+jetzt direkt am Frettchen und erben ganz normal dieselbe 2.2x-Vergrößerung
+wie jeder andere Teil des Frettchen-Meshes auch - exakt wie vom Nutzer
+vorgeschlagen ("genauso laden wie die Frettchen").
+
+**Geänderte Dateien**: `rendering/WorldRenderer3D.gd`,
+`systems/FerretAccessories.gd` (nur Dokumentation angepasst).
+
+**Datei**: `FrettchenKolonie_Godot4_v11_19.zip`
