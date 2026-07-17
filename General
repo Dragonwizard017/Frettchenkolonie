@@ -2161,3 +2161,83 @@ wird) oft aufschlussreicher als erneutes Nachrechnen derselben Formel.
 
 Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
 mehrstoeckiges Bauen) steht weiterhin aus.
+
+
+## Accessoire-Ausrichtung: Achsen-Konventionsfehler behoben (v11.20)
+
+Nutzer bestaetigte den v11.19-Fix als WIRKSAM (Accessoires sind jetzt
+sichtbar!) und meldete den naechsten, spezifischeren Fehler: falsche
+Ausrichtung, manche stecken quer im Frettchen.
+
+### Root Cause: Z-up (trimesh) vs. Y-up (glTF/Godot)
+
+`trimesh.creation.cylinder()`/`cone()` erzeugen ihre Primitive standardmaessig
+mit der "Hoehe" entlang der LOKALEN Z-ACHSE (trimesh-interne Konvention).
+glTF (und damit Godot) erwarten dagegen Y-ALS-OBEN. Der GLB-Export
+(`trimesh.exchange.gltf.export_glb()`) nimmt KEINE automatische Achsen-
+Konvertierung vor - die Rohdaten werden 1:1 uebernommen. Verifiziert durch
+direkte Analyse der Roh-Vertex-Bounds im exportierten GLB (nicht ueber
+trimesh-Reload, das haette dieselbe interne Konvention erneut angewendet
+und den Fehler maskiert, sondern per manuellem `struct`/`json`-Parsing des
+GLB-Binaerformats): der Zylinderhut hatte seine "Hoehe" (0.10 Einheiten)
+in der Z-Koordinate, waehrend X/Y (je 0.15) die "flache" Grundflaeche
+bildeten - in Godots Y-up-Interpretation erscheint das als LIEGENDER
+Zylinder (lang in der Tiefenachse) statt eines STEHENDEN Hutes.
+
+### Nicht alle Formen brauchten den Fix (wichtige Erkenntnis)
+
+Eine pauschale Anwendung der Korrektur-Rotation auf ALLE 10 Accessoires
+haette neue Fehler eingefuehrt:
+
+- **Ring-/Torus-Formen** (Schal, Monokel): `trimesh.creation.torus()`
+  erzeugt einen flachen Ring in der XY-Ebene mit dem "Loch" in Z-Richtung -
+  fuer ein Accessoire, das um einen (bei einem VIERBEINIGEN Tier wie einem
+  Frettchen eher horizontal, entlang der Z-Achse verlaufenden) Hals
+  getragen wird, ist genau das die RICHTIGE Ausrichtung ohne jede Korrektur
+  noetig. Ein Mensch hat einen vertikalen Hals (Y-Achse), ein Frettchen als
+  Vierbeiner nicht - dieser Unterschied wurde in fruehreren Sessions beim
+  Kalibrieren der Positionen nicht bedacht.
+- **Handgebaute Meshes** (Bandana, Umhang): wurden in fruehreren Sessions
+  mit eigenen, direkt gewaehlten Vertex-Koordinaten gebaut, OHNE
+  systematisch derselben Z-up-Konvention wie trimeshs Primitive zu folgen.
+  Empirische Pruefung (Bounds vor/nach probeweiser Rotation) zeigte:
+  Bandana war OHNE Rotation korrekt orientiert (schon Y-up-artig
+  aufgebaut), der Umhang dagegen brauchte die Rotation (hing vorher fast
+  gar nicht herab, sondern erstreckte sich fast flach nach hinten - nach
+  der Korrektur haengt er wie erwartet ~0.19 Einheiten nach unten).
+
+**Finale Kategorisierung**:
+- Bekommen die Achsen-Korrektur: CROWN, TOP_HAT, WIZARD_HAT, CAPE (alle
+  "auf dem Kopf sitzend" bzw. "herabhaengend" - Objekte, deren Haupt-
+  Ausdehnungsachse eindeutig vertikal/Y sein muss).
+- Bekommen KEINE Korrektur: BANDANA, BOWTIE, SCARF, MEDAL, MONOCLE,
+  EYEPATCH (Ring-/Flach-Formen, die entweder bereits fuer die horizontale
+  Koerperachse eines Vierbeiners passen, oder als Hand-Mesh schon in der
+  richtigen Konvention gebaut wurden).
+
+Implementiert ueber einen neuen `apply_axis_fix: bool`-Parameter in der
+`export_scene()`-Hilfsfunktion des (nicht versionierten) Generator-Skripts,
+Default `True`, individuell auf `False` gesetzt fuer die 6 Formen, die
+keine Korrektur brauchen.
+
+### Verbleibende Unsicherheit
+
+Bei MEDAL wurde waehrend der Analyse eine potenzielle Inkonsistenz
+bemerkt: das Ribbon-Teil (die Schleife/das Band) hat seine "lange Achse"
+in Z statt Y - fuer ein Band, das vom Hals nach unten auf die Brust haengt,
+waere Y (vertikal haengend) eigentlich die intuitivere Achse. Der Disc-Teil
+(die eigentliche Medaille) wurde dagegen bereits ueber eine eigene,
+zusaetzliche manuelle Rotation reorientiert. Da MEDAL aus zwei Teilen mit
+UNTERSCHIEDLICHEN Anforderungen besteht (Band soll haengen=Y, Muenze soll
+nach vorne zeigen=Z-duenn), war eine pauschale Datei-weite Entscheidung
+("ganz oder gar nicht") nicht ideal - eine praezisere Loesung wuerde
+Ribbon und Disc UNABHAENGIG voneinander rotieren, wurde aber aus
+Zeitgruenden in dieser Session nicht umgesetzt (Medaille ist ein kleines,
+visuell nachrangiges Detail-Accessoire). Falls der Nutzer nach dem Test
+weiterhin Probleme bei einzelnen der 6 NICHT korrigierten Formen meldet,
+waere eine gezieltere Pruefung dieser Teile der naechste Schritt.
+
+### Ausblick
+
+Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
+mehrstoeckiges Bauen) steht weiterhin aus.
