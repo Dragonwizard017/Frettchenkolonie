@@ -1710,3 +1710,42 @@ vorgeschlagen ("genauso laden wie die Frettchen").
 `systems/FerretAccessories.gd` (nur Dokumentation angepasst).
 
 **Datei**: `FrettchenKolonie_Godot4_v11_19.zip`
+
+---
+
+## v11.20 – Accessoires sichtbar, aber Ausrichtungsfehler behoben (Achsen-Konvention)
+
+Nutzer bestätigte: Accessoires sind jetzt sichtbar (v11.19-Fix hat
+gewirkt!), aber manche sind falsch ausgerichtet und stecken quer im
+Frettchen, statt sauber aufzusitzen.
+
+**Root Cause**: die Accessoire-`.glb`-Dateien wurden mit trimeshs
+Standard-Erzeugungskonvention gebaut, bei der "Höhe" (z.B. bei
+`trimesh.creation.cylinder`/`cone`) entlang der lokalen Z-Achse verläuft.
+glTF/Godot erwarten aber Y-als-oben. Verifiziert durch direkte Analyse der
+Roh-Vertex-Bounds: der Zylinderhut war z.B. "hoch" in Z (0.10) statt in Y -
+er erschien dadurch liegend statt stehend und konnte quer ins Frettchen
+hineinstecken.
+
+**Fix**: Kopf-Accessoires (Krone, Zylinder, Zauberhut) und der Umhang
+bekommen jetzt vor dem Export eine Z-up→Y-up-Korrekturrotation. Bei den
+Hals-/Gesichts-Accessoires (Fliege, Schal, Medaille, Monokel,
+Augenklappe) sowie der Bandana war das NICHT nötig bzw. hätte es sogar
+verschlechtert - Ringformen (Torus) sind bei trimesh bereits passend
+ausgerichtet für ein horizontales Tier wie ein Frettchen (Hals-Achse liegt
+bei einem Vierbeiner eher entlang Z als Y), und die beiden handgebauten
+Meshes (Bandana, Umhang) hatten von Anfang an unterschiedliche,
+uneinheitliche Achsen-Konventionen.
+
+**Geänderte Dateien**: `rendering/WorldRenderer3D.gd` (nur Dokumentation),
+`assets/accessories/crown.glb`, `top_hat.glb`, `wizard_hat.glb`, `cape.glb`
+(alle 4 mit korrigierter Achsen-Ausrichtung neu generiert; die übrigen 6
+GLBs wurden ebenfalls neu geschrieben, aber ohne Ausrichtungs-Änderung -
+nur zur Konsistenz mit dem gemeinsamen Generator-Skript).
+
+⚠️ Bitte erneut testen, besonders die Kopf-Accessoires und den Umhang -
+bei den kleineren Accessoires (Fliege, Schal, Medaille, Monokel,
+Augenklappe) ist nicht auszuschließen, dass noch Feinjustierungsbedarf
+besteht.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_20.zip`
