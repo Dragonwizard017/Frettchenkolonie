@@ -2241,3 +2241,64 @@ waere eine gezieltere Pruefung dieser Teile der naechste Schritt.
 
 Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
 mehrstoeckiges Bauen) steht weiterhin aus.
+
+
+## Accessoire-Feinjustierung: Clipping durch den Koerper (v11.21)
+
+Nutzer lieferte einen First-Person-Nahaufnahme-Screenshot (sehr hilfreich -
+deutlich aussagekraeftiger als die vorherigen Kolonie-Uebersichts-Screenshots)
+und bestaetigte: Zylinder sitzt jetzt korrekt (v11.20-Achsenfix hat
+gewirkt), aber Umhang (als duenne rote Linie sichtbar, senkrecht durch den
+Koerper) und Augenklappe (dunkle Formen, im Kopf eingebettet) clippen durch
+das Frettchen-Mesh.
+
+### Diagnose
+
+Bei der Umhang-Positionierung (`offset = Vector3(0, 0.26, 0.05)`,
+Haenge-Laenge nach v11.20-Fix: 0.19 Einheiten nach unten von Y=0.26 aus)
+ergab sich ein Ueberlappungsbereich von Y=0.07 bis Y=0.27 - was fast
+identisch mit dem gemessenen Y-Bereich des Frettchen-KOERPERS selbst ist
+(Y=0.13 bis 0.27, aus der ferret.glb-Vermessung mehrerer Sessions zuvor).
+Der Umhang haengt dadurch fast VOLLSTAENDIG innerhalb der eigenen
+Koerper-Silhouette des Frettchens, statt aussen am Ruecken entlang -
+das erklaert das beobachtete Clipping direkt.
+
+Bei Monokel/Augenklappe war die Z-Position (0.30) exakt am gemessenen
+AUGEN-MITTELPUNKT orientiert - da ein Auge typischerweise leicht in die
+Kopf-Silhouette eingebettet ist (die Augenhoehle liegt nicht exakt auf der
+aeussersten Kopf-Oberflaeche), fuehrt eine Positionierung GENAU am
+Augen-Zentrum vermutlich dazu, dass die (kleine, aber nicht unendlich
+duenne) Patch-Geometrie teilweise INNERHALB des Kopf-Meshes liegt.
+
+### Fix
+
+- **Umhang**: Anhaengepunkt auf Y=0.31 angehoben (nahe am oberen Ende des
+  gemessenen Koerper-Y-Bereichs, 0.27) und auf Z=-0.06 nach hinten verschoben
+  (Richtung Rumpf/Schwanzansatz, wo der Koerperquerschnitt schmaler wird,
+  statt Schulterbereich wo er am breitesten/dichtesten am Hals ist).
+  Zusaetzlich die Umhang-GEOMETRIE selbst gekuerzt (Haenge-Laenge 0.19→0.12),
+  damit selbst bei nicht perfekter Positionierung mehr Sicherheitsabstand
+  zum Koerpervolumen bleibt - haengt jetzt von Y=0.31 bis Y=0.19, nur noch
+  eine kleine Ueberlappung mit dem oberen Koerperrand statt kompletter
+  Durchdringung.
+- **Monokel/Augenklappe**: Z-Position von 0.30 auf 0.33 erhoeht (naeher an
+  der gemessenen Nasenspitze bei Z≈0.339, d.h. naeher an der tatsaechlichen
+  AUSSENFLAECHE des Kopfes statt am inneren Augen-Zentrum).
+
+### Ehrlicher Stand
+
+Diese Anpassungen sind gut begruendete Schaetzungen basierend auf den
+vorhandenen Ferret-Vermessungsdaten, aber OHNE Godot-Editor nicht exakt
+verifizierbar - insbesondere ob die neue Umhang-Position jetzt WIRKLICH
+sauber ausserhalb des Koerpers haengt oder nur WENIGER stark clippt als
+vorher, laesst sich nicht mit Sicherheit sagen. Der Nahaufnahme-Screenshot-
+Ansatz des Nutzers (First-Person-Modus) ist fuer diese Art Feinjustierung
+sehr wertvoll - falls weitere Korrekturen noetig sind, waeren aehnliche
+Nahaufnahmen aus verschiedenen Blickwinkeln (idealerweise auch von der
+Seite/von hinten) hilfreich, um Position UND Ausrichtung gleichzeitig besser
+einschaetzen zu koennen.
+
+### Ausblick
+
+Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
+mehrstoeckiges Bauen) steht weiterhin aus.
