@@ -1814,3 +1814,52 @@ wieder Nahaufnahme wie zuletzt) zurueckmelden, ob Cape jetzt am Ruecken
 haengt und alle Accessoires in plausibler Groesse erscheinen.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_22.zip`
+
+
+## Revert des v11.22-Fehlversuchs + korrigierte Umhang-Hoehe (v11.23)
+
+Nutzer meldete per Screenshot: nach v11.22 sind ALLE Accessoire komplett
+unsichtbar (Profil-Panel listet Zylinder/Augenklappe/Umhang fuer "Frank
+Nase", aber im 3D-Modell erscheint nichts mehr).
+
+**Root Cause des v11.22-Fehlers**: die Annahme, die "offset"-Werte in
+`FerretAccessories.gd` seien als reale End-Meter gedacht und bräuchten
+eine Gegen-Skalierung zu `FERRET_MODEL_SCALE`, war FALSCH. Der bereits
+vom Nutzer bestaetigt korrekt sitzende Zylinderhut (v11.21) bewies das
+Gegenteil: die Offsets sind bewusst in DENSELBEN unskalierten Einheiten
+wie `ferret.glb` selbst gehalten (siehe Dokumentations-Kommentar in
+`FerretAccessories.gd`, der bereits gemessene Landmarken wie
+"Ruecken/Schultern bei Y≈0.27" auflistet) - Accessoires werden absichtlich
+OHNE Gegen-Skalierung an "fn" gehaengt und werden dadurch zusammen mit dem
+restlichen Frettchen-Mesh einheitlich um 2.2x hochskaliert. Der
+v11.22-Versuch hat dadurch jedes Accessoire zusaetzlich um 2.2x verkleinert
+UND seine Weltposition von `offset * 2.2` auf schlicht `offset` reduziert -
+vermutlich landeten dadurch alle Accessoires viel zu klein und zu tief im
+Koerper-Mesh vergraben (unsichtbar).
+
+**Fix Teil 1 (Revert)**: `rendering/WorldRenderer3D.gd`,
+`_attach_ferret_accessories()` - Position/Skalierung wieder auf den
+Original-Stand vor v11.22 zurueckgesetzt (kein `acc_inst.scale`, Position
+= `offset` direkt, ohne Division).
+
+**Fix Teil 2 (eigentlicher Umhang-Fix)**: der urspruengliche Bug (Umhang
+"steht senkrecht", wirkt wie eine Fahne nahe am Hut) lag an
+`CAPE.offset.y = 0.31` (seit v11.21) - das liegt OBERHALB des in
+`FerretAccessories.gd` bereits dokumentierten, gemessenen Ruecken/
+Schultern-Werts (Y≈0.27) und nahe an der Kopf-/Hut-Hoehe (CROWN/TOP_HAT
+bei Y=0.33, WIZARD_HAT bei 0.31) - der Umhang schwebte dadurch auf
+Kopfhoehe statt am Ruecken zu haengen. `CAPE.offset.y` jetzt zurueckgesetzt
+auf den dokumentierten Ruecken/Schultern-Wert **0.27** (Z bleibt bei -0.06,
+aus v11.21 - Positionierung Richtung Rumpf/Schwanzansatz statt
+Schulterbereich).
+
+**Geaenderte Dateien**: `rendering/WorldRenderer3D.gd`,
+`systems/FerretAccessories.gd`
+
+⚠️ Weiterhin ohne Godot-Editor getestet. Bitte pruefen: (1) sind alle
+Accessoire wieder sichtbar (Zylinder, Augenklappe, Umhang bei "Frank
+Nase")? (2) haengt der Umhang jetzt naeher am Ruecken statt auf Kopfhoehe
+zu schweben? Nahaufnahme-Screenshots (idealerweise von der Seite/von
+hinten) waeren fuer eine evtl. noch noetige Fein-Justierung sehr hilfreich.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_23.zip`
