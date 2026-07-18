@@ -1863,3 +1863,62 @@ zu schweben? Nahaufnahme-Screenshots (idealerweise von der Seite/von
 hinten) waeren fuer eine evtl. noch noetige Fein-Justierung sehr hilfreich.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_23.zip`
+
+
+## Accessoire-Platzierung auf Basis exakter Mesh-Vermessung korrigiert (v11.24)
+
+Nutzer hatte nach v11.23 mehrere legendaere Frettchen ("Filou Fell", "Frida
+Zahn") begutachtet: Krone und Monokel sitzen sichtbar korrekt, aber
+**Fliege ist komplett unsichtbar** und **Umhang funktioniert nach wie vor
+nicht**. Nutzer-Vorgabe: entweder eine Loesung, der ich mir sicher bin,
+oder Ersatz der kritischen Accessoires.
+
+Diesmal keine weitere Schaetzung - stattdessen `ferret.glb` per trimesh
+exakt vermessen (Weltkoordinaten aller Body-Teile ueber den Node-Graph
+berechnet, nicht nur lokale Bounds):
+
+- **Body_mesh** (Torso-Box): X[-0.065,0.065] Y[0.13,0.27] Z[-0.21,0.21]
+- **Head_mesh** (Kopf-Box): X[-0.05,0.05] Y[0.19,0.29] Z[0.21,0.33]
+- Body und Head stossen bei Z=0.21 NAHTLOS aneinander (keine Luecke/Kehle)
+
+**Root Cause Fliege/Schal/Medaille**: NECK-Slot lag bei Z≈0.18-0.19 - das
+ist numerisch nachweisbar INNERHALB der massiven Body_mesh-Box (Body reicht
+bis Z=0.21) - der Bowtie-Ankerpunkt UND alle seine Mesh-Eckpunkte liegen
+komplett im Koerper-Volumen, daher vollstaendig unsichtbar (nicht nur
+teilweise verdeckt). Es existiert aber eine echte, geometrisch leere
+"Kehlnische": fuer Y<0.19 (unterhalb der Head-Box) UND Z>0.21 (ausserhalb
+der Body-Box) gibt es GAR KEINE Geometrie. Neue Werte (individuell nach
+Mesh-Extents jedes einzelnen Accessoires durchgerechnet, damit auch die
+Mesh-RAENDER nicht in Body/Head hineinragen, nicht nur der Ankerpunkt):
+BOWTIE (0, 0.15, 0.26), SCARF (0, 0.13, 0.32) - SCARF ist deutlich groesser
+(0.128 Einheiten) und passt fast exakt in die Kehlnischen-Tiefe (Z 0.21 bis
+0.33) hinein -, MEDAL (0, 0.13, 0.26).
+
+**Root Cause Umhang**: das Cape-Mesh ist eine papierduenne, HAENGENDE
+Flagge (duenn in Z, haengt in -Y). Bei JEDER Z-Position innerhalb der
+Body-Box (-0.21 bis 0.21) kollidiert eine an der Ruecken-Oberkante (Y=0.27)
+angehaengte, nach unten haengende Flagge zwangslaeufig mit dem massiven
+Koerpervolumen darunter - das war unabhaengig vom bisher x-fach probierten
+Y/Z-Offset nie loesbar. Echter Fix: neues Feld `rot_x` in
+`FerretAccessories.gd`/`WorldRenderer3D._attach_ferret_accessories()`
+ergaenzt. CAPE bekommt `rot_x = PI/2` - dreht die Flagge von "haengend" zu
+"waagerecht liegend", damit sie wie eine duenne Decke OBERHALB der
+Ruecken-Oberflaeche (Y=0.27) aufliegt statt durch den Koerper zu clippen.
+Mit `offset = (0, 0.271, 0.15)` rechnerisch verifiziert (nicht geraten):
+Cape-Mesh liegt nach Rotation bei Y=0.271-0.277 (0.001-0.007 ueber der
+Ruecken-Oberflaeche) und Z=0.03-0.15 (Schulter bis Ruecken-Mitte) - keine
+Ueberschneidung mit der Body-Box mehr (rechnerisch bestaetigt, siehe
+Kommentare im Code fuer die Herleitung).
+
+**Geaenderte Dateien**: `rendering/WorldRenderer3D.gd` (neues `rot_x`-Feld
+unterstuetzt), `systems/FerretAccessories.gd` (NECK-Offsets + CAPE-Offset
+und -Rotation)
+
+⚠️ Weiterhin ohne Godot-Editor getestet - die Positions-/Kollisionslogik
+ist diesmal aber ueber die tatsaechlichen Mesh-Koordinaten gerechnet, nicht
+geschaetzt. Bitte mit Nahaufnahme-Screenshot bestaetigen: (1) ist die
+Fliege jetzt sichtbar (Kehlbereich unterhalb des Kopfes)? (2) liegt der
+Umhang jetzt flach auf dem Ruecken statt durch den Koerper zu clippen oder
+zu schweben?
+
+**Datei**: `FrettchenKolonie_Godot4_v11_24.zip`
