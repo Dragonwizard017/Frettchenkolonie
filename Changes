@@ -1749,3 +1749,29 @@ Augenklappe) ist nicht auszuschließen, dass noch Feinjustierungsbedarf
 besteht.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_20.zip`
+
+---
+
+## v11.21 – Accessoire-Positionen nachjustiert (Clipping durch den Körper)
+
+Nutzer bestätigte per Nahaufnahme-Screenshot (First-Person-Modus): der
+Zylinder sitzt jetzt korrekt (v11.20-Fix hat funktioniert!), aber Umhang
+und Augenklappe stecken sichtbar im Frettchen-Körper.
+
+**Anpassungen** (`systems/FerretAccessories.gd`):
+- **Umhang**: Anhängepunkt höher (Y 0.26→0.31, näher am oberen Rücken)
+  und weiter nach hinten (Z 0.05→-0.06, Richtung Rumpf/Schwanzansatz statt
+  Schulter) verschoben, damit er außerhalb des Körper-Hauptvolumens hängt
+  statt mittendurch. Zusätzlich die Hänge-Länge der Umhang-Geometrie selbst
+  von 0.19 auf 0.12 Einheiten gekürzt, für zusätzlichen Sicherheitsabstand.
+- **Monokel/Augenklappe**: von der (vermutlich leicht in den Kopf
+  eingesenkten) Augen-Mittelpunkt-Position weiter nach vorne auf die
+  Gesichtsoberfläche verschoben (Z 0.30→0.33, näher an der gemessenen
+  Nasenspitze bei Z≈0.34).
+
+**Geänderte Dateien**: `systems/FerretAccessories.gd`,
+`assets/accessories/cape.glb` (kürzere Hänge-Länge).
+
+⚠️ Weiterhin ohne Godot-Editor getestet - bitte erneut prüfen.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_21.zip`
