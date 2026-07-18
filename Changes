@@ -1775,3 +1775,42 @@ und Augenklappe stecken sichtbar im Frettchen-Körper.
 ⚠️ Weiterhin ohne Godot-Editor getestet - bitte erneut prüfen.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_21.zip`
+
+
+## Accessoire Skalierungs-/Positions-Bug behoben (v11.22)
+
+Nutzer meldete per Screenshot: Cape steht weiterhin senkrecht (wie eine
+Fahne) im Frettchen, statt am Ruecken zu haengen; Zylinderhut wirkt zudem
+recht ueberdimensioniert.
+
+**Root Cause**: seit dem v11.18-Refactor haengen Accessoires (`AccessoryItem_*`)
+als DIREKTE Kinder von `fn` (dem Frettchen-Root-Node), der mit
+`FERRET_MODEL_SCALE = 2.2` skaliert ist. Der Code setzte aber weder eine
+Gegen-Skalierung noch eine Positions-Korrektur auf die Accessoire-Instanz -
+dadurch wurden Position UND Groesse jedes Accessoires um den vollen
+2.2x-Faktor aufgeblasen (waehrend der Kommentar im Code faelschlich schon
+"Position UND Skalierung vorberechnet" behauptete, ohne dass der Code das
+tatsaechlich tat). Die in `FerretAccessories.gd` hinterlegten Offsets
+(z.B. CAPE Y=0.31) sind als reale Meter relativ zu `fn` gedacht (aehnliche
+Groessenordnung wie `FERRET_Y = 0.35`) - mit dem fehlenden Gegen-Skalieren
+landete das Cape stattdessen bei effektiv Y≈0.68, also viel zu hoch oben
+nahe am Kopf, UND 2.2x zu gross - das erklaert den "steif stehenden
+Fahnen"-Effekt statt eines am Ruecken haengenden Umhangs, sowie den zu
+grossen Zylinderhut.
+
+**Fix** (`rendering/WorldRenderer3D.gd`, `_attach_ferret_accessories()`):
+- `acc_inst.position` wird jetzt durch `FERRET_MODEL_SCALE` geteilt (hebt
+  die Multiplikation durch `fn`s Skalierung beim Welt-Transform wieder auf)
+- `acc_inst.scale` wird explizit auf `Vector3.ONE / FERRET_MODEL_SCALE`
+  gesetzt (hebt die geerbte Groessen-Skalierung auf)
+- Gleiches Prinzip wie beim bereits vorhandenen `fx_anchor` fuer den
+  Holy-Glow-Effekt weiter oben in derselben Datei - nur direkt auf die
+  Accessoire-Instanz angewendet statt ueber einen separaten Anker-Node.
+
+**Geaenderte Dateien**: `rendering/WorldRenderer3D.gd`
+
+⚠️ Weiterhin ohne Godot-Editor getestet - bitte mit Screenshot (idealerweise
+wieder Nahaufnahme wie zuletzt) zurueckmelden, ob Cape jetzt am Ruecken
+haengt und alle Accessoires in plausibler Groesse erscheinen.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_22.zip`
