@@ -1922,3 +1922,69 @@ Umhang jetzt flach auf dem Ruecken statt durch den Koerper zu clippen oder
 zu schweben?
 
 **Datei**: `FrettchenKolonie_Godot4_v11_24.zip`
+
+
+## Neues Feature-Paket: Frettchen-Ich-Anpassung (Start, v11.25 = Phase 1/4)
+
+Nutzeranfrage (grosses Feature-Buendel, 4 Teile): (1) Frettchenmodus soll
+beim erneuten Betreten an der zuletzt verlassenen Position starten statt
+immer neu zu spawnen, (2) Mittelklick auf eine Tile in der Iso-Ansicht soll
+das Frettchen-Ich dorthin laufen lassen (echte Bewegung mit Zeit+Animation),
+(3) das Frettchen-Ich soll anders eingefaerbt sein als normale Frettchen,
+(4) ein Charakter-Editor im Pause-Menue (Minecraft-Skin-Editor-Stil) soll
+Accessoire-Ausruestung erlauben, ueber 10 NEUE Achievements freigeschaltet,
+mit parallel aktiven Boosts NUR fuers Frettchen-Ich.
+
+Nutzer bestaetigte: Positions-Persistenz auch im Spielstand speichern;
+Laufbefehl geradlinig (wie NPCs) mit PLAYER_SPEED, sofortiges Umlenken bei
+erneutem Klick; einfacher, aber gut unterscheidbarer Farb-Tint reicht;
+Charakter-Editor mit Frettchen-Vorschau + Slot-Auswahl, plus Anzeige im
+FP-HUD welche Accessoires aktiv sind; 10 EIGENE (neue) Achievements passend
+zu den Accessoires, Boosts parallel aktiv.
+
+Geplante Boost-Zuordnung (Achievements folgen in Phase 4):
+Zylinder=Tempo, Zauberhut=Minispiel-Ertrag+%, Krone=Interaktionsreichweite,
+Bandana=leichtere Minispiele, Fliege=Sprunghoehe+Sprint, Schal=kein
+Winter-Malus, Medaille=Bonus-Ressource pro Minispiel, Monokel=groessere
+Erkennungsdistanz, Augenklappe=kuerzere Minispiel-Dauer, Umhang=sanftere
+Landung (neue kleine Stagger-Mechanik noetig).
+
+### Phase 1/4: Positions-Persistenz (dieses Release)
+
+**Root Cause (bestaetigt Nutzer-Vermutung teilweise)**: das Spieler-Frettchen
+(`PlayerController`) blieb schon bisher als sichtbares Modell in der
+Iso-Ansicht an seiner letzten Position stehen (`ferret_visual.visible =
+true` beim Verlassen) - ABER `_toggle_fp_mode()` hat beim ERNEUTEN Betreten
+IMMER auf die aktuelle Iso-Kamera-Zielposition (`_cam_target`) teleportiert,
+unabhaengig von der tatsaechlichen letzten Spielerposition. Ebenso hat
+`deserialize_world()` (Speicherstand laden) den Spieler immer fix auf
+Kartenmitte+1 gesetzt, da nie eine Spielerposition mitgespeichert wurde.
+
+**Fix**:
+- Neues Flag `_player_pos_valid` in `GameController.gd` - sobald einmal
+  eine "echte" Spielerposition existiert (Neustart-Spawn, geladener
+  Spielstand mit Positionsdaten, oder ein Frettchenmodus-Aufenthalt),
+  teleportiert `_toggle_fp_mode()` beim naechsten Betreten NICHT mehr,
+  sondern belaesst den Spieler exakt dort, wo `global_position` bereits
+  steht.
+- Neue Methoden `GameController.serialize_player()` /
+  `.deserialize_player()` - Position (Vector3) + Blickrichtung (Yaw) werden
+  jetzt als eigenes Top-Level-Feld `"player"` im Spielstand mitgespeichert
+  (`SaveSystem.save()`/`.load_game()`). Alte Speicherstaende ohne dieses
+  Feld fallen weiterhin sauber auf den bisherigen Kartenmitte-Spawnpunkt
+  zurueck (Abwaertskompatibilitaet ueber das "valid"-Flag im gespeicherten
+  Dictionary selbst).
+
+**Geaenderte Dateien**: `game/GameController.gd`, `systems/SaveSystem.gd`
+
+⚠️ Weiterhin ohne Godot-Editor getestet. Bitte pruefen: (1) Frettchenmodus
+verlassen, an anderer Stelle in der Iso-Ansicht die Kamera hinbewegen, dann
+Frettchenmodus erneut betreten - sollte an der ALTEN Position starten, nicht
+an der Kamera-Position. (2) Speichern, Spiel neu laden - sollte beim
+naechsten Frettchenmodus-Betreten ebenfalls an der gespeicherten Position
+starten.
+
+Phase 2 (Mittelklick-Laufbefehl), Phase 3 (Einfaerbung) und Phase 4
+(Charakter-Editor + Achievements + Boosts) folgen in separaten Releases.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_25.zip`
