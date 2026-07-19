@@ -1988,3 +1988,62 @@ Phase 2 (Mittelklick-Laufbefehl), Phase 3 (Einfaerbung) und Phase 4
 (Charakter-Editor + Achievements + Boosts) folgen in separaten Releases.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_25.zip`
+
+
+## Phase 2/4: Mittelklick-Laufbefehl fuers Frettchen-Ich (v11.26)
+
+Nutzeranfrage: mittlere Maustaste in der Iso-Ansicht auf eine Tile klicken
+-> Frettchen-Ich laeuft dorthin, mit echter Bewegung (Zeit + Lauf-Animation),
+kein Teleport. Bestaetigt: geradlinige Bewegung reicht (wie NPCs, kein
+A*/Hindernisumgehung), gleiches Tempo wie im First-Person-Modus
+(PLAYER_SPEED), erneuter Klick waehrend des Laufens lenkt sofort um.
+
+**Neue Mechanik** (`game/PlayerController.gd`):
+- Neuer Zustand `_external_walk_active` + `_external_walk_target` -
+  unabhaengig vom `movement_enabled`-Flag (das die normale WASD-Steuerung
+  sperrt, waehrend man NICHT im Frettchenmodus ist - genau dann soll aber
+  der Laufbefehl funktionieren).
+- `start_walk_to(world_pos)`: setzt/ueberschreibt das Laufziel (ein neuer
+  Aufruf waehrend des Laufens lenkt sofort um, wie gewuenscht).
+- `_process_external_walk(delta)`: geradlinige XZ-Bewegung mit
+  `move_and_slide()` (inkl. echter Schwerkraft/Terrain-Kollision, exakt wie
+  bei der normalen FP-Bewegung), spielt "Run"-Animation waehrend der
+  Bewegung, stoppt automatisch bei Ankunft (Toleranz 0.2 Einheiten). Yaw
+  wird ueber `atan2(dir.x, dir.z)` berechnet - dieselbe Konvention wie bei
+  den NPC-Frettchen in `WorldRenderer3D` (`atan2(dir.x, dir.y)` auf
+  Tile-Ebene entspricht exakt `atan2(dir.x, dir.z)` in Weltkoordinaten, da
+  `tile_to_world3d()` Tile-Y auf Welt-Z abbildet) - garantiert dieselbe
+  Blickrichtungs-Ausrichtung wie beim bereits korrekt funktionierenden
+  NPC-Rig (identisches ferret.glb-Modell).
+- `cancel_walk()`: neue Methode, wird beim Betreten des Frettchenmodus
+  aufgerufen, damit ein evtl. noch laufender Befehl nicht die
+  WASD-Steuerung uebersteuert.
+- `teleport_to()` bricht jetzt ebenfalls einen laufenden Laufbefehl ab
+  (Sicherheitsnetz gegen widerspruechliche Zustaende).
+
+**Input-Handling** (`game/GameController.gd`):
+- `MOUSE_BUTTON_MIDDLE` im bestehenden `_unhandled_input()`-Mausklick-Switch
+  ergaenzt - nur aktiv wenn NICHT im Frettchenmodus, kein Minispiel laeuft,
+  und der Klick nicht ueber einem UI-Panel liegt
+  (`get_viewport().gui_get_hovered_control() == null`).
+- Neue Funktion `_screen_to_world3d()` (aus der bisherigen
+  `_screen_to_tile()`-Raycast-Logik ausgelagert, jetzt von beiden genutzt)
+  liefert die tatsaechliche Terrain-Weltposition (inkl. Hoehe) am
+  Mauszeiger.
+- `_start_player_walk_to_screen()`: ermittelt die Ziel-Tile aus der
+  Klickposition und ruft `player.start_walk_to()` auf; ausserhalb der
+  Weltgrenzen geklickt -> Befehl wird ignoriert.
+
+**Geaenderte Dateien**: `game/PlayerController.gd`, `game/GameController.gd`
+
+⚠️ Weiterhin ohne Godot-Editor getestet. Bitte pruefen: (1) Mittelklick auf
+eine entfernte Tile in der Iso-Ansicht -> Frettchen-Ich sollte sichtbar
+dorthin LAUFEN (nicht springen/teleportieren), mit Lauf-Animation. (2)
+Waehrend des Laufens erneut mittelklicken -> sollte sofort zum neuen Ziel
+umlenken. (3) Nach Ankunft den Frettchenmodus betreten (F) -> sollte an der
+gelaufenen Position starten (baut auf Phase 1 auf).
+
+Phase 3 (andere Einfaerbung) und Phase 4 (Charakter-Editor + Achievements +
+Boosts) folgen in separaten Releases.
+
+**Datei**: `FrettchenKolonie_Godot4_v11_26.zip`
