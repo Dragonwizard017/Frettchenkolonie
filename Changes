@@ -2047,3 +2047,65 @@ Phase 3 (andere Einfaerbung) und Phase 4 (Charakter-Editor + Achievements +
 Boosts) folgen in separaten Releases.
 
 **Datei**: `FrettchenKolonie_Godot4_v11_26.zip`
+
+
+## v12.0: Bug-Fix Treppen-Laufbefehl + Phase 3/4 Einfaerbung + Versionswechsel
+
+Ab hier neues Versionsschema: v12.x (vom Nutzer angefordert, "Zeit für eine
+neue Versionsnummer").
+
+### Bug-Fix: Laufbefehl blieb an Gelaende-Stufen haengen
+
+Nutzer-Feedback zu v11.26: der Mittelklick-Laufbefehl funktioniert, aber das
+Frettchen-Ich kommt nicht ueber Gelaende-Stufen (steigende Tile-Hoehen)
+hinweg.
+
+**Root Cause**: Terrain-Kollision ist blockweise mit senkrechten Kanten
+aufgebaut (`WorldRenderer3D._col_body`, `HEIGHT_SCALE = 1.2` Welteinheiten
+pro Hoehenstufe) - keine Rampen. Im First-Person-Modus gibt es dafuer
+bereits extra einen Sprung (`JUMP_VELOCITY = 7.5`, erreicht rechnerisch
+`7.5²/(2·18) ≈ 1.56` Einheiten Hoehe - reicht bewusst fuer genau 1
+Hoehenstufe, absichtlich moderat gehalten). Der programmatische Laufbefehl
+konnte aber logischerweise nicht "die Leertaste druecken".
+
+**Fix** (`game/PlayerController.gd`, `_process_external_walk()`): neue
+Methode `_is_blocked_by_wall()` prueft nach jedem `move_and_slide()`, ob
+eine der Kollisionen eine eher senkrechte Flaeche ist (Kollisionsnormale
+`|n.y| < 0.5`, also Wand/Stufenkante statt begehbarer Boden/Rampe). War der
+Spieler VOR der Kollisionsaufloesung auf dem Boden UND wird er dadurch
+blockiert, wird automatisch derselbe Sprungimpuls (`JUMP_VELOCITY`)
+ausgeloest wie bei der manuellen Leertaste - bewusst identischer Wert, damit
+sich das Verhalten konsistent anfuehlt und weiterhin nur EINE Hoehenstufe
+ueberwunden werden kann (keine mehrstufigen Klippen).
+
+### Phase 3/4: Frettchen-Ich-Einfaerbung
+
+Nutzer bestaetigt: einfacher, aber gut unterscheidbarer Farb-Tint reicht.
+
+**Umsetzung** (`game/PlayerController.gd`): neue Methode
+`_apply_player_tint()`, in `_ready()` direkt nach dem Instanziieren von
+`ferret_visual` aufgerufen (also BEVOR in Phase 4 Accessoires als Kind-Nodes
+angehaengt werden - faerbt dadurch bewusst nur das Basis-Fell-Modell). Geht
+rekursiv durch alle `MeshInstance3D`-Nodes und multipliziert
+`albedo_color` mit einer neuen Konstante `PLAYER_TINT = Color(0.5, 0.72,
+1.05)` (kuehles Blau, kommt im natuerlichen warmen Beige/Tan-Fellton nicht
+vor, daher auch aus der Distanz in der Iso-Ansicht gut erkennbar). Wichtig:
+nutzt `set_surface_override_material()` mit einer per `duplicate()`
+kopierten Material-Resource statt die Original-Resource zu veraendern -
+verhindert, dass durch Godots Resourcen-Caching versehentlich auch die
+NPC-Frettchen (nutzen dasselbe `ferret.glb`) mitgefaerbt werden.
+
+**Geaenderte Dateien**: `game/PlayerController.gd`
+
+⚠️ Weiterhin ohne Godot-Editor getestet. Bitte pruefen: (1) Laufbefehl auf
+eine Tile jenseits einer Hoehenstufe -> sollte jetzt automatisch
+hochspringen/-steigen statt haengen zu bleiben (mehrstufige Klippen bleiben
+bewusst unpassierbar). (2) Frettchen-Ich sollte jetzt sichtbar blaeulich
+eingefaerbt sein, sowohl im Frettchenmodus (falls von aussen sichtbar) als
+auch in der Iso-Ansicht - NPC-Frettchen sollten unveraendert im normalen
+Fellton bleiben.
+
+Phase 4 (Charakter-Editor + 10 neue Achievements + Boosts) folgt als
+naechstes.
+
+**Datei**: `FrettchenKolonie_Godot4_v12_0.zip`
