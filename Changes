@@ -2109,3 +2109,49 @@ Phase 4 (Charakter-Editor + 10 neue Achievements + Boosts) folgt als
 naechstes.
 
 **Datei**: `FrettchenKolonie_Godot4_v12_0.zip`
+
+
+## v12.1: Laufbefehl komplett auf NPC-Prinzip umgestellt (Treppen-Bug endgueltig behoben)
+
+Nutzer-Feedback: der Step-Up-Assist aus v12.0 (Sprungimpuls bei erkannter
+Wand-Kollision) hat das Haengenbleiben an Gelaende-Stufen NICHT behoben.
+Nutzeranfrage: "mache es einfach so, dass es funktioniert wie bei den
+NPC-Frettchen".
+
+**Neuer Ansatz**: komplette Abkehr von Physik/Kollision fuer den Laufbefehl.
+NPC-Frettchen (`FerretEntity` + `WorldRenderer3D`) nutzen ueberhaupt keine
+Physik-Engine fuer ihre Bewegung - sie sind reine Positions-Daten (Vector2),
+deren Darstellung jeden Frame per `fn.position.y =
+tile_to_world3d(int(fe.pos.x), int(fe.pos.y)).y + FERRET_Y` direkt auf die
+aktuelle Tile-Hoehe gesetzt wird. Kein `move_and_slide()`, keine
+Schwerkraft, keine Kollisionsabfrage - daher koennen sie prinzipbedingt
+nicht an Kanten haengen bleiben.
+
+`PlayerController._process_external_walk()` (`game/PlayerController.gd`)
+wurde exakt nach diesem Prinzip umgebaut:
+- KEIN `move_and_slide()` mehr waehrend des Laufbefehls, KEINE Schwerkraft.
+- `global_position` wird direkt gesetzt: X/Z linear in Richtung Ziel bewegt
+  (`PLAYER_SPEED * delta` pro Frame), Y = Tile-Hoehe an der jeweils
+  aktuellen Position (`renderer.tile_to_world3d(...)`, plus neuer
+  `FOOT_OFFSET = 0.35`-Konstante, analog zu `WorldRenderer3D.FERRET_Y`).
+- Neue Referenz `PlayerController.renderer` (von
+  `GameController._setup_renderer()` gesetzt) fuer die Tile-Hoehen-Abfrage.
+- Yaw-Berechnung (`atan2(dir.x, dir.z)`) unveraendert uebernommen.
+- Der bisherige Step-Up-Assist (Sprungimpuls-Erkennung ueber
+  Kollisionsnormalen) wurde komplett entfernt, da nicht mehr benoetigt -
+  ohne Kollisionsabfrage kann prinzipiell nichts mehr blockieren.
+
+**Geaenderte Dateien**: `game/PlayerController.gd`, `game/GameController.gd`
+(neue Renderer-Referenz-Zuweisung in `_setup_renderer()`)
+
+⚠️ Weiterhin ohne Godot-Editor getestet. Da dies exakt dasselbe Prinzip wie
+das bereits erwiesenermassen zuverlaessig funktionierende NPC-Bewegungssystem
+ist, sollte das Problem strukturell nicht mehr auftreten koennen - bitte
+trotzdem mit einem Laufbefehl ueber mehrere Gelaende-Stufen hinweg testen.
+Ein kleiner kosmetischer Vorbehalt: der `FOOT_OFFSET`-Wert (0.35) ist vom
+NPC-Konventionswert uebernommen, aber nicht 1:1 gegen die tatsaechliche
+Kapsel-Kollisionsform des Spielers verifiziert - falls die Fuesse waehrend
+des Laufens minimal zu hoch/tief wirken, bitte Screenshot schicken, ist ein
+Ein-Zeilen-Fix.
+
+**Datei**: `FrettchenKolonie_Godot4_v12_1.zip`
