@@ -2302,3 +2302,40 @@ einschaetzen zu koennen.
 
 Naechstes Timberborn-Paket (Schleusen/Staudamm-Steuerung ODER Plattformen/
 mehrstoeckiges Bauen) steht weiterhin aus.
+
+## Frettchen-Ich-Anpassungs-System (v11.25 - v12.2, komplett)
+
+Das Spieler-Frettchen (First-Person-Modus, "PlayerController.gd") hat jetzt
+ein eigenstaendiges Anpassungs-/Fortschritts-System, unabhaengig vom
+Legendaeren-Frettchen-System (aber mit denselben 10 Accessoire-Meshes):
+
+- **Positions-Persistenz** (v11.25): Frettchenmodus startet immer an der
+  zuletzt verlassenen Position, auch nach Speichern/Laden.
+- **Mittelklick-Laufbefehl** (v11.26, v12.1): in der Iso-Ansicht mittlere
+  Maustaste auf eine Tile klicken -> Frettchen-Ich laeuft dorthin. WICHTIG
+  (v12.1): NICHT physik-/kollisionsbasiert (das haengt an Gelaende-Stufen
+  fest), sondern exakt nach NPC-Prinzip - direktes Tile-Hoehen-Snapping
+  ueber `renderer.tile_to_world3d()`, keine Schwerkraft/Kollision waehrend
+  des Laufbefehls. Neuer Fall-hoehen-basierter Hard-Landing-Detektor (v12.2)
+  ist DAVON unabhaengig (nur im FP-Modus selbst, nicht beim Laufbefehl).
+- **Farbtint** (v12.0): kuehles Blau (`PlayerController.PLAYER_TINT`),
+  multiplikativ auf `albedo_color`, ueber `set_surface_override_material()`
+  mit duplizierten Materialien (faerbt NICHT versehentlich NPC-Frettchen mit).
+- **Charakter-Editor + Achievements + Boosts** (v12.2): siehe Changes-Eintrag
+  v12.2 fuer die volle Tabelle. Kern-Dateien: `systems/PlayerAccessories.gd`
+  (neues Autoload, Ausruestung+Boosts), `ui/CharacterEditorPanel.gd` (Live-
+  3D-Vorschau per eigenem SubViewport), 10 neue Achievements in
+  `AchievementSystem.gd` (Kategorie "SPIELER").
+
+**Wichtig fuer kuenftige Aenderungen an diesem System**:
+- Accessoire-Positionierung nutzt IMMER die exakt vermessenen ferret.glb-
+  Koordinaten aus `FerretAccessories.ACCESSORIES` (siehe die dortige
+  Mess-Historie v11.22-v11.24) - NIEMALS Gegen-Skalierung fuer Accessoires,
+  die direkt an einen mit FERRET_MODEL_SCALE=2.2 skalierten Node haengen
+  (das war der v11.22-Fehlversuch).
+- Boosts leben zentral in `PlayerAccessories.BOOSTS` (Dictionary pro
+  Accessoire-ID) - beim Hinzufuegen neuer Boosts dort ansetzen, nicht in
+  den einzelnen Verbrauchsstellen hart kodieren.
+- Freischaltung IMMER ueber `AchievementSys.unlocked` ableiten
+  (`PlayerAccessories.is_unlocked()`), nie einen zweiten Freischalt-Zustand
+  einfuehren.
