@@ -2155,3 +2155,104 @@ des Laufens minimal zu hoch/tief wirken, bitte Screenshot schicken, ist ein
 Ein-Zeilen-Fix.
 
 **Datei**: `FrettchenKolonie_Godot4_v12_1.zip`
+
+
+## v12.2: Phase 4/4 - Charakter-Editor, 10 Frettchen-Ich-Erfolge, Boosts
+
+Letzte Phase des Frettchen-Ich-Anpassungs-Feature-Buendels (siehe v11.25,
+v12.0, v12.1 fuer Phase 1-3).
+
+### Neue Achievement-Kategorie "Frettchen-Ich" (10 Erfolge)
+
+`systems/AchievementSystem.gd`: neue Kategorie "SPIELER" (Icon 🎯) + 10
+neue Erfolge, JEDER schaltet zusaetzlich ein Accessoire fuers Frettchen-Ich
+frei (neues Feld "unlocks_accessory", ausgewertet in `_unlock()`):
+
+- Weitgereist (1000 Welteinheiten im FP-Modus gelaufen) → Zylinder
+- Sammelprofi (50 Minispiele abgeschlossen) → Zauberhut
+- Kolonieoberhaupt (1 Std. im FP-Modus) → Krone
+- Vielsammler (500 Ressourcen über Minispiele) → Bandana
+- Hüpfburg (100 Sprünge) → Fliege
+- Wintertrotz (100 Ressourcen im Winter) → Schal
+- Erntemeister (20 Ressourcenknoten komplett geleert) → Medaille
+- Entdecker (200 verschiedene Kacheln betreten) → Monokel
+- Perfektionist (20 Minispiele mit Bestergebnis) → Augenklappe
+- Klippenspringer (10 harte Landungen ueberstanden) → Umhang
+
+Neue Zaehler + `report_player_*()`-Funktionen, alle im Spielstand
+gespeichert. Bewusste, begruendete Ausnahme vom sonst strikten
+"kein Frame-Polling"-Prinzip NUR fuer Distanz/Spielzeit/Kacheln (koennen
+nicht event-basiert erfasst werden), aber ausschliesslich waehrend eines
+aktiven Frettchenmodus-Aufenthalts - keine Dauerlast auf die
+Kolonie-Simulation.
+
+### Neues Autoload: `systems/PlayerAccessories.gd`
+
+Verwaltet Ausruestung (equipped pro Slot) und Boost-Werte. Freischaltung
+wird bewusst NICHT doppelt gespeichert, sondern direkt aus
+`AchievementSys.unlocked` abgeleitet (Single Source of Truth). Nutzt
+dieselben 10 Accessoire-Definitionen/-Meshes wie die Legendaeren Frettchen
+(`FerretAccessories.ACCESSORIES`). Boosts multiplikativ (`get_boost_mult`)
+oder additiv (`get_boost_flat`) je nach Art, alle gleichzeitig aktiv
+(Nutzer-Bestaetigung: "Boosts sollen parallel an sein können").
+
+### Boosts (nur fürs Frettchen-Ich, alle 10 verdrahtet)
+
+| Accessoire | Effekt | Umsetzung |
+|---|---|---|
+| Zylinder | +20% Tempo | `PlayerController` Bewegung + Laufbefehl |
+| Zauberhut | +25% Minispiel-Ertrag | `GameController._on_minigame_finished()` |
+| Krone | +35% Interaktionsreichweite | `GameController._update_fp_interaction()` |
+| Bandana | Minispiele leichter (breitere Zonen/Toleranzen) | `MinigameOverlay.gd`, alle 5 Minispiele |
+| Fliege | +30% Sprunghöhe | `PlayerController` Sprung |
+| Schal | Kein Winter-Tempo-Malus | neuer Winter-Malus (0.75x) + Aufhebung |
+| Medaille | Flat-Bonus pro Minispiel | `GameController._on_minigame_finished()` |
+| Monokel | +20% Interaktionsreichweite (stackt mit Krone) | `GameController._update_fp_interaction()` |
+| Augenklappe | Minispiele brauchen weniger Treffer/kürzer | `MinigameOverlay.gd`, alle 5 Minispiele |
+| Umhang | Keine Verlangsamung bei harter Landung | neue Fallhöhen-Erkennung in `PlayerController` |
+
+Fuer Krone/Monokel wurde der Tile-Suchradius der Interaktions-Erkennung von
+2 auf 3 angehoben, damit der Reichweiten-Boost nicht durch das Suchraster
+selbst gekappt wird.
+
+### Charakter-Editor (neu: `ui/CharacterEditorPanel.gd`)
+
+Ueber neuen Button "🎨 Charakter-Editor" im Pause-Menue erreichbar. Zeigt
+eine LIVE rotierende 3D-Vorschau des Frettchen-Ich in einem eigenen,
+isolierten `SubViewport` (`own_world_3d = true` - eigene Kamera/Licht,
+komplett unabhaengig von der Kolonie-Szene), inkl. Faerbung (siehe v12.0)
+und aktuell ausgeruesteten Accessoires. Darunter 4 Slot-Zeilen (Kopf/Hals/
+Gesicht/Ruecken) mit Links/Rechts-Pfeilen, die durch alle FREIGESCHALTETEN
+Accessoires dieses Slots (+ "leer") durchschalten; Anzeige "x/y
+freigeschaltet" pro Slot.
+
+`PlayerController.gd`: neue Methode `refresh_accessories()` haengt
+Accessoire-Modelle direkt an `ferret_visual` (identisches Prinzip wie
+`WorldRenderer3D._attach_ferret_accessories()` bei Legendaeren Frettchen -
+keine Gegen-Skalierung noetig, siehe die dortige v11.22-v11.24-Historie).
+Wird automatisch bei jeder Ausruestungs-Aenderung ueber
+`PlayerAccessories.equipment_changed`-Signal neu aufgerufen (Charakter-
+Editor UND Spielstand-Laden loesen beide dasselbe Signal aus).
+
+### FP-HUD-Anzeige
+
+`ui/FPHud.gd`: neue dezente Zeile oben links ("🎨 Zylinder, Fliege, ..."),
+zeigt alle aktuell ausgeruesteten Accessoire-Namen waehrend des
+Frettchenmodus.
+
+**Geaenderte/neue Dateien**: `systems/AchievementSystem.gd`,
+`systems/PlayerAccessories.gd` (neu), `systems/SaveSystem.gd`,
+`game/GameController.gd`, `game/PlayerController.gd`, `ui/MinigameOverlay.gd`,
+`ui/CharacterEditorPanel.gd` (neu), `ui/PauseMenu.gd`, `ui/FPHud.gd`,
+`scenes/Main.gd`, `project.godot` (neues Autoload)
+
+⚠️ Groesster Feature-Umfang bisher, weiterhin komplett ohne Godot-Editor
+getestet. Bitte insbesondere pruefen: (1) Erfolge schalten sich wie erwartet
+frei und die zugehoerige Freischalt-Meldung erscheint, (2) Charakter-Editor
+oeffnet sich aus dem Pause-Menue, 3D-Vorschau rotiert und zeigt Faerbung +
+Accessoires korrekt, (3) Slot-Pfeile schalten nur durch freigeschaltete
+Optionen, (4) FP-HUD zeigt die richtigen Namen an, (5) spuerbare
+Boost-Wirkung (v.a. Tempo/Sprunghoehe/Minispiel-Ertrag sollten leicht
+nachpruefbar sein).
+
+**Datei**: `FrettchenKolonie_Godot4_v12_2.zip`
