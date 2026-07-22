@@ -2256,3 +2256,82 @@ Boost-Wirkung (v.a. Tempo/Sprunghoehe/Minispiel-Ertrag sollten leicht
 nachpruefbar sein).
 
 **Datei**: `FrettchenKolonie_Godot4_v12_2.zip`
+
+
+## v12.3: Umfassendes, interaktives Tutorial + progressive Freischaltungs-Erklärungen
+
+Nutzeranfrage: Tutorial soll alle Spielsysteme abdecken, interaktiver
+werden (z.B. markierte Ziel-Kachel fuers Gebaeude-Platzieren), und bei
+jeder Epochen-/Gebaeude-Freischaltung automatisch eine Erklaerung zeigen.
+Logischer Aufbau, fuer jeden verstaendlich.
+
+### Neue Datei: `systems/BuildingExplanations.gd`
+
+Kurze, klare 1-2-Satz-Erklaerungen (+ optionaler Praxis-Tipp) fuer alle 44
+regulaer im Bau-Menue erscheinenden Gebaeude (alle 4 Epochen, ohne die
+_ADV-Umbau-Ziele, die nie direkt im Menue auftauchen). Zentrale
+Datenquelle sowohl fuers Tutorial als auch den neuen Freischaltungs-
+Erklaerer.
+
+### Neuer Tile-Marker: `rendering/WorldRenderer3D.gd`
+
+Neuer, eigenstaendiger "TutorialMarker"-Node (kraeftiges pulsierendes
+Gruen, per Tween animiert) - bewusst GETRENNT vom bestehenden
+gelben Auswahl-Highlight und dem blauen Bau-Vorschau-Ghost, damit sich die
+drei nie gegenseitig stoeren. Neue Methoden `show_tutorial_marker(tx,ty)` /
+`hide_tutorial_marker()`.
+
+### Komplett neues `ui/TutorialManager.gd` (19 Schritte statt bisher 10)
+
+Logischer Aufbau: Kamera → Bauhof → Bau-Menue → **INTERAKTIV: Gebaeude auf
+markierter Kachel platzieren** → Ressourcen → Hunger/Durst → Wohnen/
+Nachwuchs → Stimmung → Terrain formen → Forschung/Tech-Baum → Epochen →
+**INTERAKTIV: Frettchenmodus einmal betreten (Taste F)** → Frettchenmodus
+verlassen → Charakter-Editor → Erfolge → Spieltempo → Speichern →
+Abschluss.
+
+Zwei echte interaktive/blockierende Schritte (kein "Weiter"-Button, geht
+erst automatisch weiter, wenn die Aktion erledigt ist):
+- **Gebaeude-Platzierung**: `GameController.find_nearby_buildable_tile()`
+  (neu) sucht spiralfoermig die naechste tatsaechlich bebaubare Kachel um
+  den Startpunkt (kein Wasser, keine bestehende Bebauung) - garantiert
+  gueltig, unabhaengig vom zufaelligen Terrain. Markierung erscheint dort,
+  Tutorial wartet auf `GameState.building_placed` MIT Toleranz-Pruefung
+  (Gebaeude muss auf/direkt neben der markierten Kachel stehen).
+- **Frettchenmodus betreten**: neues Signal `GameState.fp_mode_changed`
+  (in `GameController._toggle_fp_mode()` ergaenzt) - Tutorial wartet, bis
+  der Spieler tatsaechlich einmal [F] gedrueckt hat.
+
+Fortgeschrittene Systeme (neue Gebaeude ab Epoche 2+, Distrikte,
+Legendaere Frettchen, Expeditionen) werden bewusst NICHT im Anfangs-
+Tutorial erklaert (waere zu viel auf einmal) - sondern automatisch GENAU
+DANN, wenn sie relevant werden, siehe naechster Punkt.
+
+### Neu: `ui/UnlockExplainer.gd` (progressive Freischaltungs-Erklaerungen)
+
+Laeuft die GESAMTE Spielsitzung ueber im Hintergrund (nicht nur waehrend
+des Tutorials). Reagiert auf `GameState.tech_unlocked` (Epochen UND
+einzelne Tech-Knoten, z.B. die Kinderstube ueber einen bestimmten
+Bevoelkerungs-Knoten) und zeigt automatisch eine kleine Karte (Icon, Name,
+Erklaerung, ggf. Tipp) fuer JEDES dadurch neu verfuegbare Gebaeude -
+mehrere gleichzeitig freigeschaltete Gebaeude werden nacheinander in einer
+Warteschlange gezeigt ("noch 3 weitere"). Reine Dekorationen werden
+ausgelassen (selbsterklaerend).
+
+**Geaenderte/neue Dateien**: `systems/BuildingExplanations.gd` (neu),
+`rendering/WorldRenderer3D.gd`, `ui/TutorialManager.gd` (komplett neu),
+`ui/UnlockExplainer.gd` (neu), `game/GameController.gd` (neues Signal +
+`find_nearby_buildable_tile()`), `autoloads/GameState.gd` (neues Signal
+`fp_mode_changed`), `scenes/Main.gd` (UnlockExplainer registriert)
+
+⚠️ Weiterhin ohne Godot-Editor getestet - insbesondere der interaktive
+Marker-Mechanismus und das automatische Weiterschalten bei Gebaeude-
+Platzierung/Frettchenmodus-Eintritt sollten mit einer frischen neuen Welt
+durchgetestet werden. Bitte pruefen: (1) startet das Tutorial bei neuer
+Kolonie automatisch, (2) erscheint die gruene pulsierende Markierung
+sichtbar und an einer bebaubaren Stelle, (3) geht der Bau-Schritt nur
+weiter, wenn WIRKLICH dort gebaut wird, (4) schaltet der Frettchenmodus-
+Schritt bei [F] weiter, (5) erscheint beim Epochensprung automatisch eine
+Erklaerungs-Karte pro neuem Gebaeude.
+
+**Datei**: `FrettchenKolonie_Godot4_v12_3.zip`
