@@ -2335,3 +2335,77 @@ Schritt bei [F] weiter, (5) erscheint beim Epochensprung automatisch eine
 Erklaerungs-Karte pro neuem Gebaeude.
 
 **Datei**: `FrettchenKolonie_Godot4_v12_3.zip`
+
+
+## v12.4: Bugfixes + Charakter-Editor dauerhaft angedockt + Tutorial-Button-Outlines
+
+### Bug-Fix: CharacterEditorPanel Crash beim Oeffnen
+
+Nutzer-Fehlerbericht: `Node not inside tree. Use look_at_from_position()
+instead.` beim Oeffnen des Charakter-Editors. Ursache: `cam.look_at()`
+wurde VOR `sv.add_child(cam)` aufgerufen - `look_at()` braucht
+`is_inside_tree()`. Fix: Reihenfolge vertauscht (erst in den Baum haengen,
+dann ausrichten).
+
+### Bug-Fix: Dev-Mode "Alle Achievements freischalten" verhinderte Ausruestung
+
+Nutzer-Fehlerbericht: nach Nutzung des Dev-Mode-Buttons "Alle Achievements
+freischalten" liessen sich die eigentlich freigeschalteten Accessoires
+nicht ausruesten.
+
+**Root Cause**: der Dev-Button haengte Achievement-IDs DIREKT an
+`AchievementSys.unlocked` an, statt ueber die normale `_unlock()`-Methode
+zu gehen - dadurch feuerte NIE das `achievement_unlocked_toast`-Signal, an
+das sich reaktive UI-Panels (Charakter-Editor via `PlayerAccessories`,
+aber auch das bestehende Achievement-Panel) haengen. Blieb der
+Charakter-Editor waehrend/nach der Dev-Mode-Aktion offen bzw. wurde er
+nicht komplett neu geoeffnet, zeigte er weiterhin den alten
+("nichts freigeschaltet")-Stand.
+
+**Fix**: neue oeffentliche Methode `AchievementSystem.debug_force_unlock(id)`
+laeuft immer ueber den regulaeren `_unlock()`-Pfad (loest Toast/Signal
+korrekt aus). `DevToolsPanel.gd`s Button nutzt jetzt diese Methode statt
+`unlocked` direkt zu manipulieren.
+
+### Feature: Charakter-Editor dauerhaft im Pause-Menue (Minecraft-Bedrock-Stil)
+
+Nutzeranfrage: kein separates Popup mehr - die 3D-Vorschau des
+Frettchen-Ich soll IMMER sichtbar im Pause-Menue stehen (angelehnt an das
+Pause-Menue von Minecraft Bedrock Edition), mit einem Button darunter fuer
+die Ausruestung.
+
+`ui/CharacterEditorPanel.gd` umgebaut: kein `open()`/`hide()`-Zyklus mehr -
+wird als fester Kind-Node direkt in `_build_pause_menu()` (`scenes/Main.gd`)
+eingehaengt und erbt automatisch die Sichtbarkeit des Pause-Menues.
+Pause-Menue ist jetzt ein Zwei-Spalten-Layout (`HBoxContainer "Row"`):
+links die bisherigen Menue-Optionen, rechts dauerhaft die 3D-Vorschau samt
+neuem Umschalt-Button "🎨 Accessoires ausrüsten" (klappt die 4 Slot-Zeilen
+ein-/aus). Reagiert jetzt auch reaktiv auf `achievement_unlocked_toast` und
+`PlayerAccessories.equipment_changed`, waehrend das Panel sichtbar ist -
+behebt zugleich das "Stand nicht aktuell"-Symptom aus dem zweiten Bug oben,
+auch fuer den regulaeren (nicht-Dev-Mode) Freischalt-Weg.
+
+### Feature: Tutorial - UI-Buttons werden markiert
+
+Nutzeranfrage: wenn im Tutorial ueber UI-Buttons gesprochen wird, sollen
+diese mit einer gut sichtbaren Outline markiert werden.
+
+`ui/TutorialManager.gd`: neues optionales `"highlight_path"`-Feld pro
+Tutorial-Schritt (Pfad relativ zum Tutorial-Node). Neue `_draw()`-Methode
+zeichnet eine pulsierende gelbe Outline um den referenzierten Button/das
+Panel (Position/Groesse aus `get_global_rect()`, live in `_process()`
+nachgefuehrt). Angewendet auf: Bau-Menue-Panel, Tech-Baum-Symbol,
+Erfolge-Symbol, Geschwindigkeits-Buttons.
+
+**Geaenderte Dateien**: `ui/CharacterEditorPanel.gd`, `scenes/Main.gd`,
+`ui/PauseMenu.gd`, `systems/AchievementSystem.gd`, `ui/DevToolsPanel.gd`,
+`ui/TutorialManager.gd`
+
+⚠️ Weiterhin ohne Godot-Editor getestet. Bitte pruefen: (1) Charakter-Editor
+oeffnet sich jetzt ohne Fehler und ist dauerhaft im Pause-Menue sichtbar,
+(2) Dev-Mode-Freischaltung macht Accessoires sofort ausruestbar, auch ohne
+Panel neu zu oeffnen, (3) im Tutorial erscheinen bei den entsprechenden
+Schritten gelbe pulsierende Outlines um Bau-Menue/Tech-Baum-Symbol/
+Erfolge-Symbol/Geschwindigkeits-Buttons.
+
+**Datei**: `FrettchenKolonie_Godot4_v12_4.zip`
