@@ -1,5 +1,30 @@
 # FrettchenKolonie – Projektübersicht
 
+
+### v12.5 – Touch-Controls-System
+
+**Autoload `TouchControlsSettings`** (`autoloads/TouchControlsSettings.gd`):
+Einzige globale Einstellung, ob Touch-Controls aktiv sind. Persistiert in
+`user://touch_controls.cfg` (ConfigFile). Signal `changed(bool)` informiert
+alle Abonnenten (insbesondere das TouchOverlay) bei Änderungen.
+
+**UI `TouchOverlay`** (`ui/TouchOverlay.gd`):
+Virtuelles Gamepad, als letztes Kind im UIRoot unter `GameUI/UIRoot/TouchOverlay`.
+Deckt alle Aktionen ab die sonst Tastatur/Maus erfordern:
+- Iso-Modus: Kamera-D-Pad (WASD), Zoom +/-, alle Panel-Buttons, Geschwindigkeit,
+  Pause, Frettchenmodus-Toggle, Laufbefehl-Modus (Tap-to-Walk), Baumenü, ESC.
+- FP-Modus: Interagieren (E), Springen (Leertaste), Zurück zur Iso-Ansicht.
+- Nur sichtbar wenn TouchControlsSettings.enabled UND Spielstand geladen.
+- Laufbefehl-Modus ist einmalig (Tap → Walk → deaktiviert), grüner Highlight
+  solange aktiv.
+- Interaktion mit GameController: Zoom über `_touch_zoom_in/out()`, Walk-Tap
+  über `consume_walk_tap()` (gibt true zurück wenn Tap konsumiert wurde).
+
+**Hauptmenü-Toggle** (`scenes/Main.gd`):
+Button „📱 Touch-Steuerung: AUS/EIN ✓" unter dem Testwelt-Button.
+
+---
+
 ## Was ist FrettchenKolonie?
 
 FrettchenKolonie (engl. "Ferret Colony") ist ein browserbasiertes bzw. (seit dem
