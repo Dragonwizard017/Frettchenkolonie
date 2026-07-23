@@ -1,3 +1,85 @@
+## v12.5: Touch-Controls – Virtuelles Gamepad für alle Aktionen
+
+Nutzeranfrage: Touch-Steuerung komplett ausbauen, per Button im Hauptmenü
+aktivierbar, alle Spielaktionen ohne Tastatur/Maus erreichbar machen.
+
+### Neuer Autoload: `autoloads/TouchControlsSettings.gd`
+
+Persistiert die Touch-Einstellung (EIN/AUS) in `user://touch_controls.cfg`
+zwischen Sessions. Signal `changed(is_enabled)` informiert das Overlay.
+
+### Neues UI: `ui/TouchOverlay.gd` – Virtuelles Gamepad
+
+Wird als letztes Kind in den UI-Root eingehängt (liegt daher immer über
+allen anderen Panels), nur sichtbar wenn TouchControlsSettings.enabled und
+ein Spielstand geladen ist.
+
+**Layout: Links unten – Kamera-D-Pad + Zoom**
+- ▲ ▼ ◄ ► – Kamerabewegung (sendet WASD-Tastenereignisse)
+- 🔍+ / 🔍– – Zoom rein/raus (ruft direkt `GameController._touch_zoom_in/out()`)
+- Komplette D-Pad-Gruppe blendet sich im FP-Modus aus
+
+**Layout: Rechts oben (Panel-Reihe)**
+- 🔬 Tech-Baum | 🏆 Achievements | 🗺️ Expeditionen | 🪦 Gräberfeld | 🏘️ Bezirke
+- Alle öffnen ihr jeweiliges Panel per `open()`, nur im Iso-Modus sichtbar
+
+**Layout: Rechts Mitte (Spielsteuerung)**
+- ⏸ Pause / ▶ Weiter (Icon wechselt je nach Zustand)
+- 1× / 2× / 3× – Spielgeschwindigkeit
+- 🐾 Frettchenmodus starten (KEY_F); im FP-Modus wird daraus 🔙
+
+**Layout: Rechts unten (Aktionen)**
+- 🚶 Laufbefehl-Modus: Tap-to-Walk-Toggle (ersetzt Mittelklick komplett);
+  leuchtet grün solange aktiv, deaktiviert sich automatisch nach einem Tap
+- 🏗️ Baumenü öffnen/schließen
+- ✖ Abbrechen/ESC (bricht Platzierung, Minispiel oder FP-Modus ab)
+
+**Layout: Rechts (FP-Modus-Buttons, nur im Frettchenmodus)**
+- ⚡ E – Interagieren (Minispiel starten)
+- ⬆ SPR – Springen (Leertaste)
+- 🔙 ISO – Zurück zur Kolonie-Ansicht (ESC)
+
+### Toggle-Button im Hauptmenü (`scenes/Main.gd`)
+
+Neuer Button „📱 Touch-Steuerung: AUS/EIN ✓" unterhalb von „Testwelt
+erstellen". Zeigt aktuellen Zustand, toggelt ihn per Klick und bleibt
+über Sitzungen hinweg korrekt (liest beim Aufbau den gespeicherten Wert).
+
+### GameController (`game/GameController.gd`)
+
+- Neue öffentliche Methoden `_touch_zoom_in()` / `_touch_zoom_out()`: direkter
+  Zoom ohne InputEvent-Umweg, für saubere Aufruf-Kette aus dem TouchOverlay.
+- `InputEventScreenTouch`-Handler erweitert: prüft vor `_handle_click()` ob
+  das TouchOverlay den Tap als Walk-Befehl konsumieren möchte
+  (`consume_walk_tap()` gibt `true` zurück und verhindert dann den normalen
+  Klick-Handler).
+
+### Architektur-Entscheidungen
+
+- Alle Touch-Button-Aktionen laufen entweder über `Input.parse_input_event()`
+  (Tastensimulation) oder direkte Methodenaufrufe – nie über doppelte
+  Logik-Kopien.
+- TouchOverlay blendet ISO-Buttons im FP-Modus aus und FP-Buttons im
+  ISO-Modus; nie beide gleichzeitig sichtbar.
+- Walk-Modus ist bewusst einmalig (ein Tap = ein Laufbefehl, dann aus),
+  damit versehentliche Doppel-Taps die Steuerung nicht dauerhaft in einem
+  unerwarteten Modus lassen.
+
+**Neue Dateien**: `autoloads/TouchControlsSettings.gd`, `ui/TouchOverlay.gd`
+**Geänderte Dateien**: `scenes/Main.gd`, `game/GameController.gd`, `project.godot`
+
+⚠️ Weiterhin ohne Godot-Editor getestet. Bitte prüfen:
+(1) Hauptmenü zeigt Touch-Button, toggelt zuverlässig EIN/AUS und persistiert,
+(2) Im Spiel erscheint das Overlay nur wenn Touch EIN und Spiel geladen,
+(3) D-Pad bewegt die Kamera, Zoom funktioniert,
+(4) FP-Modus-Button wechselt in FP und zeigt dort FP-Buttons,
+(5) Laufbefehl-Modus: nach Aktivierung leuchtet der Button grün, ein
+    Tap auf die Welt startet den Laufbefehl und deaktiviert ihn wieder.
+
+**Datei**: `FrettchenKolonie_Godot4_v12_5.zip`
+
+---
+
 # FrettchenKolonie – Changelog
 
 ## v10.18 (Custom-Modell jetzt für ALLE Gebäudetypen)
