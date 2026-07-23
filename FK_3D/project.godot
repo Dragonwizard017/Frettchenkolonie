@@ -1,0 +1,86 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="FrettchenKolonie"
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/version="10.0"
+
+[autoload]
+
+GameState="*res://autoloads/GameState.gd"
+BuildingData="*res://systems/BuildingData.gd"
+ResourceSys="*res://systems/ResourceSystem.gd"
+BuildingSys="*res://systems/BuildingSystem.gd"
+PopMgr="*res://systems/PopulationManager.gd"
+DayNight="*res://systems/DayNightSystem.gd"
+TechTreeSys="*res://systems/TechTree.gd"
+DroughtSys="*res://systems/DroughtSystem.gd"
+WaterSys="*res://systems/WaterSystem.gd"
+SeasonSys="*res://systems/SeasonSystem.gd"
+ExpeditionSys="*res://systems/ExpeditionSystem.gd"
+SaveSys="*res://systems/SaveSystem.gd"
+SoundSys="*res://systems/SoundSystem.gd"
+AchievementSys="*res://systems/AchievementSystem.gd"
+PlayerAccessories="*res://systems/PlayerAccessories.gd"
+DevMode="*res://autoloads/DevMode.gd"
+DistrictSys="*res://systems/DistrictSystem.gd"
+TouchControlsSettings="*res://autoloads/TouchControlsSettings.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/resizable=true
+window/stretch/mode="canvas_items"
+
+[input]
+
+move_up={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":87,"physical_keycode":0,"key_label":0,"unicode":119,"location":0,"echo":false,"script":null), Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":4194320,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+}
+move_down={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":83,"physical_keycode":0,"key_label":0,"unicode":115,"location":0,"echo":false,"script":null), Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":4194322,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+}
+move_left={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":65,"physical_keycode":0,"key_label":0,"unicode":97,"location":0,"echo":false,"script":null), Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":4194319,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+}
+move_right={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":68,"physical_keycode":0,"key_label":0,"unicode":100,"location":0,"echo":false,"script":null), Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":4194321,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+}
+toggle_fp_mode={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":70,"physical_keycode":0,"key_label":0,"unicode":102,"location":0,"echo":false,"script":null)]
+}
+interact={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":69,"physical_keycode":0,"key_label":0,"unicode":101,"location":0,"echo":false,"script":null)]
+}
+fp_jump={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":32,"physical_keycode":0,"key_label":0,"unicode":32,"location":0,"echo":false,"script":null)]
+}
+
+[layer_names]
+
+3d_physics/layer_1="Terrain"
+3d_physics/layer_2="Buildings"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+
+[debug]
+
+; GameState.gd ist bewusst ein zentraler Signal-Hub: alle Signale werden in
+; anderen Skripten (.emit()/.connect()) verwendet, aber nie innerhalb von
+; GameState.gd selbst - das loest die (harmlose) "signal nie verwendet"
+; Warnung fuer jedes einzelne Signal aus. Hier bewusst global stummgeschaltet,
+; da es sich um Code-Stil-Rauschen handelt, keinen echten Fehler.
+gdscript/warnings/unused_signal=0
