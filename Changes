@@ -2491,3 +2491,22 @@ Schritten gelbe pulsierende Outlines um Bau-Menue/Tech-Baum-Symbol/
 Erfolge-Symbol/Geschwindigkeits-Buttons.
 
 **Datei**: `FrettchenKolonie_Godot4_v12_4.zip`
+
+v12_6 — Musik-System auf echte Audiodateien umgestellt: im Hauptmenue
+spielen abwechselnd "New Dawn Frontier" und "New Dawn Frontier 2", im
+Spiel variieren "Cozy Block Building" und "Cozy Block Building 2"
+zufaellig mit einer zufaelligen Pause von 10-60 Sekunden zwischen den
+Stuecken (Timer-Kind-Node statt create_tree_timer). Die Musikzone wird
+automatisch aus GameState.state_changed abgeleitet. Ausserdem drei
+Touch-Modus-Bugs behoben: (1) FPActionBase hatte invertierte Top/Bottom-
+Offsets (negative Rect-Hoehe) -> ueberlappende Buttons, jetzt sauber
+oberhalb der Aktions-Buttons platziert; (2) GameState.state (nicht
+existierende Property, korrekt current_state) liess _update_visibility()
+abbrechen -> Touch-Buttons verschwanden nicht bei deaktivierter Touch-
+Steuerung; (3) das Bewegungs-D-Pad wurde im Frettchenmodus (FP)
+faelschlich komplett ausgeblendet, obwohl es dieselben move_up/down/
+left/right-Actions steuert wie die First-Person-Bewegung - jetzt bleibt
+es sichtbar und sendet Press/Release korrekt ueber button_down/button_up
+statt nur ein nie geloestes "gedrueckt".
+Geaenderte Dateien: systems/SoundSystem.gd, ui/TouchOverlay.gd.
+Neu: assets/music/ (4 mp3-Dateien).
