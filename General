@@ -1,6 +1,40 @@
 # FrettchenKolonie – Projektübersicht
 
 
+### v12.6 – Echte Musikdateien + Touch-Modus-Bugfixes
+
+**Musik** (`systems/SoundSystem.gd`):
+Die bisherige rein prozedurale Hintergrundmusik (Sinuston-Melodie) wurde
+durch echte Audiodateien ersetzt (`assets/music/*.mp3`). Die Musikzone
+(Menü/Spiel) wird automatisch aus `GameState.state_changed` abgeleitet -
+kein manuelles Steuern an den Aufrufstellen nötig, `start_music()`/
+`stop_music()` bleiben als No-Ops für Abwärtskompatibilität bestehen.
+- **Hauptmenü**: "New Dawn Frontier" + "New Dawn Frontier 2" spielen
+  zufällig abwechselnd (kein Zurück-zu-Zurück-Wiederholen), nahtlos ohne
+  Pause zwischen den Titeln.
+- **Im Spiel**: "Cozy Block Building" + "Cozy Block Building 2" spielen
+  zufällig variierend, mit einer zufälligen Pause von **10–60 Sekunden**
+  zwischen den Stücken (eigener `Timer`-Kind-Node, nicht
+  `get_tree().create_timer()` - passend zur bestehenden Konvention).
+- Soundeffekte (Bauen, Tod, Geburt, Tag/Nacht etc.) bleiben unverändert
+  prozedural über den bestehenden SFX-Pool.
+
+**Touch-Modus-Bugfixes** (`ui/TouchOverlay.gd`):
+- Überlappende Buttons: `FPActionBase` hatte invertierte Top/Bottom-
+  Offsets (negative Rect-Höhe) → jetzt sauber 12px oberhalb der
+  Aktions-Buttons platziert.
+- Buttons verschwanden nicht bei deaktiviertem Touch-Modus: Zugriff auf
+  `GameState.state` (nicht existierende Property, korrekt `current_state`)
+  ließ `_update_visibility()` abbrechen → jetzt korrigiert.
+- Frettchen ließ sich im Touch-Modus nicht bewegen: das Bewegungs-D-Pad
+  wurde im Frettchenmodus (FP) fälschlich komplett ausgeblendet, obwohl
+  es dieselben `move_up/down/left/right`-Actions steuert wie die
+  First-Person-Bewegung. Bleibt jetzt auch im FP-Modus sichtbar und
+  sendet Press/Release korrekt über `button_down`/`button_up` statt nur
+  ein nie gelöstes "gedrückt".
+
+---
+
 ### v12.5 – Touch-Controls-System
 
 **Autoload `TouchControlsSettings`** (`autoloads/TouchControlsSettings.gd`):
