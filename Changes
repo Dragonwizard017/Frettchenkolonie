@@ -2510,3 +2510,31 @@ es sichtbar und sendet Press/Release korrekt ueber button_down/button_up
 statt nur ein nie geloestes "gedrueckt".
 Geaenderte Dateien: systems/SoundSystem.gd, ui/TouchOverlay.gd.
 Neu: assets/music/ (4 mp3-Dateien).
+
+v12_7 — Menue-Exklusivitaet + Touch-UI-Doppelungen behoben. Neues
+Autoload MenuManager.gd: alle Popup-Menues (PauseMenu, TechTreePanel,
+AchievementPanel, ExpeditionPanel, GraveyardPanel, DistrictPanel,
+StatsPanel, BuildingInfo, FerretProfilePanel) registrieren sich einmalig
+in ihrer _ready(); wird eins sichtbar (show()/hide()/visible=), schliesst
+der MenuManager automatisch alle anderen registrierten Menues und bringt
+das geoeffnete an die letzte Position seines Elternknotens (= vorne, in
+Zeichnung UND Eingabe-Prioritaet). Kein bestehender open()/close()-Aufruf
+musste dafuer angepasst werden (Godots eingebautes visibility_changed
+macht die Zentralisierung moeglich).
+TouchOverlay.gd blendet sich jetzt komplett aus, sobald irgendein Menue
+offen ist (MenuManager.is_any_open()) - vorher blieb das virtuelle
+Gamepad ueber Pause-Menue & Panels sichtbar UND interaktiv (spaeter im
+Baum hinzugefuegt = lag ueber allem), fing auf dem Handy Taps ab, die
+fuer Speichern/Hauptmenue/DevMode-Aktivierung bestimmt waren - daher
+funktionierten diese in der Godot-Android-App nicht.
+HUD.gd blendet jetzt SpeedButtons (Pause/1x/2x/3x) und ExtraButtons
+(Tech/Achievements/Expedition/Graeberfeld/Bezirke) aus, sobald
+TouchControlsSettings.enabled aktiv ist - vorher existierten diese
+kleinen Desktop-Buttons UND die groesseren Touch-Aequivalente im
+TouchOverlay gleichzeitig sichtbar nebeneinander/uebereinander
+("Geschwindigkeit doppelt" etc.).
+Geaenderte/neue Dateien: autoloads/MenuManager.gd (neu), ui/PauseMenu.gd,
+ui/TechTreePanel.gd, ui/AchievementPanel.gd, ui/ExpeditionPanel.gd,
+ui/GraveyardPanel.gd, ui/DistrictPanel.gd, ui/StatsPanel.gd,
+ui/BuildingInfo.gd, ui/FerretProfilePanel.gd, ui/TouchOverlay.gd,
+ui/HUD.gd, project.godot (Autoload-Eintrag).
