@@ -1,6 +1,37 @@
 # FrettchenKolonie – Projektübersicht
 
 
+### v12.7 – Menü-Exklusivität + Touch-UI-Doppelungen behoben
+
+**Neues Autoload `autoloads/MenuManager.gd`:**
+Alle Popup-Menüs (PauseMenu, TechTreePanel, AchievementPanel,
+ExpeditionPanel, GraveyardPanel, DistrictPanel, StatsPanel, BuildingInfo,
+FerretProfilePanel) registrieren sich einmalig in ihrer `_ready()` per
+`MenuManager.register(self)`. Sobald eins davon sichtbar wird (egal ob
+über `show()`, `hide()` oder direktes `visible = ...` - alles löst Godots
+eingebautes `visibility_changed`-Signal aus), schließt der MenuManager
+automatisch alle anderen registrierten Menüs und bringt das geöffnete an
+die letzte Position seines Elternknotens (= vorne, sowohl beim Zeichnen
+als auch bei der Eingabe-Priorität). Dafür musste kein bestehender
+open()/close()-Aufruf angepasst werden.
+
+**Touch-Modus, weitere Bugfixes:**
+- `TouchOverlay.gd` blendet sich jetzt komplett aus, sobald irgendein
+  Menü offen ist (`MenuManager.is_any_open()`). Vorher blieb das virtuelle
+  Gamepad über dem Pause-Menü und allen Panels sichtbar UND interaktiv
+  (es wurde als letztes UI-Element hinzugefügt und lag damit über allem),
+  wodurch es auf dem Handy Taps abfing, die eigentlich für
+  Speichern/Hauptmenü/DevMode-Aktivierung bestimmt waren - dort
+  funktionierten diese Buttons deshalb in der Godot-Android-App nicht.
+- `HUD.gd` blendet jetzt `SpeedButtons` (Pause/1x/2x/3x) und
+  `ExtraButtons` (Tech/Achievements/Expedition/Gräberfeld/Bezirke) aus,
+  sobald Touch-Steuerung aktiv ist. Vorher existierten diese kleinen
+  Desktop-Buttons UND ihre größeren Touch-Äquivalente im TouchOverlay
+  gleichzeitig sichtbar übereinander/nebeneinander ("Geschwindigkeit
+  doppelt" etc.).
+
+---
+
 ### v12.6 – Echte Musikdateien + Touch-Modus-Bugfixes
 
 **Musik** (`systems/SoundSystem.gd`):
