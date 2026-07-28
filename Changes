@@ -2538,3 +2538,22 @@ ui/TechTreePanel.gd, ui/AchievementPanel.gd, ui/ExpeditionPanel.gd,
 ui/GraveyardPanel.gd, ui/DistrictPanel.gd, ui/StatsPanel.gd,
 ui/BuildingInfo.gd, ui/FerretProfilePanel.gd, ui/TouchOverlay.gd,
 ui/HUD.gd, project.godot (Autoload-Eintrag).
+
+v12_8 — Eigene 3D-Modelle fuer Brunnen (WELL) und Lager (STORAGE) statt
+des generischen building.glb integriert. Modelle wurden extern per KI
+(Fast3D.io) generiert, kamen aber als unbenanntes weisses Einzelmesh
+ohne Materialtrennung. Nachbearbeitung: Achsen-Korrektur (Rohmodelle
+waren Z-up, die Pipeline erwartet Y-up wie building.glb - Transform
+(x,y,z) -> (x,z,-y) angewendet), danach automatische Segmentierung
+anhand der Modell-Hoehe in 4 Baender + Einfaerbung + Material-Benennung
+passend zu building.glb ("Sockel_Stein" grau, "Wand" WELL=hellblau/
+STORAGE=gold, "Pfeiler_Holzbalken" dunkles Holz, "Dach" rotbraun) -
+dadurch faerbt _tint_building_wall() weiterhin automatisch nur die
+"Wand"-Flaeche in der jeweiligen BUILDING_VISUALS-Farbe ein.
+WorldRenderer3D.gd: neue Konstanten WELL_SCENE/STORAGE_SCENE mit
+eigener Rohmodell-Hoehe/Bottom-Offset (aus der jeweiligen Bounding-Box
+ermittelt) + BUILDING_MODEL_OVERRIDES-Dictionary (Gebaeudetyp -> Modell);
+_spawn_building() waehlt darueber automatisch das passende Modell,
+Gebaeudetypen ohne Eintrag nutzen weiterhin das generische building.glb.
+Neu: assets/well_building.glb, assets/storage_building.glb.
+Geaenderte Datei: rendering/WorldRenderer3D.gd.
