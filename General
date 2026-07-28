@@ -1,6 +1,35 @@
 # FrettchenKolonie – Projektübersicht
 
 
+### v12.8 – Eigene Modelle für Brunnen und Lager
+
+Brunnen (WELL) und Lager (STORAGE) nutzen jetzt eigene 3D-Modelle statt
+des generischen `building.glb`. Die Rohmodelle kamen von einer externen
+Text-zu-3D-KI (Fast3D.io) als unbenanntes weißes Einzelmesh ohne
+Materialtrennung und mit Z-up-Achsenausrichtung.
+
+**Nachbearbeitung (Python/trimesh):**
+1. Achsen-Korrektur: `(x,y,z) → (x,z,-y)`, da die Pipeline (wie
+   `building.glb`) Y-up mit Ursprung in der Mesh-Mitte erwartet.
+2. Automatische Segmentierung anhand der Modell-Höhe in 4 Bänder,
+   passend zu den Material-Namen von `building.glb`: `Sockel_Stein`
+   (grau), `Wand` (WELL = hellblau, STORAGE = gold - wird ohnehin von
+   `_tint_building_wall()` überschrieben), `Pfeiler_Holzbalken`
+   (dunkles Holz), `Dach` (rotbraun).
+3. Export als separate benannte Mesh-Nodes/Materialien (kompatibel mit
+   der bestehenden rekursiven `_tint_building_wall()`-Logik).
+
+**`rendering/WorldRenderer3D.gd`:** neue Konstanten `WELL_SCENE` /
+`STORAGE_SCENE` mit jeweils eigener Rohmodell-Höhe/Bottom-Offset
+(aus der individuellen Bounding-Box ermittelt) sowie ein
+`BUILDING_MODEL_OVERRIDES`-Dictionary (Gebäudetyp → Modell).
+`_spawn_building()` wählt darüber automatisch das passende Modell;
+alle anderen Gebäudetypen nutzen weiterhin `building.glb`.
+
+Neue Dateien: `assets/well_building.glb`, `assets/storage_building.glb`.
+
+---
+
 ### v12.7 – Menü-Exklusivität + Touch-UI-Doppelungen behoben
 
 **Neues Autoload `autoloads/MenuManager.gd`:**
