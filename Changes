@@ -2557,3 +2557,5 @@ _spawn_building() waehlt darueber automatisch das passende Modell,
 Gebaeudetypen ohne Eintrag nutzen weiterhin das generische building.glb.
 Neu: assets/well_building.glb, assets/storage_building.glb.
 Geaenderte Datei: rendering/WorldRenderer3D.gd.
+
+v12_9 — fix pause menu resume not working (Row/Panel/VBox path after two-column layout v12.4) - Weiterspielen, Speichern, Hauptmenu und alle Pause-Buttons wieder verbunden
