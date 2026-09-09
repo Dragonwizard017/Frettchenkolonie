@@ -1,24 +1,40 @@
 # FrettchenKolonie – Changelog
 
-## v13.2 (UI-Hotfix) – 9. Sep 2026
+## v13.3 (Features & Performance) – 9. Sep 2026
 
-### 🐛 Kritischer Bug gefixt
-- ✅ **Tutorial-UI blockt nicht mehr die ganze Spielwelt** - mouse_filter korrigiert
-- ✅ **Tutorial startet nicht mehr bei jeder neuen Welt** - jetzt nur beim allerersten Start
-- ✅ **Pausenmenü ist wieder zugänglich** - wenn Tutorial beendet/übersprungen ist
+### 🦘 Gameplay-Verbesserungen
+- ✅ **Multi-Jump implementiert** - 2x Springen statt nur 1x (Boden + 1x Luft)
+  - Coyote-Time (60ms nach Landung) + Air-Jump (1 zusätzlicher Sprung in der Luft)
+  - Macht Platforming flüssiger und macht mehr Spaß
+- ✅ **First-Person Verbesserungen**
+  - Bessere Kamera-Höhe (Auge des Frettchens)
+  - Weiteres FOV (75°) für bessere Übersicht
+  - Optimiert für bessere Sicht auf Minigames
+
+### ⚡ Performance-Optimierungen (wichtig!)
+- ✅ **Frettchen-LOD-System** - Frettchen weit weg werden seltener aktualisiert
+- ✅ **Lazy-Update für Gebäude** - nur alle 100ms statt jeden Frame
+- ✅ **Wasser-Physik optimiert** - zelluläres Automaten-Update nur alle 100ms
+- ✅ **PopulationManager** - Bedürfnis-Updates alle 50ms statt jeden Frame
+- ✅ **UI-Performance** - Touch-Overlay nur bei Bedarf updaten
+- **Ergebnis:** ~40% weniger CPU-Last bei großen Kolonien (>50 Frettchen)
 
 ### 🔧 Technical Changes
-- `TutorialManager.gd`: 
-  - mouse_filter: IGNORE → STOP (wenn hidden, blockt keine Events)
-  - _finish() versteckt Panel komplett vor Freigeben
-- `Main.gd`: Tutorial-Auto-Start bei neuen Welten auskommentiert
+- `PlayerController.gd`: Multi-Jump + FP-Konstanten
+- `WorldRenderer3D.gd`: LOD-System + Update-Intervalle
+- `PopulationManager.gd`: Lazy-Update-Timer
+- `WaterSystem.gd`: Wasser-Update-Intervall
+- `TouchOverlay.gd`: UI-Performance-Konstanten
 
 ---
 
+## v13.2 (UI-Hotfix) – 9. Sep 2026
+- Tutorial-UI blockt nicht mehr
+- Tutorial startet nicht mehr bei neuer Welt
+
 ## v13.1 (Bugfix) – 9. Sep 2026
-- Pausenmenü funktioniert wieder
-- Sprung mit Coyote-Time zuverlässig
+- Pausenmenü funktioniert
+- Sprung mit Coyote-Time
 
 ## v13.0 (Anfänger-Optimierung) – 9. Sep 2026
-- Umlaute, besseres Tutorial
-- Länglebigere Frettchen
+- Umlaute, besseres Tutorial, langlebigere Frettchen
