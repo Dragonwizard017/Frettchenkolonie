@@ -1,26 +1,24 @@
 # FrettchenKolonie – Changelog
 
-## v13.1 (Bugfix) – 9. Sep 2026
+## v13.2 (UI-Hotfix) – 9. Sep 2026
 
-### 🐛 Bugs gefixt
-- ✅ **Pausenmenü funktioniert wieder:** `tutorial_active` Flag wird beim Resume/MainMenu zurückgesetzt
-- ✅ **Sprung funktioniert zuverlässig:** Coyote-Time (~60ms nach Landung) erlaubt sofort nächsten Sprung
-- ✅ **Jump-Logik überarbeitet:** `is_on_floor()` wird nach `move_and_slide()` neu evaluiert
+### 🐛 Kritischer Bug gefixt
+- ✅ **Tutorial-UI blockt nicht mehr die ganze Spielwelt** - mouse_filter korrigiert
+- ✅ **Tutorial startet nicht mehr bei jeder neuen Welt** - jetzt nur beim allerersten Start
+- ✅ **Pausenmenü ist wieder zugänglich** - wenn Tutorial beendet/übersprungen ist
 
 ### 🔧 Technical Changes
-- `PauseMenu.gd`: `tutorial_active = false` in `_on_resume()` und `_on_main_menu()`
-- `PlayerController.gd`: Coyote-Time Variable + neuer Jump-Check mit Coyote-Window
+- `TutorialManager.gd`: 
+  - mouse_filter: IGNORE → STOP (wenn hidden, blockt keine Events)
+  - _finish() versteckt Panel komplett vor Freigeben
+- `Main.gd`: Tutorial-Auto-Start bei neuen Welten auskommentiert
 
 ---
 
+## v13.1 (Bugfix) – 9. Sep 2026
+- Pausenmenü funktioniert wieder
+- Sprung mit Coyote-Time zuverlässig
+
 ## v13.0 (Anfänger-Optimierung) – 9. Sep 2026
-
-### 🎮 Tutorial-System Überarbeitet
-- Umlaute statt ae/oe/ue durchgängig
-- Zeit pausiert während Tutorial
-- Bessere Anfänger-Anleitung
-
-### 🦡 Frettchen-Langlebigkeit
-- Höhere Starting-Bedürfnisse (80/80/75 statt 60/60/60)
-- Langsamerer Hunger/Durst-Verschleiß (-35%)
-- 2 Tage Schutz ohne Hungerschaden
+- Umlaute, besseres Tutorial
+- Länglebigere Frettchen
