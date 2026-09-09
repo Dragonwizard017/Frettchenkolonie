@@ -1,27 +1,26 @@
 # FrettchenKolonie – Changelog
 
+## v13.1 (Bugfix) – 9. Sep 2026
+
+### 🐛 Bugs gefixt
+- ✅ **Pausenmenü funktioniert wieder:** `tutorial_active` Flag wird beim Resume/MainMenu zurückgesetzt
+- ✅ **Sprung funktioniert zuverlässig:** Coyote-Time (~60ms nach Landung) erlaubt sofort nächsten Sprung
+- ✅ **Jump-Logik überarbeitet:** `is_on_floor()` wird nach `move_and_slide()` neu evaluiert
+
+### 🔧 Technical Changes
+- `PauseMenu.gd`: `tutorial_active = false` in `_on_resume()` und `_on_main_menu()`
+- `PlayerController.gd`: Coyote-Time Variable + neuer Jump-Check mit Coyote-Window
+
+---
+
 ## v13.0 (Anfänger-Optimierung) – 9. Sep 2026
 
 ### 🎮 Tutorial-System Überarbeitet
-- **Umlaute statt ae/oe/ue:** Alle Texte verwenden jetzt native Umlaute (ä, ö, ü)
-- **Zeit pausiert während Tutorial:** Simulation läuft nicht, bis Tutorial beendet/übersprungen
-- **Bessere Anfänger-Anleitung:** Klarer strukturierte, prägnantere Texte
-- **Interaktive Schritte:** Marker für Gebäude-Platzierung + UI-Button-Highlights
+- Umlaute statt ae/oe/ue durchgängig
+- Zeit pausiert während Tutorial
+- Bessere Anfänger-Anleitung
 
 ### 🦡 Frettchen-Langlebigkeit
 - Höhere Starting-Bedürfnisse (80/80/75 statt 60/60/60)
 - Langsamerer Hunger/Durst-Verschleiß (-35%)
-  - Gibt dem Spieler deutlich mehr Zeit für initiale Produktion
-- Längere Grace-Period: 2 Tage ohne Hungerschaden (statt 1)
-- **Ergebnis:** Frettchen sterben nicht mehr nach 3 Minuten
-
-### 🔧 Technical Changes
-- `TutorialManager.gd`: Neue Pause/Resume-Logik
-- `GameState.gd`: `tutorial_active` Flag für Zustandsverfolgung
-- `GameController.gd`: `set_simulation_paused(bool)` öffentliche Methode
-- `FerretEntity.gd`: Angepasste Survival-Konstanten
-
----
-
-## v12.8 (Spätere Versionen)
-[vorherige Einträge...]
+- 2 Tage Schutz ohne Hungerschaden
