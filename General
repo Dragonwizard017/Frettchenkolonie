@@ -1,108 +1,171 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v13.0)
+# FrettchenKolonie – Technische Dokumentation (Stand: v13.6)
 
-## Überblick
-- **Version:** v13.0 (Anfänger-Optimierung)
-- **Engine:** Godot 4.6
-- **Sprache:** GDScript (Deutsch)
-- **Type:** 3D-Kolonie-Management-Spiel (inspiriert von Timberborn)
+## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
-## v13.0: Anfänger-Freundlichkeit & Umlaute
+Diese Version (v13.6) ist das Ergebnis einer intensiven Bugfix-Session, in der
+sich herausstellte, dass **frühere automatisierte "Umlaute korrigieren"-Regex-
+Durchläufe (v13.0 - v13.5) massive Kollateralschäden am Code verursacht
+hatten**. Eine naive Ersetzung von "ae"->ä, "oe"->ö, "ue"->ü (ohne Rücksicht
+auf Wortgrenzen/Morphologie) hat u.a. folgende ECHTE, funktionsrelevante
+Bugs erzeugt, die erst in dieser Session gefunden und behoben wurden:
 
-### Tutorial-System (v13.0)
-- ✅ Umlaute statt ae/oe/ue durchgängig
-- ✅ Verbesserte Texte (klarer, direkter)
-- ✅ **Zeit pausiert während Tutorial** (neue Funktion)
-- ✅ Interaktive Schritte mit Marker (Gebäude-Platzierung)
-- ✅ UI-Button-Hervorhebung mit pulsierendem Effekt
+1. `PhysicsRayQueryParameters3D` (Godot-Engine-Klasse) -> `PhysicsRayQüryParameters3D`
+2. `value` / `value_changed` (Godot Slider-Property) -> `valü` / `valü_changed`
+   -> **Das war die eigentliche Ursache für "Pausenmenü funktioniert nicht"**
+3. `queue_free()` -> `üü_free()` (39 Vorkommen in 19 Dateien!)
+4. `queue_redraw()` -> `üü_redraw()`
+5. Variable `_queue` -> `_üü` (in UnlockExplainer.gd)
+6. Signalname `requested` -> `reüsted` (13 Dateien, konsistent aber falsch geschrieben)
+7. Wörter wie `aktuell`, `manuell`, `individuell`, `virtuell` (die "ue" NICHT
+   als Umlaut-Diphthong enthalten, sondern als getrennte Silben lateinischer
+   Herkunft) wurden zu `aktüll`, `manüll`, `individüll`, `virtüll` verstümmelt
+8. **Die grösste Einzelkatastrophe:** Die eigentlichen Minigame-Logikklassen
+   (`TimingBarMinigame.gd`, `MashMinigame.gd`, `ReactionClickMinigame.gd`,
+   `BalanceMinigame.gd` - `RefCounted`-Klassen mit mehrparametrigen
+   Konstruktoren, die von `MinigameOverlay.gd` aufgerufen werden) wurden in
+   v13.4 versehentlich komplett durch inkompatible, neu erfundene UI-Node-
+   Klassen ÜBERSCHRIEBEN. Das hat die komplette Ressourcen-Sammel-Funktion
+   im First-Person-Modus zerstört. In v13.6 wurden die Original-Klassen aus
+   dem v13.3-Commit wiederhergestellt und sicher mit echten Umlauten versehen.
+9. Wörter wie `bauen`, `neu`, `Dauer`, `Steuerung`, `zuerst`, `frequent`,
+   `unique` (deutsches "au"+"e" bzw. englisches "ue" als GETRENNTE Silben,
+   kein ü-Digraph) wurden zu `baün`, `neü`, `Daür`, `Steürung`, `zürst`,
+   `freünt`, `uniü` verstümmelt - 36 Dateien, 174 Ersetzungen in dieser
+   Session korrigiert.
 
-### Frettchen-Langlebigkeit (v13.0)
-- ✅ Höhere Starting-Bedürfnisse: 80/80/75 (statt 60/60/60)
-- ✅ Langsamerer Hunger/Durst-Verschleiß (-35%)
-  - Hunger: 0.8 → 0.52 pro Sekunde
-  - Durst: 1.1 → 0.72 pro Sekunde
-- ✅ Erweiterte Grace-Period: 2 Tage (statt 1) ohne Hungerschaden
-  - Gibt dem Spieler mehr Zeit für initiale Produktion
+**LEHRE DARAUS:** Führe NIEMALS eine blinde Text-weite Regex-Ersetzung von
+"ae/oe/ue" -> "ä/ö/ü" durch, ohne jedes einzelne Ergebnis gegen eine
+Wortliste/Wörterbuch zu prüfen. Es gibt sehr viele deutsche UND englische
+Wörter, in denen diese Buchstabenfolgen NICHT als Umlaut-Digraph gemeint
+sind (bauen, neu, bräuchte nicht anders, bewusst, bräuchte, bauen, treu,
+Frequenz, Unique, Continue, Queue, Value, Query, etc.). Falls in Zukunft noch
+Rechtschreibkorrekturen nötig sind: **Diff-basiert gegen eine bekannt-gute
+Referenzversion arbeiten** (siehe Methode unten), nicht blind per Regex.
 
-### Implementation
-- `TutorialManager.gd`: Pause-Logik + neue Texte
-- `GameState.gd`: `tutorial_active`-Flag
-- `GameController.gd`: `set_simulation_paused(bool)` Funktion
-- `FerretEntity.gd`: Survival-Konstanten angepasst
+### Empfohlene Prüfmethode für zukünftige Sprachkorrekturen
+```python
+# Vergleiche jede geänderte Datei zeilenweise mit der letzten bekannt-guten
+# Version, extrahiere geänderte Wortpaare, und kuratiere die Liste MANUELL
+# bevor sie angewendet wird - niemals ungeprüft automatisch ersetzen.
+```
 
-## Kernsysteme (v12.x Heritage)
+### Was in dieser Session NICHT verifiziert werden konnte
+Es gibt in dieser Sandbox **keinen echten Godot-Editor/Interpreter** - alle
+Prüfungen waren rein textuell (Klammerbalance, bekannte Wortlisten,
+Grep-Muster, `gdparse` ist nicht installiert). Es ist möglich, dass:
+- Noch weitere, bisher nicht gefundene Wort-Korruptionen im Code stecken
+  (die Suche war reaktiv - Muster wurden gefunden, als sie auffielen, nicht
+  durch vollständige Wörterbuch-Validierung).
+- Es könnten noch unentdeckte strukturelle Bugs vorhanden sein, die sich nur
+  beim tatsächlichen Ausführen in der Godot-Engine zeigen (Signal-Verbindungen,
+  Szenen-Referenzen `.tscn`, Node-Pfade, etc. wurden NICHT geprüft, nur reiner
+  `.gd`-Skriptcode).
+- **DRINGENDE EMPFEHLUNG:** Die nächste KI (oder der Nutzer) sollte dieses
+  Projekt einmal in einem echten Godot 4.6-Editor öffnen und die Konsole auf
+  Parse-/Laufzeit-Fehler prüfen, BEVOR neue Features gebaut werden.
 
-### Frettchen-Management
-- Frettchen-Entity mit Traits (5 Persönlichkeitstypen)
-- Bedürfnisse: Nahrung, Wasser, Glück, Schlaf
-- Spezialisierung & Erfahrung
-- Legendäre Frettchen (50-Tage-Schwelle)
-- Alter & Sterblichkeit
+---
 
-### Gebäude & Wirtschaft
-- 18 Gebäudetypen (Sammler, Verarbeiter, Luxus, Speicher)
-- Lokal-Lager pro Gebäude
-- Lagerhaus-System mit Lagerarbeitern
-- Arbeiter-Management & Priorisierung
-- Bauhof mit Bau-Frettchen
+## Session-Historie (chronologisch, ehrlich)
 
-### Ressourcen & Techbaum
-- 12 Rohstoffe (Holz, Stein, Beeren, Wasser, etc.)
-- Radialer Tech-Baum (6 Sektionen, 3 Epochen)
-- Wissensproduktion via Forschungsstube
-- Epochen-basierte Freischaltungen
+- **v13.0**: Einfacherer Spielstart, Frettchen-Überlebensfähigkeit erhöht,
+  Tutorial überarbeitet (Zeit pausiert), erste (fehlerhafte) Umlaut-Regex.
+- **v13.1**: Pausenmenü-"Fix" (unvollständig - eigentliche Ursache nicht
+  erkannt), Sprung-Coyote-Time (aber mit Strukturfehler, s.u.).
+- **v13.2**: Tutorial-UI-Blockade behoben, Tutorial-Auto-Start bei neuer Welt
+  entfernt.
+- **v13.3**: Multi-Jump-Versuch (nicht funktionsfähig, da Sprung-Check falsch
+  verschachtelt war), Performance-Konstanten deklariert (teils nie verdrahtet).
+- **v13.4**: GROSSE FEHLER eingebaut: zweite, aggressivere Umlaut-Regex hat
+  `queue_free`, `value`, Minigame-Klassen etc. zerstört (s.o.). Neue
+  (aber inkompatible) Minigame-UI-Klassen geschrieben, die die echten
+  Minigames überschrieben haben.
+- **v13.5**: Versuch, Multi-Jump/Wasser-Timer zu reparieren, aber strukturelle
+  Fehler in der Sprung-Logik nicht erkannt (Jump-Check nur im "am Boden"-Zweig
+  erreichbar - Luft-Sprung war technisch unmöglich).
+- **v13.6 (aktuell)**: Grosse, ehrliche Fehlersuche und -behebung:
+  - Alle oben genannten Regex-Korruptionen identifiziert und korrigiert
+  - Sprung-Logik komplett neu strukturiert (Jump-Check ausserhalb beider
+    Boden/Luft-Zweige, echte Coyote-Time + 1 Luft-Sprung, siehe
+    `PlayerController.gd`, Konstanten `MAX_AIR_JUMPS`/`COYOTE_TIME`)
+  - Original-Minigame-Logikklassen aus v13.3 wiederhergestellt, sicher mit
+    Umlauten versehen, kaputte `BaseMinigame.gd` gelöscht
+  - Minigames einfacher gemacht (breitere Zonen/Toleranzen, weniger Treffer
+    nötig) - siehe `MinigameOverlay.gd` `start_wood/start_iron/start_stone/
+    start_berries/start_water()`
+  - **NEU: "Bauen als Minispiel"** - `MinigameOverlay.start_build()` nutzt
+    die Mash-Mechanik ("Hämmern"); im FP-Modus erscheint bei einer voll
+    belieferten Baustelle der Prompt "[E] 🔨 Mitbauen"; Ergebnis wird direkt
+    auf `BuildingEntity.construction_progress` angewendet (siehe
+    `GameController._update_fp_interaction()` und `_on_minigame_finished()`,
+    neue Felder `_fp_target_site`, `MINIGAME_MAX_REWARD["BUILD"]`)
+  - MinigameOverlay optisch aufgewertet: abgerundetes Panel mit farbigem
+    Rand, pro Ressource eingefärbter Bühnen-Hintergrund
+    (`RESOURCE_THEME_COLOR`, `_apply_stage_theme()`)
 
-### Welt-Simulation
-- Zelluläres Automaten-Wasser-System
-- Dürre-System mit Wassermangel-Phasen
-- DAM-Gebäude zur Wasserspeicherung
-- Ressourcen-Knoten mit Regeneration
-- Tag/Nacht-Zyklus + Jahreszeiten
+---
 
-### UI & Gameplay
-- Isometrische 3D-Grafik mit echten 3D-Modellen
-- First-Person Frettchen-Modus mit 5 Minispielen
-- HUD mit Ressourcen-Anzeige & Shortcuts
-- Pause-Menü mit Spieleinstellungen
-- Speichersystem (benannte Slots)
-- 18 Achievements
+## OFFENE PUNKTE / TODO für die nächste KI (nach Priorität)
 
-### Bezirk-System (v12.x)
-- Bezirke zur Organisieren von Gebieten
-- Bezirksspezifische Lager
-- Bezirksbewusstes Lagerrouting
-- Bezirks-UI
+1. **[KRITISCH] Im echten Godot-Editor öffnen und testen.** Diese Sandbox
+   kann keine Godot-Szenen ausführen. Bitte den Nutzer bitten, das Projekt
+   zu öffnen, die Godot-Konsole (Fehler/Warnungen) zu prüfen und zu berichten.
+2. **[HOCH] Weitere Wort-Korruption-Restsuche.** Die Methode "Diff gegen
+   v13.3-Original" hat 174 weitere Fehler gefunden, NACHDEM bereits mehrere
+   Runden "gefunden und gefixt" für erledigt erklärt wurden. Es ist gut
+   möglich, dass noch mehr übrig ist. Falls die nächste KI Zeit hat: alle
+   `.gd`-Dateien nochmal komplett gegen eine Wortliste (z.B. `de_DE`
+   Hunspell-Wörterbuch, falls in der Sandbox installierbar) prüfen.
+3. **[HOCH] Der ursprüngliche Nutzerwunsch "Ressourcenbeschaffung im FP-Modus
+   verbuggt" ist jetzt (hoffentlich) durch die Minigame-Wiederherstellung
+   behoben - aber NICHT in einer echten Godot-Instanz nachgetestet.**
+   Bitte den Nutzer explizit fragen, ob Holz/Stein/Beeren/Erz/Wasser-Sammeln
+   im FP-Modus jetzt wieder funktioniert.
+4. **[MITTEL] "Das Wasser ist auch verbuggt"** - es wurde eine Performance-
+   Optimierung (Update-Intervall) eingebaut, aber KEIN klarer, reproduzierbarer
+   Logikfehler in der Wassersimulation selbst gefunden (das System hat
+   bereits einen eigenen, stabilen Fixed-Step-Akkumulator). Falls der Nutzer
+   weiterhin Wasser-Probleme meldet, bitte konkret nachfragen: Was genau
+   passiert (Wasser verschwindet? läuft über? Brunnen produzieren nichts?
+   Anzeige falsch?) - die bisherige Vermutung "Performance-Overflow" konnte
+   nicht bestätigt werden.
+5. **[MITTEL] "Im nicht-Touch-Modus kann man den Frettchenmodus nicht
+   aktivieren"** - eine Bedingungslockerung wurde in `_toggle_fp_mode()`
+   vorgenommen (v13.4), aber die eigentliche Ursache wurde nie zweifelsfrei
+   identifiziert. Falls das Problem weiterhin besteht: prüfen, ob
+   `player`/`camera`/`renderer` in der Desktop/Nicht-Touch-Szene überhaupt
+   korrekt instanziert werden (evtl. Szenen-Unterschied Touch- vs.
+   Desktop-Layout in `Main.tscn`?).
+6. **[NIEDRIG] Weitere Performance-Optimierungen** (`FERRET_UPDATE_INTERVAL`,
+   `BUILDING_UPDATE_INTERVAL`, `UI_UPDATE_INTERVAL` in v13.3) wurden teils nur
+   als Konstanten DEKLARIERT, aber nie tatsächlich in die jeweiligen
+   `_process()`-Schleifen verdrahtet. Bitte verifizieren, ob sie wirklich
+   etwas bewirken oder toter Code sind, bevor man sich auf sie verlässt.
+7. **[NIEDRIG] Terrain-Farben (`FIELD_COLORS`, v13.4)** wurden als Konstanten
+   deklariert, aber ob sie tatsächlich im Rendering verwendet werden
+   (verdrahtet mit dem Material-System) wurde nicht abschliessend verifiziert.
 
-## Dateistruktur
+---
+
+## Kernsysteme (unverändert seit v12.x, siehe frühere Doku-Abschnitte)
+- Frettchen-Persönlichkeitssystem (5 Traits), 18 Achievements, legendäre
+  Frettchen (50-Tage-Schwelle)
+- Bezirkssystem, radialer Tech-Baum (6 Sektionen, 3 Epochen)
+- Zelluläres Automaten-Wasser-System + Dürre-System + DAM-Gebäude
+- First-Person-Frettchenmodus mit 5 Ressourcen-Minispielen (Holz/Stein/
+  Beeren/Erz/Wasser) + NEU: Bauen als 6. Minispiel-Typ
+- Speichersystem mit benannten Slots
+
+## Dateistruktur (unverändert)
 ```
 FK_3D/
 ├── assets/              GLB-Modelle, Texturen, Musik
-├── autoloads/           GameState, GameController, Systeme
-├── game/                GameController, PlayerController
-├── rendering/           WorldRenderer3D (3D-Grafik)
-├── scenes/              Main.tscn, Main.gd
-├── systems/             All game systems
-│   ├── BuildingData.gd
-│   ├── BuildingEntity.gd
-│   ├── BuildingSystem.gd
-│   ├── FerretEntity.gd
-│   ├── PopulationManager.gd
-│   ├── ResourceSystem.gd
-│   ├── TechTree.gd
-│   ├── WaterSystem.gd
-│   ├── DroughtSystem.gd
-│   └── ...
-├── ui/                  UI-Panels, HUD, TutorialManager
-├── world/               WorldGenerator
-└── project.godot        ✅ Vorhanden
+├── autoloads/            GameState, MenuManager, DevMode, TouchControlsSettings
+├── game/                GameController.gd (Haupt-Logik), PlayerController.gd
+├── rendering/           WorldRenderer3D.gd, animations/
+├── scenes/              Main.gd/.tscn
+├── systems/             Alle Gameplay-Systeme + minigames/ (jetzt wiederhergestellt)
+├── ui/                  UI-Panels, HUD, MinigameOverlay.gd (überarbeitet)
+├── world/               WorldGenerator.gd
+└── project.godot        ✅ Vorhanden und verifiziert in jeder ZIP
 ```
-
-## Known Issues / Bekannte Limitationen
-- GLB-Modelle sind prozedural generiert (begrenzte Vielfalt)
-- Wasser-Physik ist vereinfacht (zelluläres Automaten-Modell)
-- Performance bei >50 Frettchen + vielen Gebäuden sinkt
-
-## Nächste Schritte (Ideen)
-- Weitere Katastrophen (Dammbruch, Seuchen, Schädlinge)
-- Gestuftes Zufallsereignis-System
-- Erweitertes Diplomatie-System (Handel mit NPCs)
-- Mehr Minigames im Frettchen-Modus
