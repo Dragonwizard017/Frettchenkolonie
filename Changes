@@ -1,23 +1,56 @@
 # FrettchenKolonie – Changelog
 
-## v13.5 (Hotfix - Features komplett!) – 9. Sep 2026
+## v13.6 (Grosse Fehlerbereinigung) – 10. Sep 2026
 
-### ✅ BUGS GEFIXT & FEATURES KOMPLETT IMPLEMENTIERT
-- ✅ **Multi-Jump jetzt wirklich funktioniert** - _jumps_remaining Variable + Logik
-- ✅ **Wasser-Update-Interval** - verhindert zelluläre Automaten-Overflow
-- ✅ **Minigames geben Ressourcen** - BaseMinigame mit add_resource()
-- ✅ **FP-Mode immer aktivierbar** - auch vom normalen Modus
-- ✅ **Alle Umlaute korrigiert** - durchgängig überall
-- ✅ **Menü funktioniert** - keine Syntax-Fehler mehr
+### ⚠️ Hintergrund
+Frühere Versionen (v13.0-v13.5) enthielten durch fehlerhafte automatisierte
+Umlaut-Korrekturen mehrere schwere, versteckte Bugs. Diese Version behebt sie.
+Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
 
-### 📋 Bug-Analyse Ergebnis
-- 0 kritische Syntax-Fehler
-- 0 fehlende Features
-- 100% Implementation-Rate
+### 🐛 Kritische Bugs behoben
+- ✅ **`queue_free()` war in 19 Dateien zu `üü_free()` zerstört** (39 Stellen) -
+  potenzielle Ursache diverser Abstürze beim Schliessen von UI/Entfernen von Objekten
+- ✅ **`value`/`value_changed` (Slider) waren zu `valü`/`valü_changed` zerstört**
+  (11 Dateien) - dies war die WIRKLICHE Ursache für "Pausenmenü reagiert nicht"
+- ✅ **Godot-Engine-Klasse `PhysicsRayQueryParameters3D`** war zerstört (8 Dateien)
+- ✅ **`queue_redraw()` und Variable `_queue`** waren zerstört
+- ✅ **Signal-Name `requested`** war überall (konsistent, aber falsch) zu `reüsted`
+  geworden - jetzt korrigiert (13 Dateien)
+- ✅ **Wörter wie `aktuell`, `manuell`, `individuell`, `virtuell`, `bauen`, `neu`,
+  `Dauer`, `Steuerung`, `zuerst`** waren fälschlich mit Ü verunstaltet worden
+  (diese enthalten "ue" NICHT als Umlaut, sondern als getrennte Silben) -
+  36 Dateien, 174 Korrekturen
+- ✅ **Multi-Jump war komplett unerreichbar**: der Sprung-Input-Check lag
+  fälschlich nur im "Spieler steht am Boden"-Codezweig - Luft-Sprung war somit
+  technisch unmöglich. Sprung-Logik komplett neu strukturiert mit echter
+  Coyote-Time (0.12s) + 1 zusätzlichem Luft-Sprung.
+- ✅ **Ressourcen-Sammeln im First-Person-Modus war komplett kaputt**: die
+  echten Minigame-Logikklassen (`TimingBarMinigame`, `MashMinigame`,
+  `ReactionClickMinigame`, `BalanceMinigame`) waren in v13.4 versehentlich
+  durch inkompatible, selbstgeschriebene UI-Klassen überschrieben worden.
+  Original-Klassen aus v13.3 wiederhergestellt und sicher mit Umlauten versehen.
+
+### 🎮 Neue Features
+- ✅ **Bauen als Minispiel**: Im First-Person-Modus kann man jetzt an einer
+  voll belieferten Baustelle "[E] 🔨 Mitbauen" drücken - ein Hämmer-Minispiel
+  (gleiche Mechanik wie Steinbrechen) beschleunigt den Baufortschritt direkt
+- ✅ Minigames einfacher gemacht: breitere Zielzonen, mehr Toleranz, weniger
+  nötige Treffer (Holz, Erz, Stein, Beeren, Wasser)
+- ✅ Minigame-UI optisch aufgewertet: abgerundetes Panel mit goldenem Rand,
+  pro Ressource individuell eingefärbter Bühnen-Hintergrund
+
+### ⚠️ Nicht abschliessend verifiziert (siehe "General" für Details)
+- Kein echter Godot-Editor in dieser Sandbox verfügbar - alle Fixes sind
+  textuell/logisch geprüft, aber nicht in der laufenden Engine getestet
+- Wasser-System: kein konkreter Logikfehler gefunden, nur Performance-Anpassung
+- "FP-Modus im Nicht-Touch-Modus nicht aktivierbar": Bedingung gelockert,
+  aber Ursache nicht zweifelsfrei bestätigt
 
 ---
 
-## v13.4 (Großes Update) – 9. Sep 2026
-- Rechtschreibung/Umlaute überall
-- Minigames überarbeitet
-- Terrain-Farben verbessert
+## v13.5 (Hotfix-Versuch) – 9. Sep 2026 [teilweise fehlerhaft, s.o.]
+## v13.4 (Grosses Update) – 9. Sep 2026 [enthielt schwere Regressionen, s.o.]
+## v13.3 (Features & Performance) – 9. Sep 2026
+## v13.2 (UI-Hotfix) – 9. Sep 2026
+## v13.1 (Bugfix) – 9. Sep 2026
+## v13.0 (Anfänger-Optimierung) – 9. Sep 2026
