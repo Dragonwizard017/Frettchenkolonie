@@ -1,5 +1,35 @@
 # FrettchenKolonie – Changelog
 
+## v14.5 (Sync-Commit) – 02. Okt 2026
+
+### Hinweis zu dieser Version
+Dies ist ein **Synchronisations-Commit**, kein von dieser KI-Session aus
+entwickeltes Feature-/Bugfix-Release. Der Nutzer hat eine lokal bereits auf
+v14.5 fortgeschrittene Projekt-ZIP bereitgestellt (das Repo stand zuvor bei
+v13.6). Diese Version wurde unverändert übernommen, vollständig validiert
+und als neuer Stand hochgeladen.
+
+### ✅ Durchgeführte Prüfungen vor dem Upload
+- `gdparse` über alle `.gd`-Dateien: keine echten Fehler (nur 6 bekannte
+  False-Positives bei einzeiligen Lambda-`if`-Ausdrücken, siehe "General")
+- `project.godot` vorhanden und vollständig
+- Keine fehlenden Autoload-Skripte
+- Keine `.tscn`-Referenzen auf fehlende Skripte/Ressourcen
+- Kein versehentlich mitgepackter `.godot`-Ordner
+
+### ⚠️ Offener Punkt
+Ein vom Nutzer per Screenshot gemeldeter Parse-Fehler in `GameController.gd`
+Zeile 730 ("Expected indented block after elif block") konnte in der
+hochgeladenen ZIP NICHT reproduziert werden - die betroffene Stelle ist dort
+korrekt eingerückt. Die lokal in Godot geöffnete Datei des Nutzers weicht an
+dieser Stelle offenbar von der hochgeladenen ZIP ab. Noch nicht geklärt.
+
+### 🧹 Aufräumarbeiten
+- Veraltete Zwischen-ZIPs `v12.9` bis `v13.6` aus dem Repo-Root gelöscht
+  (Referenz-Build `v10.6` bleibt wie vorgesehen dauerhaft erhalten)
+
+---
+
 ## v13.6 (Grosse Fehlerbereinigung) – 10. Sep 2026
 
 ### ⚠️ Hintergrund
@@ -17,34 +47,16 @@ Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
 - ✅ **Signal-Name `requested`** war überall (konsistent, aber falsch) zu `reüsted`
   geworden - jetzt korrigiert (13 Dateien)
 - ✅ **Wörter wie `aktuell`, `manuell`, `individuell`, `virtuell`, `bauen`, `neu`,
-  `Dauer`, `Steuerung`, `zuerst`** waren fälschlich mit Ü verunstaltet worden
-  (diese enthalten "ue" NICHT als Umlaut, sondern als getrennte Silben) -
+  `Dauer`, `Steuerung`, `zuerst`** waren fälschlich mit Ü verunstaltet worden -
   36 Dateien, 174 Korrekturen
-- ✅ **Multi-Jump war komplett unerreichbar**: der Sprung-Input-Check lag
-  fälschlich nur im "Spieler steht am Boden"-Codezweig - Luft-Sprung war somit
-  technisch unmöglich. Sprung-Logik komplett neu strukturiert mit echter
-  Coyote-Time (0.12s) + 1 zusätzlichem Luft-Sprung.
-- ✅ **Ressourcen-Sammeln im First-Person-Modus war komplett kaputt**: die
-  echten Minigame-Logikklassen (`TimingBarMinigame`, `MashMinigame`,
-  `ReactionClickMinigame`, `BalanceMinigame`) waren in v13.4 versehentlich
-  durch inkompatible, selbstgeschriebene UI-Klassen überschrieben worden.
-  Original-Klassen aus v13.3 wiederhergestellt und sicher mit Umlauten versehen.
+- ✅ **Multi-Jump war komplett unerreichbar** - Sprung-Logik neu strukturiert
+  mit echter Coyote-Time (0.12s) + 1 zusätzlichem Luft-Sprung
+- ✅ **Ressourcen-Sammeln im First-Person-Modus war komplett kaputt** -
+  Original-Minigame-Klassen aus v13.3 wiederhergestellt
 
 ### 🎮 Neue Features
-- ✅ **Bauen als Minispiel**: Im First-Person-Modus kann man jetzt an einer
-  voll belieferten Baustelle "[E] 🔨 Mitbauen" drücken - ein Hämmer-Minispiel
-  (gleiche Mechanik wie Steinbrechen) beschleunigt den Baufortschritt direkt
-- ✅ Minigames einfacher gemacht: breitere Zielzonen, mehr Toleranz, weniger
-  nötige Treffer (Holz, Erz, Stein, Beeren, Wasser)
-- ✅ Minigame-UI optisch aufgewertet: abgerundetes Panel mit goldenem Rand,
-  pro Ressource individuell eingefärbter Bühnen-Hintergrund
-
-### ⚠️ Nicht abschliessend verifiziert (siehe "General" für Details)
-- Kein echter Godot-Editor in dieser Sandbox verfügbar - alle Fixes sind
-  textuell/logisch geprüft, aber nicht in der laufenden Engine getestet
-- Wasser-System: kein konkreter Logikfehler gefunden, nur Performance-Anpassung
-- "FP-Modus im Nicht-Touch-Modus nicht aktivierbar": Bedingung gelockert,
-  aber Ursache nicht zweifelsfrei bestätigt
+- ✅ Bauen als Minispiel, Minigames vereinfacht, Minigame-UI optisch
+  aufgewertet
 
 ---
 
