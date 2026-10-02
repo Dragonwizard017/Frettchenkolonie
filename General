@@ -1,171 +1,92 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v13.6)
+# FrettchenKolonie – Technische Dokumentation (Stand: v14.5)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
-Diese Version (v13.6) ist das Ergebnis einer intensiven Bugfix-Session, in der
-sich herausstellte, dass **frühere automatisierte "Umlaute korrigieren"-Regex-
-Durchläufe (v13.0 - v13.5) massive Kollateralschäden am Code verursacht
-hatten**. Eine naive Ersetzung von "ae"->ä, "oe"->ö, "ue"->ü (ohne Rücksicht
-auf Wortgrenzen/Morphologie) hat u.a. folgende ECHTE, funktionsrelevante
-Bugs erzeugt, die erst in dieser Session gefunden und behoben wurden:
+Dieses Dokument beschreibt einen SYNC-Commit, keinen regulären, von einer KI
+schrittweise entwickelten Fortschritt. Das Repo lag zuletzt (ZIP-Historie) bei
+v13.6. Der Nutzer hat danach direkt eine v14.5-Projekt-ZIP hochgeladen (Inhalt
+nicht aus diesem Repo/dieser KI-Session heraus entstanden - Herkunft der
+Zwischenschritte v13.7 bis v14.4 ist dieser Session nicht bekannt). Diese KI hat:
 
-1. `PhysicsRayQueryParameters3D` (Godot-Engine-Klasse) -> `PhysicsRayQüryParameters3D`
-2. `value` / `value_changed` (Godot Slider-Property) -> `valü` / `valü_changed`
-   -> **Das war die eigentliche Ursache für "Pausenmenü funktioniert nicht"**
-3. `queue_free()` -> `üü_free()` (39 Vorkommen in 19 Dateien!)
-4. `queue_redraw()` -> `üü_redraw()`
-5. Variable `_queue` -> `_üü` (in UnlockExplainer.gd)
-6. Signalname `requested` -> `reüsted` (13 Dateien, konsistent aber falsch geschrieben)
-7. Wörter wie `aktuell`, `manuell`, `individuell`, `virtuell` (die "ue" NICHT
-   als Umlaut-Diphthong enthalten, sondern als getrennte Silben lateinischer
-   Herkunft) wurden zu `aktüll`, `manüll`, `individüll`, `virtüll` verstümmelt
-8. **Die grösste Einzelkatastrophe:** Die eigentlichen Minigame-Logikklassen
-   (`TimingBarMinigame.gd`, `MashMinigame.gd`, `ReactionClickMinigame.gd`,
-   `BalanceMinigame.gd` - `RefCounted`-Klassen mit mehrparametrigen
-   Konstruktoren, die von `MinigameOverlay.gd` aufgerufen werden) wurden in
-   v13.4 versehentlich komplett durch inkompatible, neu erfundene UI-Node-
-   Klassen ÜBERSCHRIEBEN. Das hat die komplette Ressourcen-Sammel-Funktion
-   im First-Person-Modus zerstört. In v13.6 wurden die Original-Klassen aus
-   dem v13.3-Commit wiederhergestellt und sicher mit echten Umlauten versehen.
-9. Wörter wie `bauen`, `neu`, `Dauer`, `Steuerung`, `zuerst`, `frequent`,
-   `unique` (deutsches "au"+"e" bzw. englisches "ue" als GETRENNTE Silben,
-   kein ü-Digraph) wurden zu `baün`, `neü`, `Daür`, `Steürung`, `zürst`,
-   `freünt`, `uniü` verstümmelt - 36 Dateien, 174 Ersetzungen in dieser
-   Session korrigiert.
+1. Das v14.5-Projekt entgegengenommen und entpackt
+2. Vollständig mit `gdparse` validiert (siehe unten) - keine echten Parse-Fehler
+3. Stichprobenartig auf strukturelle Integrität geprüft (project.godot
+   vorhanden, keine fehlenden Autoload-Skripte, keine `.tscn`-Referenzen auf
+   fehlende Ressourcen/Skripte, kein versehentlich mitgepackter `.godot`-Ordner)
+4. Die ZIP unverändert (keine inhaltlichen Codefixes durch diese KI) als neue
+   Repo-Version gepusht, veraltete Zwischen-ZIPs (v12.9-v13.6) gelöscht
 
-**LEHRE DARAUS:** Führe NIEMALS eine blinde Text-weite Regex-Ersetzung von
-"ae/oe/ue" -> "ä/ö/ü" durch, ohne jedes einzelne Ergebnis gegen eine
-Wortliste/Wörterbuch zu prüfen. Es gibt sehr viele deutsche UND englische
-Wörter, in denen diese Buchstabenfolgen NICHT als Umlaut-Digraph gemeint
-sind (bauen, neu, bräuchte nicht anders, bewusst, bräuchte, bauen, treu,
-Frequenz, Unique, Continue, Queue, Value, Query, etc.). Falls in Zukunft noch
-Rechtschreibkorrekturen nötig sind: **Diff-basiert gegen eine bekannt-gute
-Referenzversion arbeiten** (siehe Methode unten), nicht blind per Regex.
-
-### Empfohlene Prüfmethode für zukünftige Sprachkorrekturen
-```python
-# Vergleiche jede geänderte Datei zeilenweise mit der letzten bekannt-guten
-# Version, extrahiere geänderte Wortpaare, und kuratiere die Liste MANUELL
-# bevor sie angewendet wird - niemals ungeprüft automatisch ersetzen.
-```
+**WICHTIG:** Es gab in dieser Session einen gemeldeten Parse-Fehler
+("Expected indented block after elif block" in `GameController.gd` Zeile 730,
+Screenshot eines echten Godot-4.7.2-Editors) an der Stelle `elif best_kind ==
+"FERRET":` / `_fp_hud.set_prompt(...)`. Beim Abgleich mit der tatsächlich
+hochgeladenen ZIP-Datei war diese Stelle jedoch byte-genau korrekt (zwei Tabs
+Einrückung, kein Störzeichen). Das heisst: **die vom Nutzer tatsächlich
+lokal in Godot geöffnete Datei unterscheidet sich an dieser Stelle von der
+hochgeladenen und jetzt gepushten ZIP.** Falls der Nutzer weiterhin genau
+diesen Fehler meldet: NICHT einfach erneut pushen - erst eine frische
+Export-ZIP direkt aus dem Editor anfordern, in dem der Fehler auftritt, und
+diese byte-genau prüfen, bevor ein Fix gebaut wird.
 
 ### Was in dieser Session NICHT verifiziert werden konnte
-Es gibt in dieser Sandbox **keinen echten Godot-Editor/Interpreter** - alle
-Prüfungen waren rein textuell (Klammerbalance, bekannte Wortlisten,
-Grep-Muster, `gdparse` ist nicht installiert). Es ist möglich, dass:
-- Noch weitere, bisher nicht gefundene Wort-Korruptionen im Code stecken
-  (die Suche war reaktiv - Muster wurden gefunden, als sie auffielen, nicht
-  durch vollständige Wörterbuch-Validierung).
-- Es könnten noch unentdeckte strukturelle Bugs vorhanden sein, die sich nur
-  beim tatsächlichen Ausführen in der Godot-Engine zeigen (Signal-Verbindungen,
-  Szenen-Referenzen `.tscn`, Node-Pfade, etc. wurden NICHT geprüft, nur reiner
-  `.gd`-Skriptcode).
-- **DRINGENDE EMPFEHLUNG:** Die nächste KI (oder der Nutzer) sollte dieses
-  Projekt einmal in einem echten Godot 4.6-Editor öffnen und die Konsole auf
-  Parse-/Laufzeit-Fehler prüfen, BEVOR neue Features gebaut werden.
+Auch diese Sandbox hat **keinen echten Godot-Editor/Interpreter** - alle
+Prüfungen sind textuell (gdparse, Grep auf fehlende Ressourcen/Skripte,
+Klammerbalance). Laufzeitverhalten, Signalverbindungen zwischen Szenen,
+Node-Pfade in `.tscn`-Dateien etc. wurden nicht in einer laufenden Engine
+getestet.
+
+### Bekannte gdparse-False-Positives (NICHT reparieren!)
+Einzeilige Lambda-Ausdrücke mit `if` lösen einen gdparse-Parserfehler aus,
+sind aber gültiges GDScript (von Godot selbst korrekt geparst):
+`ExpeditionPanel.gd:7`, `AchievementPanel.gd:10`, `TechTreePanel.gd:81`,
+`GraveyardPanel.gd:7`, `DistrictPanel.gd:15`, `BuildingInfo.gd:45`.
 
 ---
 
-## Session-Historie (chronologisch, ehrlich)
+## Bekannte Lücke in der Session-Historie
 
-- **v13.0**: Einfacherer Spielstart, Frettchen-Überlebensfähigkeit erhöht,
-  Tutorial überarbeitet (Zeit pausiert), erste (fehlerhafte) Umlaut-Regex.
-- **v13.1**: Pausenmenü-"Fix" (unvollständig - eigentliche Ursache nicht
-  erkannt), Sprung-Coyote-Time (aber mit Strukturfehler, s.u.).
-- **v13.2**: Tutorial-UI-Blockade behoben, Tutorial-Auto-Start bei neuer Welt
-  entfernt.
-- **v13.3**: Multi-Jump-Versuch (nicht funktionsfähig, da Sprung-Check falsch
-  verschachtelt war), Performance-Konstanten deklariert (teils nie verdrahtet).
-- **v13.4**: GROSSE FEHLER eingebaut: zweite, aggressivere Umlaut-Regex hat
-  `queue_free`, `value`, Minigame-Klassen etc. zerstört (s.o.). Neue
-  (aber inkompatible) Minigame-UI-Klassen geschrieben, die die echten
-  Minigames überschrieben haben.
-- **v13.5**: Versuch, Multi-Jump/Wasser-Timer zu reparieren, aber strukturelle
-  Fehler in der Sprung-Logik nicht erkannt (Jump-Check nur im "am Boden"-Zweig
-  erreichbar - Luft-Sprung war technisch unmöglich).
-- **v13.6 (aktuell)**: Grosse, ehrliche Fehlersuche und -behebung:
-  - Alle oben genannten Regex-Korruptionen identifiziert und korrigiert
-  - Sprung-Logik komplett neu strukturiert (Jump-Check ausserhalb beider
-    Boden/Luft-Zweige, echte Coyote-Time + 1 Luft-Sprung, siehe
-    `PlayerController.gd`, Konstanten `MAX_AIR_JUMPS`/`COYOTE_TIME`)
-  - Original-Minigame-Logikklassen aus v13.3 wiederhergestellt, sicher mit
-    Umlauten versehen, kaputte `BaseMinigame.gd` gelöscht
-  - Minigames einfacher gemacht (breitere Zonen/Toleranzen, weniger Treffer
-    nötig) - siehe `MinigameOverlay.gd` `start_wood/start_iron/start_stone/
-    start_berries/start_water()`
-  - **NEU: "Bauen als Minispiel"** - `MinigameOverlay.start_build()` nutzt
-    die Mash-Mechanik ("Hämmern"); im FP-Modus erscheint bei einer voll
-    belieferten Baustelle der Prompt "[E] 🔨 Mitbauen"; Ergebnis wird direkt
-    auf `BuildingEntity.construction_progress` angewendet (siehe
-    `GameController._update_fp_interaction()` und `_on_minigame_finished()`,
-    neue Felder `_fp_target_site`, `MINIGAME_MAX_REWARD["BUILD"]`)
-  - MinigameOverlay optisch aufgewertet: abgerundetes Panel mit farbigem
-    Rand, pro Ressource eingefärbter Bühnen-Hintergrund
-    (`RESOURCE_THEME_COLOR`, `_apply_stage_theme()`)
+Zwischen v13.6 (letzter in diesem Repo nachvollziehbarer Stand, siehe vorherige
+Version dieses Dokuments) und v14.5 (jetzt gepusht) liegen laut Code-Kommentaren
+im Projekt mindestens folgende Feature-Ergänzungen, deren Entwicklungsverlauf
+NICHT in diesem Repo dokumentiert ist:
+- v14.1: Doppelte Benachrichtigungs-Anzeige behoben (siehe
+  `GameController._connect_signals()`-Kommentar)
+- v14.4: Cosy-Streichel-Interaktion mit Kolonie-Frettchen im Frettchenmodus
+  (`_pet_ferret()`, `PET_RANGE`, `PET_COOLDOWN`), entspanntere Musik im
+  Frettchenmodus (`SoundSys.set_fp_mode()`)
+- v14.5: Timberborn-Feld-System (`FarmFieldSystem.gd`/`FarmSys`, Feld-Platzier-
+  Werkzeug `_place_field()`, Wachstums-Visualisierung in `_process()`)
+
+Falls relevant: beim Nutzer nachfragen, ob es für diese Lücke noch brauchbare
+Zwischenstände/Notizen gibt, oder ob v14.5 als neuer verlässlicher
+Ausgangspunkt gelten soll (letzteres ist die Annahme dieser Session).
 
 ---
 
-## OFFENE PUNKTE / TODO für die nächste KI (nach Priorität)
-
-1. **[KRITISCH] Im echten Godot-Editor öffnen und testen.** Diese Sandbox
-   kann keine Godot-Szenen ausführen. Bitte den Nutzer bitten, das Projekt
-   zu öffnen, die Godot-Konsole (Fehler/Warnungen) zu prüfen und zu berichten.
-2. **[HOCH] Weitere Wort-Korruption-Restsuche.** Die Methode "Diff gegen
-   v13.3-Original" hat 174 weitere Fehler gefunden, NACHDEM bereits mehrere
-   Runden "gefunden und gefixt" für erledigt erklärt wurden. Es ist gut
-   möglich, dass noch mehr übrig ist. Falls die nächste KI Zeit hat: alle
-   `.gd`-Dateien nochmal komplett gegen eine Wortliste (z.B. `de_DE`
-   Hunspell-Wörterbuch, falls in der Sandbox installierbar) prüfen.
-3. **[HOCH] Der ursprüngliche Nutzerwunsch "Ressourcenbeschaffung im FP-Modus
-   verbuggt" ist jetzt (hoffentlich) durch die Minigame-Wiederherstellung
-   behoben - aber NICHT in einer echten Godot-Instanz nachgetestet.**
-   Bitte den Nutzer explizit fragen, ob Holz/Stein/Beeren/Erz/Wasser-Sammeln
-   im FP-Modus jetzt wieder funktioniert.
-4. **[MITTEL] "Das Wasser ist auch verbuggt"** - es wurde eine Performance-
-   Optimierung (Update-Intervall) eingebaut, aber KEIN klarer, reproduzierbarer
-   Logikfehler in der Wassersimulation selbst gefunden (das System hat
-   bereits einen eigenen, stabilen Fixed-Step-Akkumulator). Falls der Nutzer
-   weiterhin Wasser-Probleme meldet, bitte konkret nachfragen: Was genau
-   passiert (Wasser verschwindet? läuft über? Brunnen produzieren nichts?
-   Anzeige falsch?) - die bisherige Vermutung "Performance-Overflow" konnte
-   nicht bestätigt werden.
-5. **[MITTEL] "Im nicht-Touch-Modus kann man den Frettchenmodus nicht
-   aktivieren"** - eine Bedingungslockerung wurde in `_toggle_fp_mode()`
-   vorgenommen (v13.4), aber die eigentliche Ursache wurde nie zweifelsfrei
-   identifiziert. Falls das Problem weiterhin besteht: prüfen, ob
-   `player`/`camera`/`renderer` in der Desktop/Nicht-Touch-Szene überhaupt
-   korrekt instanziert werden (evtl. Szenen-Unterschied Touch- vs.
-   Desktop-Layout in `Main.tscn`?).
-6. **[NIEDRIG] Weitere Performance-Optimierungen** (`FERRET_UPDATE_INTERVAL`,
-   `BUILDING_UPDATE_INTERVAL`, `UI_UPDATE_INTERVAL` in v13.3) wurden teils nur
-   als Konstanten DEKLARIERT, aber nie tatsächlich in die jeweiligen
-   `_process()`-Schleifen verdrahtet. Bitte verifizieren, ob sie wirklich
-   etwas bewirken oder toter Code sind, bevor man sich auf sie verlässt.
-7. **[NIEDRIG] Terrain-Farben (`FIELD_COLORS`, v13.4)** wurden als Konstanten
-   deklariert, aber ob sie tatsächlich im Rendering verwendet werden
-   (verdrahtet mit dem Material-System) wurde nicht abschliessend verifiziert.
-
----
-
-## Kernsysteme (unverändert seit v12.x, siehe frühere Doku-Abschnitte)
+## Kernsysteme (bekannt, Stand v14.5)
 - Frettchen-Persönlichkeitssystem (5 Traits), 18 Achievements, legendäre
   Frettchen (50-Tage-Schwelle)
 - Bezirkssystem, radialer Tech-Baum (6 Sektionen, 3 Epochen)
 - Zelluläres Automaten-Wasser-System + Dürre-System + DAM-Gebäude
-- First-Person-Frettchenmodus mit 5 Ressourcen-Minispielen (Holz/Stein/
-  Beeren/Erz/Wasser) + NEU: Bauen als 6. Minispiel-Typ
-- Speichersystem mit benannten Slots
+- First-Person-Frettchenmodus: 5 Ressourcen-Minispiele + Bauen-Minispiel +
+  Streichel-Interaktion mit Kolonie-Frettchen
+- Timberborn-artiges Feld-/Landwirtschaftssystem (NEU, v14.5)
+- Speichersystem mit benannten Slots, inkl. Spielerposition (v11.25)
 
-## Dateistruktur (unverändert)
+## Dateistruktur
 ```
-FK_3D/
+(ZIP-Root)/
 ├── assets/              GLB-Modelle, Texturen, Musik
-├── autoloads/            GameState, MenuManager, DevMode, TouchControlsSettings
+├── autoloads/           GameState, MenuManager, DevMode, TouchControlsSettings
 ├── game/                GameController.gd (Haupt-Logik), PlayerController.gd
 ├── rendering/           WorldRenderer3D.gd, animations/
 ├── scenes/              Main.gd/.tscn
-├── systems/             Alle Gameplay-Systeme + minigames/ (jetzt wiederhergestellt)
-├── ui/                  UI-Panels, HUD, MinigameOverlay.gd (überarbeitet)
+├── systems/             Alle Gameplay-Systeme (inkl. FarmFieldSystem.gd, NEU)
+├── ui/                  UI-Panels, HUD, MinigameOverlay.gd
 ├── world/               WorldGenerator.gd
-└── project.godot        ✅ Vorhanden und verifiziert in jeder ZIP
+└── project.godot        ✅ Vorhanden und verifiziert (config/features: "4.7")
+
+Hinweis: Im Repo existiert zusätzlich ein separater, offenbar älterer
+"FK_3D/"-Ordner mit entpackten Einzeldateien (nicht Teil dieses Sync-Commits,
+nicht mit v14.5 abgeglichen - Status unklar, ggf. veraltet/verwaist).
 ```
