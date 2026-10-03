@@ -1,5 +1,21 @@
 # FrettchenKolonie – Changelog
 
+## v14.7 (Hotfix Frettchenmodus) – 03. Okt 2026
+
+### 🐛 Behoben
+- ✅ **Frettchenmodus-Absturz beim Streicheln/Start**: `GameController.gd`
+  (Z. 671, 677, 743) griff auf `_fp_target_ferret.name` zu, `FerretEntity`
+  hat aber nur `ferret_name` -> `Invalid access to property or key 'name'`
+  in `_update_fp_interaction()` jedes Frame, sobald ein Frettchen in
+  `PET_RANGE` war. Jetzt `.ferret_name`. Projektweit gegrept: keine weiteren
+  Stellen. Headless reproduziert (8 Fehler) und danach fehlerfrei verifiziert
+  (Prompt-Pfad + `_pet_ferret()`, 17 Treffer).
+- Lehre: der v14.6-Testlauf hatte den FP-Modus ohne Frettchen in Reichweite
+  getestet und den Fehler daher übersehen - FP-Tests immer mit Spieler direkt
+  neben einem Frettchen (`gc.player.teleport_to(...)`).
+
+---
+
 ## v14.6 (Intensives Bugfixing) – 03. Okt 2026
 
 ### Neu in dieser Session: echte Engine-Tests
