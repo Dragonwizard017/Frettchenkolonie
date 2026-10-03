@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v14.7)
+# FrettchenKolonie – Technische Dokumentation (Stand: v15.0)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -49,7 +49,7 @@ cp -r extracted proj && cd proj && ../Godot_v4.7.2-stable_linux.x86_64 --headles
   (Aufruf: `godot --headless --path . res://_t/Test.tscn`). Fehler erscheinen
   als `SCRIPT ERROR` in stderr. Test-Ordner `_t/` NICHT in die ZIP packen.
 - Lange Läufe im Hintergrund starten (`nohup ... &`), ~80 ms je `_process`.
-- Weiterhin NICHT testbar: Rendering, Eingabe/Touch, Audio, Optik.
+- Rendering/Screenshots sind seit v15.0 möglich (Xvfb + Software-Vulkan, siehe `tools/README.md`); weiterhin NICHT testbar: echte Eingabe/Touch, Audio, Performance auf Zielgeräten.
 
 ### Bekannte gdparse-False-Positives (NICHT reparieren!)
 Einzeilige Lambda-Ausdrücke mit `if` lösen einen gdparse-Parserfehler aus,
@@ -58,6 +58,40 @@ sind aber gültiges GDScript (von Godot selbst korrekt geparst):
 `GraveyardPanel.gd:7`, `DistrictPanel.gd:15`, `BuildingInfo.gd:45`.
 
 ---
+
+## UI-System (seit v15.0) – WICHTIG für jede neue Oberfläche
+- Zentral in `ui/UITheme.gd` (class_name UITheme): Palette (Rollen-Konstanten `C_*`), Fonts,
+  alle Control-Stile und Theme-Varianten. **Neue UI nur über UITheme bauen** (`UITheme.lbl/btn/panel`,
+  `theme_type_variation`), keine Color-Literale / `add_theme_*_override` mehr streuen.
+- Schriften: Fredoka (Titel), Nunito (Text), Noto Emoji (einfarbige Icon-Fallback-Schrift);
+  alle SIL OFL, Lizenztexte in `assets/fonts/`.
+- **Theme-Vererbung bricht an nicht-Control-Eltern ab** (Node, CanvasLayer): ein Theme am Root-Window
+  erreicht die UI NICHT. Darum setzt `Main` das Theme direkt auf die obersten Controls
+  (`_main_menu`, `_world_creation`, `_load_screen`, `UIRoot` in `_make_ui_root`). Neue oberste Controls
+  (z. B. eigene CanvasLayer-UI) müssen `theme = UITheme.get_theme()` selbst setzen.
+- Varianten: Button `PrimaryButton / DangerButton / GhostButton / SceneButton / SegButton / IconButton /
+  BuildItem`; Panel `HudBar / FloatPanel / Card / Dialog / ChipPanel`; Label `Title / Heading /
+  Subheading / Muted / Small / Chip / Display / OnScene`; ProgressBar `WaterBar / StorageBar / ScienceBar`.
+- Regeln: pro Screen EINE Hauptaktion (Primary), Rest leiser; 8-px-Raster; Radien 8/10/12.
+- HUD-Struktur: `HUD/TopBar/Row/...` (Ressourcen-Chips in `ResourceDisplay`, Meter), rechts
+  `HUD/RightColumn/{InfoPanel, SpeedPanel/SpeedButtons, ExtraPanel/ExtraButtons}`. `HUD.gd` findet
+  Nodes per `find_child` (Position egal). Das Tutorial referenziert `../HUD/RightColumn/...`.
+- Baumenü-Einträge: `BuildMenu._make_btn(titel, bbcode_untertitel, enabled)`, Kosten per
+  `_costs_rich()` (fehlende Ressourcen rot).
+
+## Hauptmenü-Panorama (seit v15.0)
+- `ui/PanoramaBackground.gd` + `assets/panorama/panorama.gdshader`: kein 3D, ein Shader projiziert den
+  Equirect-Streifen `colony_panorama.jpg` (6144x1536, ±45° Breitengrad) und dreht ihn (~2.2°/s).
+  Läuft nur sichtbar; `Main` zeigt es in MAIN_MENU / WORLD_CREATION / LOAD_SCREEN (Dialog-Seiten dimmen).
+- Neu rendern: siehe `tools/README.md` im Repo-Root (Pano.gd + stitch.py). Mapping muss in Shader und
+  stitch.py identisch bleiben (lon = atan2(d.x,-d.z), lat = asin(d.y)).
+
+## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
+`TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),
+`Pano`+`stitch.py` (Panorama). Beschreibung und Aufrufe in `tools/README.md`.
+Sandbox-Stolperfallen: nach neuen `class_name`-Skripten `godot --headless --import` ausführen
+(sonst "Could not find type ..."); ein Tool-Aufruf ist auf 300 s begrenzt -> lange Läufe mit
+`setsid nohup ... &` starten und per `sleep`/Log abfragen; `pkill -f` beendet die eigene Shell.
 
 ## Session v14.6 (Intensives Bugfixing)
 Siehe "Changes". Kernpunkt: Verbrauch von Wasser/Nahrung ist jetzt

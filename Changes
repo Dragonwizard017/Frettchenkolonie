@@ -1,5 +1,53 @@
 # FrettchenKolonie – Changelog
 
+## v15.0 (UI-Überarbeitung + 360°-Panorama) – 03. Okt 2026
+
+### Ziel
+Die Oberfläche wirkte wie ein generisches Standard-UI (Godot-Default-Schrift,
+blau-schwarze Flächen, lose Emoji-Zahlen, knallige Vollfarb-Pillen). Neu: ein
+durchgängiger, bewusst gestalteter Look + ein rotierendes 360°-Panorama aus einer
+echten Kolonie im Hauptmenü (wie bei Minecraft).
+
+### Recherche-Ergebnis (Leitlinien, in UITheme.gd umgesetzt)
+- Hierarchie: pro Screen EINE Hauptaktion (Primär-Button), alles Nebensächliche leiser (Ghost)
+- Raster: 8 px, Abstände nur als Vielfache; überall dieselben Radien (8/10/12)
+- Maximal 2 Schriften (Titel + Fließtext), Palette nach Rollen statt Einzelfarben
+- EIN Button-Stil mit festen Zuständen (normal/hover/pressed/disabled/focus), wenige Varianten
+- Theme zentral am Root-Window (`get_tree().root.theme`), nicht pro Node überschreiben
+- Lesbarkeit vor Dekoration; Text auf freier Szene bekommt Kontur (OnScene/Display)
+
+### Neu
+- `ui/UITheme.gd` (class_name UITheme): komplette Palette, Fonts, alle Control-Stile,
+  Varianten (PrimaryButton, DangerButton, GhostButton, SegButton, IconButton, BuildItem,
+  HudBar, FloatPanel, Card, Dialog, ChipPanel; Title, Heading, Subheading, Muted, Small,
+  Chip, Display, OnScene) + Helfer `UITheme.lbl/btn/panel`.
+  **Neue UI bitte immer darüber bauen, keine Einzel-Overrides/Color-Literale mehr.**
+- Schriften (alle SIL OFL, Lizenztexte liegen daneben): Fredoka (Titel), Nunito (Text),
+  Noto Emoji (einfarbig, als Fallback -> Icons sind einfärbbar und einheitlich).
+  `assets/fonts/`
+- `ui/PanoramaBackground.gd` + `assets/panorama/panorama.gdshader`: rotierendes
+  Panorama OHNE 3D-Kamera (Shader projiziert den Equirect-Streifen), läuft nur wenn sichtbar.
+  Bild: `assets/panorama/colony_panorama.jpg` (siehe "General" für die Herstellung).
+- Hauptmenü, Welt erstellen, Welt laden: neu aufgebaut (Dialog-Karten, Primär-Button,
+  Panorama dahinter, Version aus `application/config/version`).
+- HUD: obere Leiste mit Ressourcen-"Pillen" (getönte Icons) + Lager/Wasser-Messbalken;
+  rechte Spalte (Info · Geschwindigkeit als Segment-Knöpfe mit Anzeige der aktiven
+  Stufe · Werkzeug-Icons mit Tooltips). Pfade geändert: `HUD/RightColumn/...`
+  (Tutorial angepasst, HUD.gd nutzt `find_child`).
+- Baumenü: schwebendes Panel, Einträge als Karten, Kostenzeile mit getönten Icons und
+  **roten Beträgen bei fehlenden Ressourcen**, gewählter Eintrag hervorgehoben,
+  Abschnittsköpfe als Versalien.
+- Pause-Menü (Dialog + abgedunkelter Hintergrund), Game-Over, Benachrichtigungen
+  (dunkler Toast, Meldungsfarbe nur noch als Akzentkante).
+- `project.godot`: `config/version` = 15.0 (war 14.5, Menü zeigte falsche Version).
+
+### Hinweise
+- Zum ersten Öffnen im Editor: Godot importiert die neuen Fonts/das Panorama automatisch.
+- Panels, die noch eigene Farb-Overrides haben (TechTree, FerretProfile, Minigame …),
+  erben Schrift/Buttons/Panels aus dem Theme, sind aber noch nicht einzeln überarbeitet.
+
+---
+
 ## v14.7 (Hotfix Frettchenmodus) – 03. Okt 2026
 
 ### 🐛 Behoben
