@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v14.5)
+# FrettchenKolonie – Technische Dokumentation (Stand: v14.6)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -28,18 +28,43 @@ diesen Fehler meldet: NICHT einfach erneut pushen - erst eine frische
 Export-ZIP direkt aus dem Editor anfordern, in dem der Fehler auftritt, und
 diese byte-genau prüfen, bevor ein Fix gebaut wird.
 
-### Was in dieser Session NICHT verifiziert werden konnte
-Auch diese Sandbox hat **keinen echten Godot-Editor/Interpreter** - alle
-Prüfungen sind textuell (gdparse, Grep auf fehlende Ressourcen/Skripte,
-Klammerbalance). Laufzeitverhalten, Signalverbindungen zwischen Szenen,
-Node-Pfade in `.tscn`-Dateien etc. wurden nicht in einer laufenden Engine
-getestet.
+### Echte Engine-Tests in der Sandbox (seit v14.6 möglich!)
+Die frühere Annahme "kein Godot in der Sandbox" stimmt nicht mehr: `github.com`
+und `release-assets.githubusercontent.com` sind freigegeben, die Godot-Binary
+lässt sich laden:
+```
+. /home/claude/.env_github
+URL=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/godotengine/godot-builds/releases/tags/4.7.2-stable \
+  | python3 -c "import sys,json;[print(a['browser_download_url']) for a in json.load(sys.stdin)['assets'] if a['name']=='Godot_v4.7.2-stable_linux.x86_64.zip']")
+curl -sL -o godot.zip "$URL" && unzip -q godot.zip && chmod +x Godot_v4.7.2-stable_linux.x86_64
+cp -r extracted proj && cd proj && ../Godot_v4.7.2-stable_linux.x86_64 --headless --import   # einmalig (~1 Min.)
+```
+- Hinweis: `source` gibt es in `/bin/sh` nicht -> `. /home/claude/.env_github`.
+- `--check-only --script` ist NICHT brauchbar (lädt keine Autoloads, meldet
+  "Identifier not found: GameState" etc.). Stattdessen das Projekt normal starten.
+- Test-Szene: Node-Skript, das `res://scenes/Main.tscn` instanziert, 5 Frames
+  wartet, `main.get("_game_ctrl")` holt und dann `start_new_game(...)`,
+  `bootstrap_test_colony()` und beliebig oft `gc.call("_process", dt)` aufruft
+  (Aufruf: `godot --headless --path . res://_t/Test.tscn`). Fehler erscheinen
+  als `SCRIPT ERROR` in stderr. Test-Ordner `_t/` NICHT in die ZIP packen.
+- Lange Läufe im Hintergrund starten (`nohup ... &`), ~80 ms je `_process`.
+- Weiterhin NICHT testbar: Rendering, Eingabe/Touch, Audio, Optik.
 
 ### Bekannte gdparse-False-Positives (NICHT reparieren!)
 Einzeilige Lambda-Ausdrücke mit `if` lösen einen gdparse-Parserfehler aus,
 sind aber gültiges GDScript (von Godot selbst korrekt geparst):
 `ExpeditionPanel.gd:7`, `AchievementPanel.gd:10`, `TechTreePanel.gd:81`,
 `GraveyardPanel.gd:7`, `DistrictPanel.gd:15`, `BuildingInfo.gd:45`.
+
+---
+
+## Session v14.6 (Intensives Bugfixing)
+Siehe "Changes". Kernpunkt: Verbrauch von Wasser/Nahrung ist jetzt
+bedarfsabhängig, Brunnen-Bonus nutzt `WaterSys.get_water_volume_near()`
+(`/ 3.0`-Konstante in `BuildingEntity._collect` und `BuildingInfo.gd`).
+Offene Punkte: Testwelt-Nahrung, Saison-Faktor skaliert gesamte Spielzeit,
+Headless-Performance, Z.730-Parse-Fehler (lokale Datei weicht von ZIP ab).
 
 ---
 

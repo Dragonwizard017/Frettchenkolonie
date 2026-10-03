@@ -1,5 +1,54 @@
 # FrettchenKolonie – Changelog
 
+## v14.6 (Intensives Bugfixing) – 03. Okt 2026
+
+### Neu in dieser Session: echte Engine-Tests
+Godot 4.7.2 (Linux) lässt sich in der Sandbox von GitHub laden
+(`godotengine/godot-builds`, Release `4.7.2-stable`) und läuft headless.
+Damit wurde erstmals eine echte Partie simuliert (neues Spiel, Testwelt,
+25 Felder, mehrere Spieltage, Dürre, Speichern/Laden, Verkaufen/Upgraden,
+FP-Modus): **keine Skriptfehler**. Details/How-To siehe "General".
+
+### 🐛 Behobene Bugs
+- ✅ **Wasser/Nahrung wurden bedarfsunabhängig verbraucht**
+  (`PopulationManager.gd`): jedes Frettchen verbrauchte mit voller
+  Maximalrate (0.6 Wasser/s, 0.4 Nahrung/s), auch bei Bedarf 100. Gemessen:
+  5 Frettchen = ~3 Wasser/s und ~2.3 Beeren/s bei echtem Bedarf von ~0.5/s.
+  Jetzt nimmt jedes Frettchen höchstens auf, was ihm bis 100 fehlt (maximale
+  Aufnahmerate unverändert).
+- ✅ **Brunnen-Nähe-Bonus war wirkungslos** (`WaterSystem.gd`,
+  `BuildingEntity._collect`, `BuildingInfo.gd`): Karten haben nur 3 (SMALL) /
+  8 (MEDIUM) Wasserkacheln, der Kreisdurchschnitt lag bei 0.006-0.024, jeder
+  Brunnen lief immer auf dem Grundsockel (0.22). Neu:
+  `WaterSys.get_water_volume_near()` (Summe der Pegel im Radius), Bonus
+  `min(1, Volumen/3)`. Anzeige im Info-Fenster nutzt dieselbe Basis.
+  **Balance-Änderung** - Konstante `/ 3.0` bei Bedarf nachstellen.
+- ✅ **Testwelt: 0 Arbeiter an Brunnen/Wasserturm** (`bootstrap_test_colony`):
+  Brunnen kam bei der Frettchen-Verteilung zuletzt dran, Kolonie verdurstete
+  nach ~3 Tagen. Wasser-/Beeren-Sammler werden jetzt zuerst besetzt.
+- ✅ **Felder: Dürre-Wasserkosten pro Frame statt pro Sekunde**
+  (`FarmFieldSystem.update`, framerate-abhängig, ~1.2 Wasser/s pro Feld bei
+  60 FPS). Jetzt `0.02 * dt` je Feld.
+- ✅ **Pause setzte Geschwindigkeit immer auf 1x** (`GameState.toggle_pause`,
+  `PauseMenu._on_resume`): 2x/3x bleibt jetzt erhalten.
+- ✅ **SaveSystem**: beschädigte/Nicht-Dictionary-JSON stürzt nicht mehr ab
+  (`load_game`, `get_save_info`).
+- ✅ `Main._confirm_delete_save`: Child-`Timer` statt `get_tree().create_timer()`
+  (Projekt-Konvention).
+
+### ⚠️ Offen / nicht geändert
+- Testwelt: Nahrungsvorrat (435) ist nach ~240 s aufgebraucht, keine
+  nachhaltige Nahrungsproduktion -> Hungertod nach ~10 Min. Spielzeit.
+- Saison-Faktor (`SeasonSys.production_multiplier`) skaliert die GESAMTE
+  Spielzeit (`dt` in `GameController._process`), also auch Tageslänge, Dürre-
+  und Hunger-Timer. Absicht unklar - beim Nutzer nachfragen.
+- Headless-Simulation war langsam (~80 ms je `_process`-Aufruf); ob echte
+  Performance-Schwäche oder Test-Artefakt, ungeklärt.
+- Parse-Fehler `GameController.gd` Z.730 (v14.5-Eintrag): weiter ungeklärt;
+  die ZIP lädt in echtem Godot 4.7.2 fehlerfrei.
+
+---
+
 ## v14.5 (Sync-Commit) – 02. Okt 2026
 
 ### Hinweis zu dieser Version
