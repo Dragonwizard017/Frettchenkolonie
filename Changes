@@ -1,5 +1,29 @@
 # FrettchenKolonie – Changelog
 
+## v15.1 (Hotfix Accessoire-Editor) – 03. Okt 2026
+
+### 🐛 Behoben
+- ✅ **Accessoires ausrüsten funktionierte nicht / ◀ ▶ schaltete nie weiter**
+  (`CharacterEditorPanel._build_slot_row`): GDScript-Lambdas **kopieren** lokale
+  Variablen beim Erzeugen. `current_idx` wurde in den ◀/▶-Lambdas nur auf einer Kopie
+  geändert und blieb für `refresh_label`/`apply_selection` auf dem Startwert -> der Slot
+  blieb "— leer —" und eine Auswahl wurde sofort wieder auf leer gesetzt (auch mit allen
+  per Dev-Mode freigeschalteten Achievements). Jetzt gemeinsamer Zustand in einem
+  Dictionary (Referenz). Headless nachgestellt und verifiziert: Kopf-Slot schaltet
+  Krone -> Zylinder -> Zauberhut -> Bandana -> leer -> von vorn, ◀ geht zurück.
+- ✅ Slot-Zeilen werden bei JEDER Ausrüstungsänderung neu aufgebaut (vorher nur beim
+  Öffnen -> veralteter Zustand, z. B. nach Laden eines Spielstands).
+- Optik: Editor im neuen Theme (Überschrift, Icon-Pfeile, Slot-Labels).
+- Projektweit mit `tools/lambda_scan.py` nach demselben Fehlermuster gesucht
+  (Lambda ändert lokale Variable): **keine weiteren Treffer**. Der Scanner findet den
+  alten Fehler im v14.5-Code zuverlässig (Gegenprobe).
+
+### Lehre
+- In GDScript-Lambdas nie lokale Zähler/Indizes verändern, die außerhalb gelesen werden:
+  ein Dictionary/Array als Zustandsträger nutzen (`var state := {"idx": 0}`).
+
+---
+
 ## v15.0 (UI-Überarbeitung + 360°-Panorama) – 03. Okt 2026
 
 ### Ziel

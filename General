@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v15.0)
+# FrettchenKolonie – Technische Dokumentation (Stand: v15.1)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -85,6 +85,8 @@ sind aber gültiges GDScript (von Godot selbst korrekt geparst):
   Läuft nur sichtbar; `Main` zeigt es in MAIN_MENU / WORLD_CREATION / LOAD_SCREEN (Dialog-Seiten dimmen).
 - Neu rendern: siehe `tools/README.md` im Repo-Root (Pano.gd + stitch.py). Mapping muss in Shader und
   stitch.py identisch bleiben (lon = atan2(d.x,-d.z), lat = asin(d.y)).
+
+- **Lambda-Falle:** GDScript-Lambdas kopieren lokale Variablen -> Änderungen darin sind nach außen unsichtbar (Index/Zähler in Dictionary/Array halten). Prüfen mit `tools/lambda_scan.py` (im Projektordner ausführen).
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

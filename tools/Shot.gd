@@ -25,6 +25,17 @@ func _ready() -> void:
 			await get_tree().process_frame
 		GameState.toggle_pause()
 		for i in 10: await get_tree().process_frame
+	elif mode == "equip":
+		gc.call("start_new_game", "SMALL", "qa-seed", "QA")
+		for i in 20: await get_tree().process_frame
+		for aid in AchievementSys.ACHIEVEMENTS: AchievementSys.debug_force_unlock(aid)
+		GameState.toggle_pause()
+		for i in 5: await get_tree().process_frame
+		var cep = gc.get_node("GameUI/UIRoot/PauseMenu/Row/CharacterEditorPanel")
+		cep.call("_on_toggle_equip")
+		for k in ["HEAD", "NECK", "FACE", "BACK"]:
+			PlayerAccessories.call("equip", {"HEAD":"CROWN","NECK":"SCARF","FACE":"MONOCLE","BACK":"CAPE"}[k])
+		for i in 25: await get_tree().process_frame
 	elif mode == "info":
 		gc.call("start_new_game", "SMALL", "qa-seed", "QA")
 		gc.call("bootstrap_test_colony")

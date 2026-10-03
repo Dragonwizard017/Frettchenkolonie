@@ -9,7 +9,9 @@ ausführen (nach neuen `class_name`-Skripten Pflicht!), dann:
 |---|---|---|
 | `TestRunner.tscn` | Komplette Partie simulieren (Testwelt, Felder, Dürre, Speichern/Laden, Verkaufen, FP-Modus). Fehler = `SCRIPT ERROR` im Log | `godot --headless --path . res://_t/TestRunner.tscn` (dauert Minuten -> Hintergrund) |
 | `Exp5.tscn` | FP-Modus: Spieler neben Frettchen setzen, Streicheln-Pfad ausführen | `godot --headless --path . res://_t/Exp5.tscn` |
-| `Shot.tscn` | Screenshot einer Ansicht: `menu`, `world`, `load`, `game`, `colony`, `pause`, `info`, `panel:<NodeName>` | `xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --rendering-driver vulkan --resolution 1600x900 res://_t/Shot.tscn -- <modus> /pfad/bild.png` |
+| `Exp6.tscn` | Accessoire-Editor: alle Achievements freischalten, ▶/◀ klicken, Ausrüstung prüfen | `godot --headless --path . res://_t/Exp6.tscn` |
+| `lambda_scan.py` | Findet Lambdas, die lokale Variablen ändern (siehe Lambda-Falle) | im Projektordner: `python3 lambda_scan.py` |
+| `Shot.tscn` | Screenshot einer Ansicht: `menu`, `world`, `load`, `game`, `colony`, `pause`, `info`, `equip`, `panel:<NodeName>` | `xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --rendering-driver vulkan --resolution 1600x900 res://_t/Shot.tscn -- <modus> /pfad/bild.png` |
 | `Pano.tscn` + `stitch.py` | Menü-Panorama neu rendern (6 Cubemap-Seiten) und zum Equirect-Streifen zusammensetzen | siehe unten |
 
 Screenshots brauchen Xvfb + Software-Vulkan:
