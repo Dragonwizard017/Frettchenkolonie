@@ -203,3 +203,19 @@ Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
 ## v13.2 (UI-Hotfix) – 9. Sep 2026
 ## v13.1 (Bugfix) – 9. Sep 2026
 ## v13.0 (Anfänger-Optimierung) – 9. Sep 2026
+
+## v15.2 (Neue Modelle) – 04. Okt 2026
+
+### 🐹 Neue Modelle
+- ✅ **Animiertes Block-Frettchen** ersetzt `assets/ferret.glb` (gleiche Masse,
+  16 Clips: Idle/Run/Carry/Work/Harvest/Build/Sleep/Sleep_LieDown/Pet/Death/
+  Drink/Minispiel-Gesten). Spiel nutzt weiter `FERRET_MODEL_SCALE=2.2` und
+  spielt "Run", AnimationPlayer wird aus dem GLB erzeugt.
+- ✅ **Neue Gebäudemodelle**: Brunnen, Lager, Wasserturm, Statue
+  (`well_building.glb`, `storage_building.glb`, neu `water_tower.glb`,
+  `statue.glb` im Haus-Stil). WELL/STORAGE-Konstanten angepasst, WATER_TOWER/
+  STATUE neu in `BUILDING_MODEL_OVERRIDES` verdrahtet.
+- ✅ **Alle 10 Accessoires neu gebaut** (Block-Stil, gleiche Dateinamen) und
+  neu ausgerichtet: BOWTIE/SCARF/CAPE/MONOCLE/EYEPATCH-Offsets in
+  `FerretAccessories.gd` korrigiert (Vermessung im Kommentar dokumentiert).
+- Alle .gd-Änderungen mit gdparse geprüft (ohne Befund).
