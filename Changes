@@ -219,3 +219,11 @@ Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
   neu ausgerichtet: BOWTIE/SCARF/CAPE/MONOCLE/EYEPATCH-Offsets in
   `FerretAccessories.gd` korrigiert (Vermessung im Kommentar dokumentiert).
 - Alle .gd-Änderungen mit gdparse geprüft (ohne Befund).
+
+## v15.3 (ZIP-Fix) – 04. Okt 2026
+
+### 🔧 Behoben
+- ✅ **Godot-Import schlug fehl** ("Dateien liessen sich nicht aus dem Paket
+  extrahieren"): Die v15.2-ZIP war mit Python-zipfile ohne explizite
+  Ordner-Einträge gepackt, Godots Entpacker legt die Unterordner dann nicht
+  an. Neu gepackt mit Ordner-Einträgen (Inhalt identisch zu v15.2).
