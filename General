@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v15.4)
+# FrettchenKolonie – Technische Dokumentation (Stand: v15.5)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -83,7 +83,7 @@ sind aber gültiges GDScript (von Godot selbst korrekt geparst):
 - `ui/PanoramaBackground.gd` + `assets/panorama/panorama.gdshader`: kein 3D, ein Shader projiziert den
   Equirect-Streifen `colony_panorama.jpg` (6144x1536, ±45° Breitengrad) und dreht ihn (~2.2°/s).
   Läuft nur sichtbar; `Main` zeigt es in MAIN_MENU / WORLD_CREATION / LOAD_SCREEN (Dialog-Seiten dimmen).
-- Neu rendern: siehe `tools/README.md` im Repo-Root (Pano.gd + stitch.py). Mapping muss in Shader und
+- Neu rendern: siehe `tools/README.md` im Repo-Root (seit v15.5 `Pano2.gd` mit Realismus-Modus + stitch.py). Mapping muss in Shader und
   stitch.py identisch bleiben (lon = atan2(d.x,-d.z), lat = asin(d.y)).
 
 - **Lambda-Falle:** GDScript-Lambdas kopieren lokale Variablen -> Änderungen darin sind nach außen unsichtbar (Index/Zähler in Dictionary/Array halten). Prüfen mit `tools/lambda_scan.py` (im Projektordner ausführen).

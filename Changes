@@ -1,5 +1,23 @@
 # FrettchenKolonie – Changelog
 
+## v15.5 (Hauptmenü-Panorama neu: Realismus-Himmel + neue Modelle) – 05. Okt 2026
+
+- **Panorama neu gerendert** (`assets/panorama/colony_panorama.jpg`, 6144x1536): Realismus-Modus
+  (Himmel mit Wolken, Sonne, Tonemapping, Bloom, SSAO, weiche Schatten, Wolkenschatten) und die
+  NEUEN Modelle aus v15.2 (Statue, Wasserturm, Häuser), Sonnenuntergangs-Stimmung (Tageszeit 0.69, Sommer),
+  Seed `alpha`. Ohne Volumetrik-Lichtstrahlen (zu langsam pro Seite).
+- **Himmel-Shader (`sky_realistic.gdshader`) korrigiert** - gilt auch für den Frettchenmodus:
+  - magentafarbener Hof um die Sonne: Orange wurde auf gesättigtes Blau ADDIERT (Verlauf läuft durch
+    Violett). Jetzt wird der Himmel nahe der Sonne erst zu neutral/warm entsättigt, dann überblendet.
+  - Sterne waren tagsüber sichtbar -> erst bei echter Nacht (night > 0.35).
+  - wärmerer Wolkenrand (Silberrand überblendet statt addiert).
+- `panorama.gdshader`: Sättigungs-/Kontrast-Nachbearbeitung entfernt (Bild ist bereits fertig getönt).
+- `tools/Pano2.tscn`: neues Capture-Skript mit Realismus-Modus (`-- <seed> <höhe> <prefix> <face> <saison> <tageszeit> <dx> <dy> [seiten]`);
+  optionaler letzter Parameter rendert nur einzelne Seiten (z. B. `up,down`), falls ein langer Lauf abbricht.
+- Ablauf zum Neu-Rendern: siehe `tools/README.md` (Pano2 -> `stitch.py`).
+
+---
+
 ## v15.4 (Modell-Check, sichtbare Jahreszeiten, Realismus-Modus) – 04. Okt 2026
 
 ### 1) Modell-Check nach v15.2/v15.3 (erstmals mit echter Engine geprüft)
