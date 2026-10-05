@@ -1,5 +1,64 @@
 # FrettchenKolonie – Changelog
 
+## v15.4 (Modell-Check, sichtbare Jahreszeiten, Realismus-Modus) – 04. Okt 2026
+
+### 1) Modell-Check nach v15.2/v15.3 (erstmals mit echter Engine geprüft)
+Die neuen GLBs (Frettchen mit 16 Clips, Gebäude, Accessoires) wurden vorher nur mit `gdparse`
+geprüft. Mit Godot 4.7.2 (Sandbox) vermessen, in der laufenden Kolonie und per Screenshot geprüft:
+- 🐛 **STORAGE / WATER_TOWER / STATUE standen 3-10 Kacheln neben ihrer Position.** Die GLBs haben
+  ihren Mittelpunkt bei X = 5 / 10 / 15 (Ausstellungs-Aufstellung beim Export, Mesh-AABB
+  min.x = 4.0 / 9.05 / 14.2) - der Renderer verschob nur in Y. Gemessen: Versatz +5.4 / +10.9 /
+  +20.6 Welteinheiten, Klick-/Kollisionsbereich lag an der richtigen Stelle.
+  Fix: `WorldRenderer3D._model_center_xz()` zentriert JEDES Gebäudemodell zur Laufzeit auf seine
+  Kachel (generisch, übersteht künftige Modelltausche). Nachmessung: alle Gebäude mittig, Basis auf Kachelhöhe.
+- 🐛 **Alle 16 Frettchen-Clips importieren mit Loop = AUS** -> "Run" lief 0.88 s und das Frettchen
+  erstarrte in Laufpose. Fix: `rendering/FerretAnimUtil.gd` setzt Dauer-Clips (Run, Idle, Carry,
+  Work, Build, Harvest, Drink, Sleep, Smash, Mash_Shake, Balance_Wobble) auf Loop; Gesten bleiben
+  einmalig. Aufruf in WorldRenderer3D (Frettchen) und PlayerController (Spieler-Frettchen).
+- ✅ Ohne Befund: Größen/Unterkanten aller Modelle passen zu den Konstanten (Brunnen mittig,
+  Höhen stimmen), Ferret-Skelett animiert (5 von 11 Knochen bewegen sich im Run-Clip), alle 10
+  Accessoires sitzen am neuen Frettchen korrekt (Nahaufnahme vorn/hinten, Idle + Run).
+- Hinweis: die neuen Clips Idle/Carry/Work/Sleep/Pet/... werden noch nicht genutzt (Code spielt nur "Run").
+  Der Schal sieht von vorn wie eine Schlaufe aus (Modell, kein Code-Problem).
+
+### 2) Sichtbare Jahreszeiten
+- Neues `rendering/SeasonVisuals.gd`: berechnet aus SeasonSys + Tageszeit eine KONTINUIERLICHE
+  Jahres-Phase und überblendet weich (Keyframes in der Saison-Mitte, kein Sprung am Saisonwechsel).
+- **Frühling**: frisches Hellgrün, fallende Blütenblätter. **Sommer**: sattes Tiefgrün, warmes helles
+  Licht. **Herbst**: goldoliver Boden, orange Büsche, gelbliche Bäume, fallendes Laub, tiefe goldene
+  Sonne. **Winter**: Schneedecke auf allen nach oben zeigenden Flächen (blockig, ungleichmäßig, baut
+  sich ab Herbst-Mitte auf und taut ab Winter-Mitte ab), bereifte Bäume/Büsche, Schneefall, **zugefrorene
+  Gewässer**, kaltes bläuliches Licht.
+- Terrain nutzt jetzt `assets/shaders/season_terrain.gdshader` (Textur + Nearest-Filter wie vorher,
+  Vertex-Farben für Dürre/Wege bleiben). Alle Saison-Werte kommen als GLOBALE Shader-Parameter
+  (`season_snow`, `season_grass_tint`, `realism_enabled`, `realism_cloud_shadow`), registriert im
+  Autoload `GraphicsSettings` (muss vor dem ersten Shader laufen).
+- Baum-/Busch-Farben: gemeinsame Materialien aus pine_tree.glb/bush.glb werden getönt (ein Aufruf
+  ändert alle Instanzen). Wasser: `WorldRenderer3D.set_water_frozen()`.
+- Partikel (GPUParticles3D) folgen dem Kamerafokus bzw. dem Spieler im Frettchenmodus.
+
+### 3) Realismus-Modus (schaltbar)
+- Schalter: Pause-Menü ("Realistische Grafik") **und** Hauptmenü ("Grafik: Standard/Realistisch");
+  gespeichert in `user://graphics.cfg`. Standard: AUS (kostet Leistung).
+- AN: prozeduraler Himmel `assets/shaders/sky_realistic.gdshader` (Wolken mit Eigenschatten, Sonnen-
+  scheibe + Korona, Auf-/Untergangsglühen, Sterne), Sonne wandert über den Tag (Schatten wandern,
+  warmes Licht morgens/abends), ACES-Tonemapping, Glow, Farbkorrektur, Himmels-Ambient, SSAO (nur
+  Forward+), weichere/weiter reichende Schatten (4 Kaskaden), 4x MSAA, wandernde Wolkenschatten auf
+  dem Boden, Dunst + Volumetrik ("Lichtstrahlen" durch Bäume) NUR bei perspektivischer Kamera
+  (Frettchenmodus), weil die orthografische Iso-Kamera sonst alles verwaschen würde.
+- AUS stellt exakt den vorherigen Zustand wieder her (Werte werden beim Einschalten gemerkt).
+- Hinweis: In der Iso-Ansicht ist KEIN Himmel sichtbar (ortho, Hintergrundfarbe) - dort wirken
+  Licht, Schatten, Tonemapping und Wolkenschatten; der Himmel zeigt sich im Frettchenmodus.
+
+### Sonstiges
+- `project.godot`: Autoload `GraphicsSettings` ergänzt.
+- `tools/`: neue Prüfer `ModelCheck`, `BldCheck`, `AnimCheck`, `Acc` (Accessoire-Nahaufnahme);
+  `Shot` kann jetzt Saison-/Realismus-Ansichten (`season:<0-3>:<0|1>[:fp[:<tageszeit>[:<yaw>]]]`).
+
+---
+
+---
+
 ## v15.1 (Hotfix Accessoire-Editor) – 03. Okt 2026
 
 ### 🐛 Behoben

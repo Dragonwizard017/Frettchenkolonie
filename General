@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v15.1)
+# FrettchenKolonie – Technische Dokumentation (Stand: v15.4)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -87,6 +87,34 @@ sind aber gültiges GDScript (von Godot selbst korrekt geparst):
   stitch.py identisch bleiben (lon = atan2(d.x,-d.z), lat = asin(d.y)).
 
 - **Lambda-Falle:** GDScript-Lambdas kopieren lokale Variablen -> Änderungen darin sind nach außen unsichtbar (Index/Zähler in Dictionary/Array halten). Prüfen mit `tools/lambda_scan.py` (im Projektordner ausführen).
+
+## Jahreszeiten-Optik & Realismus-Modus (seit v15.4)
+- `rendering/SeasonVisuals.gd` (vom GameController erzeugt): kontinuierliche Jahres-Phase aus
+  `SeasonSys` + Tageszeit; Keyframes (Frühling/Sommer/Herbst/Winter) liegen in der Saison-MITTE und
+  werden weich überblendet. Steuert: Boden-Tönung + Schnee (globale Shader-Parameter), Baum-/Busch-
+  Materialien (gemeinsame Resource -> ein Aufruf ändert alle Instanzen), Eis (`WorldRenderer3D.set_water_frozen`),
+  Sonnen-/Himmelston (`apply_lighting`, nach `_update_day_night_visuals`) und Partikel (Schnee/Laub/Blüten).
+  Neue Saison-Optik = Keyframe-Arrays `K_*` oben in der Datei ergänzen.
+- Terrain: `assets/shaders/season_terrain.gdshader` (ShaderMaterial pro Biom statt StandardMaterial3D;
+  `BIOME_VEG` bestimmt, wie stark die Gras-Tönung je Biom wirkt). Schnee nur auf nach oben zeigenden Flächen.
+- **Globale Shader-Parameter** (`season_snow`, `season_grass_tint`, `realism_enabled`, `realism_cloud_shadow`)
+  werden im Autoload `GraphicsSettings._init()` registriert (müssen vor dem ersten Shader existieren).
+  `RenderingServer.global_shader_parameter_get_list()` ist EDITOR-ONLY (Fehlermeldung zur Laufzeit) -> nicht verwenden.
+- Realismus-Modus: `rendering/RealismFX.gd` + `assets/shaders/sky_realistic.gdshader`; Schalter über
+  `GraphicsSettings.set_realistic()` (Pause-Menü `RealismToggle`, Hauptmenü), gespeichert in `user://graphics.cfg`.
+  AUS stellt den gemerkten Ausgangszustand wieder her. Dunst/Volumetrik nur bei perspektivischer Kamera.
+  Die Iso-Kamera ist orthografisch -> dort KEIN Himmel sichtbar; Himmel zeigt sich im Frettchenmodus.
+- Abstimmungs-Erfahrung: ACES + Himmels-Ambient + Sättigung addieren sich schnell zu "neon/überbelichtet"
+  (Exposure ~0.98, Ambient 0.7, Sättigung 1.04 passt); Nebel/Volumetrik bleicht den Himmel schnell aus
+  (`fog_sky_affect` klein halten).
+
+## Modelle (v15.2) - Prüfregeln aus dem v15.4-Check
+- Neue GLBs IMMER vermessen (`tools/ModelCheck`, `tools/BldCheck`, `tools/AnimCheck`): Mitte (X/Z), Unterkante,
+  Höhe, Animationen + Loop-Modus. Gebäudemodelle werden zur Laufzeit auf ihre Kachel zentriert
+  (`_model_center_xz`), Frettchen-Clips per `FerretAnimUtil.ensure_loops()` auf Loop gesetzt.
+- Godot importiert GLB-Animationen OHNE Loop (nur Namen mit "loop" werden geloopt).
+- Beim Importieren entstehen Extra-Dateien in `assets/` (`*_atlas.png`, `*_texture*.jpg`): Import-Artefakte,
+  NICHT in die ZIP packen.
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

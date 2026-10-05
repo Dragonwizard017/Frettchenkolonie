@@ -16,7 +16,42 @@ func _ready() -> void:
 		for i in 60:
 			gc.call("_process", 0.1)
 			await get_tree().process_frame
-	if mode == "pause":
+	if mode.begins_with("season:"):
+		# season:<0-3>:<0|1 realistisch>[:fp]
+		var parts: PackedStringArray = mode.split(":")
+		var S: int = int(parts[1]); var R: int = int(parts[2])
+		gc.call("start_new_game", "MEDIUM", "qa-seed", "QA")
+		gc.call("bootstrap_test_colony")
+		for i in 20: await get_tree().process_frame
+		var day: int = S * 15 + 7
+		DayNight.day_count = day; gc.set("_day_prev", day); SeasonSys.update(day)
+		var pct: float = float(parts[4]) if parts.size() > 4 else 0.30
+		DayNight.time = DayNight.day_length * pct
+		GraphicsSettings.set_realistic(R == 1)
+		if parts.size() > 3 and parts[3] == "fp":
+			gc.call("_toggle_fp_mode")
+			# offene Stelle mit Fernsicht suchen: höchste Wiesen-/Waldkachel 7-16 Kacheln vom Zentrum
+			var cx: int = gc.world_gen.w / 2; var cy: int = gc.world_gen.h / 2
+			var best := Vector2i(cx + 9, cy); var bh := -1.0
+			for x in range(cx - 16, cx + 17):
+				for y in range(cy - 16, cy + 17):
+					var dd: float = Vector2(x - cx, y - cy).length()
+					if dd < 7.0 or dd > 16.0 or x < 2 or y < 2 or x >= gc.world_gen.w - 2 or y >= gc.world_gen.h - 2: continue
+					var tl: Dictionary = gc.world[x][y]
+					if str(tl.get("biome", "")) in ["PLAINS", "FOREST"] and float(tl.get("height", 0.0)) > bh:
+						bh = float(tl.get("height", 0.0)); best = Vector2i(x, y)
+			var sun = gc.get("_sun_light")
+			var sv: Vector3 = -(sun.global_transform.basis * Vector3.FORWARD)
+			var yaw_off: float = deg_to_rad(float(parts[5])) if parts.size() > 5 else 0.0
+			var yaw: float = atan2(-sv.x, -sv.z) + yaw_off
+			var wp: Vector3 = gc.renderer.tile_to_world3d(best.x, best.y) + Vector3(0, 7.0, 0)
+			gc.player.teleport_to(wp, yaw)
+			gc.player.set("_pitch", 0.10); gc.player.camera.rotation.x = 0.10
+		for i in (60 if R == 0 else 10):
+			DayNight.time = DayNight.day_length * pct
+			gc.call("_process", 0.05)
+			await get_tree().process_frame
+	elif mode == "pause":
 		gc.call("start_new_game", "SMALL", "qa-seed", "QA")
 		gc.call("bootstrap_test_colony")
 		for i in 40: await get_tree().process_frame

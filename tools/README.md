@@ -11,7 +11,9 @@ ausführen (nach neuen `class_name`-Skripten Pflicht!), dann:
 | `Exp5.tscn` | FP-Modus: Spieler neben Frettchen setzen, Streicheln-Pfad ausführen | `godot --headless --path . res://_t/Exp5.tscn` |
 | `Exp6.tscn` | Accessoire-Editor: alle Achievements freischalten, ▶/◀ klicken, Ausrüstung prüfen | `godot --headless --path . res://_t/Exp6.tscn` |
 | `lambda_scan.py` | Findet Lambdas, die lokale Variablen ändern (siehe Lambda-Falle) | im Projektordner: `python3 lambda_scan.py` |
-| `Shot.tscn` | Screenshot einer Ansicht: `menu`, `world`, `load`, `game`, `colony`, `pause`, `info`, `equip`, `panel:<NodeName>` | `xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --rendering-driver vulkan --resolution 1600x900 res://_t/Shot.tscn -- <modus> /pfad/bild.png` |
+| `ModelCheck.tscn` / `BldCheck.tscn` / `AnimCheck.tscn` | Neue GLBs prüfen: Maße/Mitte/Unterkante, Gebäudeversatz in der laufenden Kolonie, Animationen + Loop | `godot --headless --path . res://_t/<Name>.tscn` |
+| `Acc.tscn` | Frettchen mit allen Accessoires als Nahaufnahme (vorn/hinten, Pose frei) | unter xvfb: `... res://_t/Acc.tscn -- bild.png Idle 35` |
+| `Shot.tscn` | Screenshot einer Ansicht: `menu`, `world`, `load`, `game`, `colony`, `pause`, `info`, `equip`, `season:<0-3>:<0|1 realistisch>[:fp[:<tageszeit 0-1>[:<yaw°>]]]`, `panel:<NodeName>` | `xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --rendering-driver vulkan --resolution 1600x900 res://_t/Shot.tscn -- <modus> /pfad/bild.png` |
 | `Pano.tscn` + `stitch.py` | Menü-Panorama neu rendern (6 Cubemap-Seiten) und zum Equirect-Streifen zusammensetzen | siehe unten |
 
 Screenshots brauchen Xvfb + Software-Vulkan:

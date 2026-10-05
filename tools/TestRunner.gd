@@ -26,6 +26,7 @@ func _ready() -> void:
 	gc.call("bootstrap_test_colony")
 	await sim(300, 0.1)
 	summary("bootstrap")
+	GraphicsSettings.set_realistic(true)   # v15.4: Realismus-Modus mitlaufen lassen
 	# Felder anlegen
 	var placed := 0
 	var cx: int = gc.world_gen.w / 2
