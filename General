@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v15.5)
+# FrettchenKolonie – Technische Dokumentation (Stand: v15.6)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -115,6 +115,15 @@ sind aber gültiges GDScript (von Godot selbst korrekt geparst):
 - Godot importiert GLB-Animationen OHNE Loop (nur Namen mit "loop" werden geloopt).
 - Beim Importieren entstehen Extra-Dateien in `assets/` (`*_atlas.png`, `*_texture*.jpg`): Import-Artefakte,
   NICHT in die ZIP packen.
+
+## Frettchen-Animation (seit v15.6)
+- Clip-Auswahl zentral in `rendering/FerretAnimDirector.gd` (Priorität: Schlafen > Reaktion > Arbeit > Bewegung > Idle).
+  Neuer Zustand/Clip = dort ergänzen; `is_one_shot()` listet Clips, die nicht loopen dürfen.
+- Loop-Modi setzt `FerretAnimUtil.ensure_loops()` (Godot importiert GLB-Clips ohne Loop).
+- Reaktionen von außen: `fe.react_clip = "<Clip>"; fe.react_until = Time.get_ticks_msec()/1000.0 + <Sekunden>`.
+- Der Renderer ordnet Frettchen-Knoten nach LISTENINDEX zu (`_ferret_nodes[i]` <-> `PopMgr.ferrets[i]`);
+  `cur_clip`/`clip_t0` stehen als Meta am Knoten. Stirbt ein Frettchen, rutschen die Knoten nach.
+- Tipp: Clips immer erst im Profil ansehen (`tools/ClipSheet`), bevor man sie zuordnet - Namen täuschen.
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

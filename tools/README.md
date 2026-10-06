@@ -13,6 +13,9 @@ ausführen (nach neuen `class_name`-Skripten Pflicht!), dann:
 | `lambda_scan.py` | Findet Lambdas, die lokale Variablen ändern (siehe Lambda-Falle) | im Projektordner: `python3 lambda_scan.py` |
 | `ModelCheck.tscn` / `BldCheck.tscn` / `AnimCheck.tscn` | Neue GLBs prüfen: Maße/Mitte/Unterkante, Gebäudeversatz in der laufenden Kolonie, Animationen + Loop | `godot --headless --path . res://_t/<Name>.tscn` |
 | `Acc.tscn` | Frettchen mit allen Accessoires als Nahaufnahme (vorn/hinten, Pose frei) | unter xvfb: `... res://_t/Acc.tscn -- bild.png Idle 35` |
+| `ClipSheet.tscn` | Kontaktblatt ALLER Frettchen-Clips im Profil (2 Zeitpunkte) - vor dem Zuordnen ansehen | unter xvfb: `... res://_t/ClipSheet.tscn -- /pfad/praefix` |
+| `AnimStats.tscn` / `AnimEvents.tscn` | Clip-Statistik einer Simulation bzw. Tod/Geburt/Streicheln (Reaktions-Clips) | `godot --headless --path . res://_t/<Name>.tscn` |
+| `SleepCam.tscn` | Nahaufnahme eines Frettchens im echten Spiel (`sleep`/`work`/`carry`); **vorher `GraphicsSettings.set_realistic(false)`** (steht im Skript), sonst hängt Software-Vulkan | unter xvfb: `... res://_t/SleepCam.tscn -- bild.png sleep` |
 | `Shot.tscn` | Screenshot einer Ansicht: `menu`, `world`, `load`, `game`, `colony`, `pause`, `info`, `equip`, `season:<0-3>:<0|1 realistisch>[:fp[:<tageszeit 0-1>[:<yaw°>]]]`, `panel:<NodeName>` | `xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --rendering-driver vulkan --resolution 1600x900 res://_t/Shot.tscn -- <modus> /pfad/bild.png` |
 | `Pano2.tscn` + `stitch.py` | Menü-Panorama MIT Realismus-Modus/Saison-Optik rendern (aktuell genutzt, 6 Seiten, ~15-20 Min. unter Software-Vulkan -> Hintergrund) | `... res://_t/Pano2.tscn -- alpha 7 <prefix> 1536 1 0.69` |
 | `Pano.tscn` + `stitch.py` (alt) | Menü-Panorama neu rendern (6 Cubemap-Seiten) und zum Equirect-Streifen zusammensetzen | siehe unten |

@@ -1,5 +1,45 @@
 # FrettchenKolonie – Changelog
 
+## v15.6 (Neue Frettchen-Animationen werden genutzt) – 05. Okt 2026
+
+Bisher spielte der Code nur "Run", fror es bei Arbeit ein und täuschte Ernten per Hand-Wippen vor;
+Schlafen = Modell um 92° gekippt. Das animierte ferret.glb (v15.2) bringt 16 Clips mit - jetzt genutzt.
+Alle Clips wurden vorher im Profil-Kontaktblatt angesehen (`tools/ClipSheet`), die Zuordnung danach festgelegt.
+
+### Zuordnung (neu: `rendering/FerretAnimDirector.gd`, reine Logik, headless testbar)
+| Zustand | Clip |
+|---|---|
+| schläft | `Sleep_LieDown` (einmal) -> `Sleep` (Loop) - echte Liegepose, kein Kippen mehr |
+| Streicheln (FP-Modus) | `Pet` (60 %) oder `Jump_Joy` (40 %) |
+| Geburt (`ferret_born`) | `Jump_Joy` |
+| Tod (`ferret_died`) | kurzer "Geist" spielt `Death`, bleibt liegen, schrumpft nach 4.5 s weg |
+| Ernten | Beeren/Weizen/Essen/Fleisch -> `Harvest`; Holz/Stein/Eisen/Kohle -> `Smash`; Wasser -> `Drink` |
+| Arbeiten im Gebäude | `Work`; Küche/Bäckerei/Taverne -> `Mash_Shake` |
+| Bauen | `Build` |
+| unterwegs | `Run`; trägt Ware -> `Carry`; Gesundheit < 35 -> `Balance_Wobble` (wackelig) |
+| steht | `Idle` |
+- Weiche Übergänge (0.18 s), jedes Frettchen mit zufälligem Start-Versatz (kein Gleichtakt).
+- Spieler-Frettchen (FP-Modus): `Idle` im Stand, `Run` beim Laufen (vorher: eingefroren).
+- Alte Modelle ohne diese Clips: automatischer Rückfall auf die bisherigen prozeduralen Posen.
+- `Nod` ist noch ungenutzt (Idee: beim Zuweisen eines Jobs).
+
+### Technik
+- `FerretEntity`: neue Felder `react_clip`, `react_until` (einmalige Reaktions-Clips; nicht gespeichert).
+- `WorldRenderer3D._drive_ferret_clip()`, `_on_ferret_died()`, `_on_ferret_born()`; Legacy-Schlafkippen nur noch ohne Clips.
+- `PlayerController._set_clip()`.
+- Prüfung: Testkolonie über 70 Tage inkl. Nächte -> Work, Run, Carry, Smash, Sleep_LieDown, Sleep, Balance_Wobble
+  tatsächlich gespielt; Tod/Geburt/Streicheln lösen die richtigen Clips aus; Vollsimulation fehlerfrei.
+- Hinweis zum Testen: Animationen laufen in Echtzeit, die Test-Simulation schneller - Häufigkeiten der Einmal-Clips
+  (z. B. Sleep_LieDown) sind in Tests deshalb überhöht, im Spiel nicht.
+
+### Neue tools
+`ClipSheet` (Kontaktblatt aller Clips im Profil), `AnimStats` (Clip-Statistik einer Simulation), `AnimEvents`
+(Tod/Geburt/Streicheln), `SleepCam` (Nahaufnahme eines Frettchens im echten Spiel: schlafen/arbeiten/tragen).
+
+---
+
+---
+
 ## v15.5 (Hauptmenü-Panorama neu: Realismus-Himmel + neue Modelle) – 05. Okt 2026
 
 - **Panorama neu gerendert** (`assets/panorama/colony_panorama.jpg`, 6144x1536): Realismus-Modus
