@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v15.6)
+# FrettchenKolonie – Technische Dokumentation (Stand: v15.7)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -124,6 +124,16 @@ sind aber gültiges GDScript (von Godot selbst korrekt geparst):
 - Der Renderer ordnet Frettchen-Knoten nach LISTENINDEX zu (`_ferret_nodes[i]` <-> `PopMgr.ferrets[i]`);
   `cur_clip`/`clip_t0` stehen als Meta am Knoten. Stirbt ein Frettchen, rutschen die Knoten nach.
 - Tipp: Clips immer erst im Profil ansehen (`tools/ClipSheet`), bevor man sie zuordnet - Namen täuschen.
+
+## Tooltips & UI-Größe (seit v15.7)
+- `ui/BuildingTooltip.gd`: `BuildingTooltip.build(id)` liefert BBCode. Spiegelt die Produktionsformeln aus `BuildingEntity`
+  (Sammler 0.35·Speed·Arbeiter /s, ×0.35 ohne Vorkommen, Brunnen 0.22-1.22, Verarbeiter Menge/(Zeit/Speed), Jäger 0.04, Bauernhof 12/Ernte,
+  Feld-Wachstum 200 s). Neuer Gebäudetyp -> `match t:` in `build()` ergänzen; neue Beschreibung -> `DESC`.
+- Anzeige: `BuildMenu._tip*` (Hover-Timer als Child-`Timer`, Panel hängt an UIRoot, `z_index 80`). Neue Menü-Einträge, die einen
+  Tooltip brauchen: `mouse_entered -> _tip_request(btn, id)`, `mouse_exited -> _tip_hide`.
+- UI-Größe: `GraphicsSettings.UI_SCALES` / `set_ui_scale()`; Stretch-Modus ist `canvas_items`, daher skaliert nur die UI.
+- Layout-Regel: Container, die am rechten Rand verankert sind, brauchen `grow_horizontal = GROW_DIRECTION_BEGIN`, sonst
+  wachsen sie bei breiterem Inhalt nach rechts aus dem Bild.
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

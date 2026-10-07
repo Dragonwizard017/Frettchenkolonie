@@ -1,5 +1,43 @@
 # FrettchenKolonie – Changelog
 
+## v15.7 (Gebäude-Tooltips + kompaktere UI) – 06. Okt 2026
+
+### Gebäude-Tooltips im Baumenü
+Hover über einen Gebäude-Eintrag (nach 0.25 s) zeigt rechts neben dem Menü eine Karte mit:
+- **Kopf**: Icon, Name, Typ, Epoche · **Kurzbeschreibung**
+- **PRODUKTION**: je Typ Ertrag (voll besetzt + je Arbeiter, in "/ Min."), Umwandlung (z. B. `2× Holz → 1× Bretter, alle 2.0 s`,
+  Durchsatz), Küche = alle Rezepte, Jäger-Fleischrate, Bauernhof (Ertrag je Ernte/Feld, Wachstum, Arbeiter-Limit in Feldern),
+  Wohnplätze, Lagerkapazität/Wasserlager, Stimmungs-Bonus mit Radius, Wasserrad-Bonus
+- **BEDARF**: z. B. "Beerenbüsche im Radius 7 - ohne nur 35 % Ertrag", Wasser in der Nähe (Brunnen), Zutaten im Lager, Felder im Bezirk
+- **GEBÄUDE**: max. Arbeiter, Bauaufwand, Kosten (fehlende Ressourcen rot), Ausbau-Hinweis
+- Neues `ui/BuildingTooltip.gd`: ALLE Zahlen nutzen dieselben Formeln/Konstanten wie `BuildingEntity` (Konstanten oben in der
+  Datei mit Verweis). **Ändert sich eine Produktionsformel, muss sie dort mitgezogen werden.**
+- Beschreibungen: Tabelle `DESC` (nach ID), sonst `desc` aus BuildingData, sonst Typ-Standard (`DESC_BY_TYPE`).
+- Kein Tooltip im Touch-Modus (kein Hover). Tooltip bleibt immer im Bild und schließt bei jedem Menü-Refresh.
+
+### Kompaktere Oberfläche (weniger Bildschirmfläche)
+- Obere Leiste 48 -> 34 px, kleinere Ressourcen-Pillen; Lager-/Wasser-Meter schmaler.
+- Baumenü 256 -> 216 px breit, Einträge 56 -> 44 px hoch.
+- Rechte Spalte 232 -> 184 px: Info-Panel kleiner, Geschwindigkeits-Knöpfe 30x26, Werkzeug-Icons als **3x2-Raster** (34x34)
+  statt 6 untereinander -> belegt nur noch etwa die Hälfte der Höhe. Spalte wächst nach LINKS (`grow_horizontal = BEGIN`),
+  läuft also nie über den Bildrand.
+- Gebäude-Info-Panel und Dialoge (Pause/Welt erstellen/Laden) mit kleineren Innenabständen.
+- **Neu: UI-Größe** im Pause-Menü (85 % / 100 % / 115 %), gespeichert in `user://graphics.cfg`
+  (`GraphicsSettings.set_ui_scale`, wirkt per `content_scale_factor` nur auf die UI, nicht auf die 3D-Welt).
+
+### Geprüft
+- Tooltip-Text für alle 56 Gebäude erzeugt (kein Fehler, längster ~500 Zeichen); Screenshots im echten Spiel (Sägewerk, Bauernhof).
+- UI-Größe: Werte 0.85/1.0/1.15 werden gesetzt, ungültige ignoriert, Datei gespeichert.
+- Vollsimulation, FP-Modus, Accessoire-Editor, Gebäude-Zentrierung, Tod/Geburt/Streicheln: ohne Fehler.
+- Fehler unterwegs gefunden und behoben: rechte Spalte lief über den Bildrand (wuchs nach rechts).
+
+### tools
+`TipDump` (Tooltip aller Gebäude als Text), `UiScaleCheck`; `Shot` kennt `tip:<ID>:<Menü-Index>`.
+
+---
+
+---
+
 ## v15.6 (Neue Frettchen-Animationen werden genutzt) – 05. Okt 2026
 
 Bisher spielte der Code nur "Run", fror es bei Arbeit ein und täuschte Ernten per Hand-Wippen vor;

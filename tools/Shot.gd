@@ -51,6 +51,23 @@ func _ready() -> void:
 			DayNight.time = DayNight.day_length * pct
 			gc.call("_process", 0.05)
 			await get_tree().process_frame
+	elif mode.begins_with("tip:"):
+		# tip:<ID>:<Index des Menü-Eintrags für die Position>
+		var tp: PackedStringArray = mode.split(":")
+		GraphicsSettings.set_realistic(false)
+		gc.call("start_new_game", "SMALL", "qa-seed", "QA")
+		gc.call("bootstrap_test_colony")
+		for i in 30: await get_tree().process_frame
+		for i in 20:
+			gc.call("_process", 0.1)
+			await get_tree().process_frame
+		var bm = gc.get_node("GameUI/UIRoot/BuildMenu")
+		bm.call("refresh")
+		for i in 3: await get_tree().process_frame
+		bm.set("_tip_btn", bm._container.get_child(int(tp[2])))
+		bm.set("_tip_bid", tp[1])
+		bm.call("_tip_show")
+		for i in 6: await get_tree().process_frame
 	elif mode == "pause":
 		gc.call("start_new_game", "SMALL", "qa-seed", "QA")
 		gc.call("bootstrap_test_colony")
