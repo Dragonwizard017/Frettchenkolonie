@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v15.8)
+# FrettchenKolonie – Technische Dokumentation (Stand: v15.9)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -212,3 +212,21 @@ Hinweis: Im Repo existiert zusätzlich ein separater, offenbar älterer
 "FK_3D/"-Ordner mit entpackten Einzeldateien (nicht Teil dieses Sync-Commits,
 nicht mit v14.5 abgeglichen - Status unklar, ggf. veraltet/verwaist).
 ```
+## Video-Intros (seit v15.9)
+- `ui/IntroPlayer.gd` (class_name): spielt Theora-OGVs aus `assets/videos/`
+  (`intro_menu.ogv` 28,7 s, `intro_story.ogv` 25 s, beide 1920x1080 mit
+  eingebackener Vorbis-Musik). Cover-Skalierung per Code (kein Verzerren,
+  keine Balken, minimaler Beschnitt an Exoten-Formaten); Skip per Klick/Touch/
+  ESC/Leertaste, Hinweis-Label erst nach 3 s (`SKIP_HINT_DELAY`).
+- Ablauf Menü: `Main._ready()` baut alles, versteckt Menü+Panorama, setzt
+  `GameState.State.INTRO`, spielt das Video auf eigener CanvasLayer (200),
+  danach `_show_main_menu()`. Menü-Musik startet erst dann (kein Doppel-Audio
+  ohne Sondercode, weil INTRO-Zone NONE ist).
+- Ablauf Story: `_on_start_game()` spielt das Video VOR `LoadingOverlay.run()`
+  (Musik via `pause_music()`/`resume_music()` angehalten). Nicht bei Testwelt
+  oder Laden. Skip ist jederzeit möglich (IntroPlayer-Guard + Loading-Guard).
+- Nahtlosigkeit: Video-Endframe == Menü-Hintergrund (Panorama-Yaw 0,35);
+  `PanoramaBackground` friert den Yaw ein, solange es versteckt ist.
+- Hinweis Größe: OGVs in der Repo-ZIP sind Theora-q5-Kopien (GitHub-API-
+  Limit); q7-Master liegen lokal bei der Blender-Quelle. Neue Intros: gleiche
+  Dateinamen ersetzen, Dauer/Seitenverhältnis 16:9 beibehalten.
