@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v15.7)
+# FrettchenKolonie – Technische Dokumentation (Stand: v15.8)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -134,6 +134,20 @@ sind aber gültiges GDScript (von Godot selbst korrekt geparst):
 - UI-Größe: `GraphicsSettings.UI_SCALES` / `set_ui_scale()`; Stretch-Modus ist `canvas_items`, daher skaliert nur die UI.
 - Layout-Regel: Container, die am rechten Rand verankert sind, brauchen `grow_horizontal = GROW_DIRECTION_BEGIN`, sonst
   wachsen sie bei breiterem Inhalt nach rechts aus dem Bild.
+
+## UI-Sounds, Ladebildschirm, Performance (seit v15.8)
+- **UISounds** (`autoloads/UISounds.gd`): verdrahtet sich per `node_added` automatisch mit Buttons, Slidern, OptionButtons und
+  benannten Fenstern (Liste `WINDOWS` - neues Fenster = Name dort eintragen). `UISounds.play("confirm"|"error"|"done"|...)` manuell.
+  Sounds: `assets/sfx/ui_*.wav`, selbst synthetisiert mit `tools/gen_sfx.py` (neu erzeugen: Skript ausführen, Ausgabeordner im Skript).
+  `UISounds.suppress_windows = true` unterdrückt Fenster-Töne (der Ladebildschirm macht das automatisch).
+- **Laden = Schritte**: jeder Ladevorgang ist eine Liste `{"label","weight","fn"}`; `LoadingOverlay.run(titel, steps, ctx)` führt sie aus und
+  zeigt Balken + Frettchen. Neue Ladephase = Schritt in `new_game_steps()` / `load_game_steps()` ergänzen. Gewichte nach gemessener Dauer
+  (`tools/LoadTiming`). Sync-Wrapper (`start_new_game`, `load_game`, `build_world`) bleiben für Tests/Altcode.
+  Ladevorgänge dürfen NICHT mehr direkt synchron aus dem UI gestartet werden, sonst gibt es keinen Balken.
+- **Performance-Regeln**: UI, das jede Sekunde "aktualisiert" wird, darf nicht komplett neu gebaut werden (RichTextLabel ist teuer, ~6 ms pro Karte).
+  Vorbild: `BuildMenu._menu_signature()` (nur bei Änderung neu bauen) und `HUD._update_resources()` (Knoten behalten, Werte setzen).
+  `GameState.build_menu_update_requested` feuert sehr oft (u. a. bei jedem `build()`/`build_free()`).
+- Tooltip-Regel: Hover-Panels, die an Menü-Einträge gebunden sind, müssen einen Menü-Neuaufbau überleben (`_tip_rebind`).
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

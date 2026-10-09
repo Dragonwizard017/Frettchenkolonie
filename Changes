@@ -1,5 +1,50 @@
 # FrettchenKolonie – Changelog
 
+## v15.8 (Tooltip-Fix, UI-Sounds, Ladebalken mit laufendem Frettchen, Performance) – 07. Okt 2026
+
+### 1) Tooltips verschwinden nicht mehr nach kurzer Zeit
+- Ursache: Das Baumenü wird im HUD-Takt **jede Sekunde** neu aufgebaut (`GameState.build_menu_update_requested`),
+  `refresh()` schloss dabei den Tooltip -> er verschwand nach höchstens 1 s.
+- Jetzt bleibt er offen und wird nach dem Neuaufbau an den neuen Eintrag derselben Gebäude-ID gebunden (Kostenfarben aktuell).
+  Geschlossen wird nur noch: Maus verlässt den Eintrag (ein 0.1-s-Wächter prüft die echte Mausposition), Klick, Menü weg.
+- Kleine Schonfrist (250 ms) nach dem Neuaufbau, weil der neue Eintrag erst nach dem nächsten Layout-Durchlauf positioniert ist
+  (Größe 0) - ohne sie schloss der Wächter den Tooltip zufällig. Test: 40 erzwungene Neuaufbauten überstanden, Maus weg -> geschlossen.
+
+### 2) UI-Sounds (`autoloads/UISounds.gd`, Sounds in `assets/sfx/`)
+- Hängt sich AUTOMATISCH an jedes Control (`node_added`) - neue UI braucht nichts zu tun.
+- Klick (Buttons), leises Hover-Ticken, Schalter an/aus (verschiedene Töne), Auswahl (Dropdown), Tick beim Ziehen von Slidern,
+  **Fenster öffnen/schließen** (Tech-Baum, Erfolge, Expeditionen, Gedenkstätte, Statistik, Bezirke, Pause, Gebäude-Info, Laden/Welt erstellen ...),
+  Fehlerton bei roten Meldungen, Fertig-Glöckchen beim Laden.
+- Klick, der ein Fenster öffnet/schließt, spielt NUR den Fenster-Ton (Klick wird bis Frame-Ende zurückgehalten); `CloseBtn` hat keinen eigenen Klick.
+- Fenster reagieren auf ihr EIGENES `visible` (nicht auf versteckte Eltern) -> keine Sound-Flut beim Wechsel ins Hauptmenü.
+- Lautstärke = `SoundSys.master_vol * sfx_vol` (derselbe Effekt-Regler wie im Pause-Menü). Mindestabstände gegen Rattern, ±3 % Tonhöhe.
+- Die 11 Sounds sind selbst synthetisiert (`tools/gen_sfx.py`, warm/holzig, keine fremden Samples -> keine Lizenzfragen), zusammen < 200 KB.
+
+### 3) Ladebildschirm mit laufendem Frettchen (`ui/LoadingOverlay.gd`)
+- Überall, wo geladen wird: **Neue Welt, Spielstand laden, Testwelt**. Das echte Frettchen-Modell läuft (Clip "Run") über dem Balken,
+  seine Position = Fortschritt; Schritt-Text ("Bäume werden gepflanzt …") und Prozentanzeige. Am Ende "Fertig!" + Glöckchen, dann Ausblenden.
+- Damit der Balken ECHTEN Fortschritt zeigt, wurden die Abläufe in **Schritte** zerlegt (je `{"label","weight","fn"}`; zwischen den Schritten
+  wird ein Bild gezeichnet): `WorldRenderer3D.build_world_steps()`, `GameController.new_game_steps()` / `deserialize_world_steps()` /
+  `_setup_renderer_steps()`, `SaveSys.load_game_steps(slot, ctrl, ctx)`. Die alten Funktionen (`start_new_game`, `build_world`, `load_game`,
+  `deserialize_world`) bleiben als synchrone Wrapper erhalten (Tests und Altcode unverändert lauffähig).
+- Gewichte der Schritte nach GEMESSENER Dauer (`tools/LoadTiming`). Mindestlaufzeit des Balkens 1.0 s (sonst blitzt das Frettchen bei schnellem Laden nur auf).
+- Overlay in eigener CanvasLayer (layer 100) über dem HUD, fängt Klicks ab; unterdrückt während des Ladens Fenster-Sounds.
+- Fehlerfall (Slot fehlt/defekt): Balken endet mit "Laden fehlgeschlagen" + Fehlerton, Spiel springt NICHT in den Spielzustand.
+
+### 4) Performance-Funde beim Messen (mein Fehler aus v15.0, jetzt behoben)
+- **`BuildMenu.refresh()` kostete ~350-390 ms** (60 RichText-Karten) und lief jede Sekunde -> Ruckler im Sekundentakt. Außerdem rief jedes
+  `build_free`/`build` das Menü-Update auf (Testwelt: ~30 x). Jetzt baut das Menü nur noch neu, wenn sich der Inhalt WIRKLICH ändert
+  (Signatur aus freigeschalteten Gebäuden, Auswahl, Bezahlbarkeit je Kostenressource). `refresh(true)` erzwingt.
+- **HUD-Ressourcenpillen** wurden jede Sekunde neu erzeugt (~30 ms): jetzt bleiben sie bestehen, nur Text/Farbe/Sichtbarkeit werden aktualisiert.
+- Messung Spielstart MEDIUM: **1117 ms -> 342 ms**; Schritt "Kolonie gründen" 625 ms -> 9 ms.
+
+### tools
+`SndCheck`, `LoadFlow`, `MainFlow`, `TipLife`, `LoadTiming`, `FoundTiming`, `gen_sfx.py`; `Shot` kennt `loading:<Schritt>`.
+
+---
+
+---
+
 ## v15.7 (Gebäude-Tooltips + kompaktere UI) – 06. Okt 2026
 
 ### Gebäude-Tooltips im Baumenü

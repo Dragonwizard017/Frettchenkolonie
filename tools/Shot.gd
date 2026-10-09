@@ -68,6 +68,21 @@ func _ready() -> void:
 		bm.set("_tip_bid", tp[1])
 		bm.call("_tip_show")
 		for i in 6: await get_tree().process_frame
+	elif mode.begins_with("loading:"):
+		# loading:<Schritt-Nr 1-5>  - Ladebildschirm an diesem Punkt fotografieren
+		var which: int = int(mode.split(":")[1])
+		GraphicsSettings.set_realistic(false)
+		var steps: Array = []
+		for k in 5:
+			var kk: int = k + 1
+			steps.append({"label": ["Welt wird erzeugt …", "Gelände wird aufgeschüttet …", "Kollisionen werden berechnet …", "Bäume werden gepflanzt …", "Letzte Handgriffe …"][k], "weight": 1.0, "fn": func():
+				OS.delay_msec(650)
+				if kk == which:
+					get_viewport().get_texture().get_image().save_png(out)
+					print("[SHOT] gespeichert ", out)})
+		main._loading.run("Welt wird erstellt", steps)
+		for i in 400: await get_tree().process_frame
+		get_tree().quit(); return
 	elif mode == "pause":
 		gc.call("start_new_game", "SMALL", "qa-seed", "QA")
 		gc.call("bootstrap_test_colony")
