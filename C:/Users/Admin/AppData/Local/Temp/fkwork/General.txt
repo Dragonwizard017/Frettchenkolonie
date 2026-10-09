@@ -1,0 +1,232 @@
+# FrettchenKolonie – Technische Dokumentation (Stand: v15.9)
+
+## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
+
+Dieses Dokument beschreibt einen SYNC-Commit, keinen regulären, von einer KI
+schrittweise entwickelten Fortschritt. Das Repo lag zuletzt (ZIP-Historie) bei
+v13.6. Der Nutzer hat danach direkt eine v14.5-Projekt-ZIP hochgeladen (Inhalt
+nicht aus diesem Repo/dieser KI-Session heraus entstanden - Herkunft der
+Zwischenschritte v13.7 bis v14.4 ist dieser Session nicht bekannt). Diese KI hat:
+
+1. Das v14.5-Projekt entgegengenommen und entpackt
+2. Vollständig mit `gdparse` validiert (siehe unten) - keine echten Parse-Fehler
+3. Stichprobenartig auf strukturelle Integrität geprüft (project.godot
+   vorhanden, keine fehlenden Autoload-Skripte, keine `.tscn`-Referenzen auf
+   fehlende Ressourcen/Skripte, kein versehentlich mitgepackter `.godot`-Ordner)
+4. Die ZIP unverändert (keine inhaltlichen Codefixes durch diese KI) als neue
+   Repo-Version gepusht, veraltete Zwischen-ZIPs (v12.9-v13.6) gelöscht
+
+**WICHTIG:** Es gab in dieser Session einen gemeldeten Parse-Fehler
+("Expected indented block after elif block" in `GameController.gd` Zeile 730,
+Screenshot eines echten Godot-4.7.2-Editors) an der Stelle `elif best_kind ==
+"FERRET":` / `_fp_hud.set_prompt(...)`. Beim Abgleich mit der tatsächlich
+hochgeladenen ZIP-Datei war diese Stelle jedoch byte-genau korrekt (zwei Tabs
+Einrückung, kein Störzeichen). Das heisst: **die vom Nutzer tatsächlich
+lokal in Godot geöffnete Datei unterscheidet sich an dieser Stelle von der
+hochgeladenen und jetzt gepushten ZIP.** Falls der Nutzer weiterhin genau
+diesen Fehler meldet: NICHT einfach erneut pushen - erst eine frische
+Export-ZIP direkt aus dem Editor anfordern, in dem der Fehler auftritt, und
+diese byte-genau prüfen, bevor ein Fix gebaut wird.
+
+### Echte Engine-Tests in der Sandbox (seit v14.6 möglich!)
+Die frühere Annahme "kein Godot in der Sandbox" stimmt nicht mehr: `github.com`
+und `release-assets.githubusercontent.com` sind freigegeben, die Godot-Binary
+lässt sich laden:
+```
+. /home/claude/.env_github
+URL=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/godotengine/godot-builds/releases/tags/4.7.2-stable \
+  | python3 -c "import sys,json;[print(a['browser_download_url']) for a in json.load(sys.stdin)['assets'] if a['name']=='Godot_v4.7.2-stable_linux.x86_64.zip']")
+curl -sL -o godot.zip "$URL" && unzip -q godot.zip && chmod +x Godot_v4.7.2-stable_linux.x86_64
+cp -r extracted proj && cd proj && ../Godot_v4.7.2-stable_linux.x86_64 --headless --import   # einmalig (~1 Min.)
+```
+- Hinweis: `source` gibt es in `/bin/sh` nicht -> `. /home/claude/.env_github`.
+- `--check-only --script` ist NICHT brauchbar (lädt keine Autoloads, meldet
+  "Identifier not found: GameState" etc.). Stattdessen das Projekt normal starten.
+- Test-Szene: Node-Skript, das `res://scenes/Main.tscn` instanziert, 5 Frames
+  wartet, `main.get("_game_ctrl")` holt und dann `start_new_game(...)`,
+  `bootstrap_test_colony()` und beliebig oft `gc.call("_process", dt)` aufruft
+  (Aufruf: `godot --headless --path . res://_t/Test.tscn`). Fehler erscheinen
+  als `SCRIPT ERROR` in stderr. Test-Ordner `_t/` NICHT in die ZIP packen.
+- Lange Läufe im Hintergrund starten (`nohup ... &`), ~80 ms je `_process`.
+- Rendering/Screenshots sind seit v15.0 möglich (Xvfb + Software-Vulkan, siehe `tools/README.md`); weiterhin NICHT testbar: echte Eingabe/Touch, Audio, Performance auf Zielgeräten.
+
+### Bekannte gdparse-False-Positives (NICHT reparieren!)
+Einzeilige Lambda-Ausdrücke mit `if` lösen einen gdparse-Parserfehler aus,
+sind aber gültiges GDScript (von Godot selbst korrekt geparst):
+`ExpeditionPanel.gd:7`, `AchievementPanel.gd:10`, `TechTreePanel.gd:81`,
+`GraveyardPanel.gd:7`, `DistrictPanel.gd:15`, `BuildingInfo.gd:45`.
+
+---
+
+## UI-System (seit v15.0) – WICHTIG für jede neue Oberfläche
+- Zentral in `ui/UITheme.gd` (class_name UITheme): Palette (Rollen-Konstanten `C_*`), Fonts,
+  alle Control-Stile und Theme-Varianten. **Neue UI nur über UITheme bauen** (`UITheme.lbl/btn/panel`,
+  `theme_type_variation`), keine Color-Literale / `add_theme_*_override` mehr streuen.
+- Schriften: Fredoka (Titel), Nunito (Text), Noto Emoji (einfarbige Icon-Fallback-Schrift);
+  alle SIL OFL, Lizenztexte in `assets/fonts/`.
+- **Theme-Vererbung bricht an nicht-Control-Eltern ab** (Node, CanvasLayer): ein Theme am Root-Window
+  erreicht die UI NICHT. Darum setzt `Main` das Theme direkt auf die obersten Controls
+  (`_main_menu`, `_world_creation`, `_load_screen`, `UIRoot` in `_make_ui_root`). Neue oberste Controls
+  (z. B. eigene CanvasLayer-UI) müssen `theme = UITheme.get_theme()` selbst setzen.
+- Varianten: Button `PrimaryButton / DangerButton / GhostButton / SceneButton / SegButton / IconButton /
+  BuildItem`; Panel `HudBar / FloatPanel / Card / Dialog / ChipPanel`; Label `Title / Heading /
+  Subheading / Muted / Small / Chip / Display / OnScene`; ProgressBar `WaterBar / StorageBar / ScienceBar`.
+- Regeln: pro Screen EINE Hauptaktion (Primary), Rest leiser; 8-px-Raster; Radien 8/10/12.
+- HUD-Struktur: `HUD/TopBar/Row/...` (Ressourcen-Chips in `ResourceDisplay`, Meter), rechts
+  `HUD/RightColumn/{InfoPanel, SpeedPanel/SpeedButtons, ExtraPanel/ExtraButtons}`. `HUD.gd` findet
+  Nodes per `find_child` (Position egal). Das Tutorial referenziert `../HUD/RightColumn/...`.
+- Baumenü-Einträge: `BuildMenu._make_btn(titel, bbcode_untertitel, enabled)`, Kosten per
+  `_costs_rich()` (fehlende Ressourcen rot).
+
+## Hauptmenü-Panorama (seit v15.0)
+- `ui/PanoramaBackground.gd` + `assets/panorama/panorama.gdshader`: kein 3D, ein Shader projiziert den
+  Equirect-Streifen `colony_panorama.jpg` (6144x1536, ±45° Breitengrad) und dreht ihn (~2.2°/s).
+  Läuft nur sichtbar; `Main` zeigt es in MAIN_MENU / WORLD_CREATION / LOAD_SCREEN (Dialog-Seiten dimmen).
+- Neu rendern: siehe `tools/README.md` im Repo-Root (seit v15.5 `Pano2.gd` mit Realismus-Modus + stitch.py). Mapping muss in Shader und
+  stitch.py identisch bleiben (lon = atan2(d.x,-d.z), lat = asin(d.y)).
+
+- **Lambda-Falle:** GDScript-Lambdas kopieren lokale Variablen -> Änderungen darin sind nach außen unsichtbar (Index/Zähler in Dictionary/Array halten). Prüfen mit `tools/lambda_scan.py` (im Projektordner ausführen).
+
+## Jahreszeiten-Optik & Realismus-Modus (seit v15.4)
+- `rendering/SeasonVisuals.gd` (vom GameController erzeugt): kontinuierliche Jahres-Phase aus
+  `SeasonSys` + Tageszeit; Keyframes (Frühling/Sommer/Herbst/Winter) liegen in der Saison-MITTE und
+  werden weich überblendet. Steuert: Boden-Tönung + Schnee (globale Shader-Parameter), Baum-/Busch-
+  Materialien (gemeinsame Resource -> ein Aufruf ändert alle Instanzen), Eis (`WorldRenderer3D.set_water_frozen`),
+  Sonnen-/Himmelston (`apply_lighting`, nach `_update_day_night_visuals`) und Partikel (Schnee/Laub/Blüten).
+  Neue Saison-Optik = Keyframe-Arrays `K_*` oben in der Datei ergänzen.
+- Terrain: `assets/shaders/season_terrain.gdshader` (ShaderMaterial pro Biom statt StandardMaterial3D;
+  `BIOME_VEG` bestimmt, wie stark die Gras-Tönung je Biom wirkt). Schnee nur auf nach oben zeigenden Flächen.
+- **Globale Shader-Parameter** (`season_snow`, `season_grass_tint`, `realism_enabled`, `realism_cloud_shadow`)
+  werden im Autoload `GraphicsSettings._init()` registriert (müssen vor dem ersten Shader existieren).
+  `RenderingServer.global_shader_parameter_get_list()` ist EDITOR-ONLY (Fehlermeldung zur Laufzeit) -> nicht verwenden.
+- Realismus-Modus: `rendering/RealismFX.gd` + `assets/shaders/sky_realistic.gdshader`; Schalter über
+  `GraphicsSettings.set_realistic()` (Pause-Menü `RealismToggle`, Hauptmenü), gespeichert in `user://graphics.cfg`.
+  AUS stellt den gemerkten Ausgangszustand wieder her. Dunst/Volumetrik nur bei perspektivischer Kamera.
+  Die Iso-Kamera ist orthografisch -> dort KEIN Himmel sichtbar; Himmel zeigt sich im Frettchenmodus.
+- Abstimmungs-Erfahrung: ACES + Himmels-Ambient + Sättigung addieren sich schnell zu "neon/überbelichtet"
+  (Exposure ~0.98, Ambient 0.7, Sättigung 1.04 passt); Nebel/Volumetrik bleicht den Himmel schnell aus
+  (`fog_sky_affect` klein halten).
+
+## Modelle (v15.2) - Prüfregeln aus dem v15.4-Check
+- Neue GLBs IMMER vermessen (`tools/ModelCheck`, `tools/BldCheck`, `tools/AnimCheck`): Mitte (X/Z), Unterkante,
+  Höhe, Animationen + Loop-Modus. Gebäudemodelle werden zur Laufzeit auf ihre Kachel zentriert
+  (`_model_center_xz`), Frettchen-Clips per `FerretAnimUtil.ensure_loops()` auf Loop gesetzt.
+- Godot importiert GLB-Animationen OHNE Loop (nur Namen mit "loop" werden geloopt).
+- Beim Importieren entstehen Extra-Dateien in `assets/` (`*_atlas.png`, `*_texture*.jpg`): Import-Artefakte,
+  NICHT in die ZIP packen.
+
+## Frettchen-Animation (seit v15.6)
+- Clip-Auswahl zentral in `rendering/FerretAnimDirector.gd` (Priorität: Schlafen > Reaktion > Arbeit > Bewegung > Idle).
+  Neuer Zustand/Clip = dort ergänzen; `is_one_shot()` listet Clips, die nicht loopen dürfen.
+- Loop-Modi setzt `FerretAnimUtil.ensure_loops()` (Godot importiert GLB-Clips ohne Loop).
+- Reaktionen von außen: `fe.react_clip = "<Clip>"; fe.react_until = Time.get_ticks_msec()/1000.0 + <Sekunden>`.
+- Der Renderer ordnet Frettchen-Knoten nach LISTENINDEX zu (`_ferret_nodes[i]` <-> `PopMgr.ferrets[i]`);
+  `cur_clip`/`clip_t0` stehen als Meta am Knoten. Stirbt ein Frettchen, rutschen die Knoten nach.
+- Tipp: Clips immer erst im Profil ansehen (`tools/ClipSheet`), bevor man sie zuordnet - Namen täuschen.
+
+## Tooltips & UI-Größe (seit v15.7)
+- `ui/BuildingTooltip.gd`: `BuildingTooltip.build(id)` liefert BBCode. Spiegelt die Produktionsformeln aus `BuildingEntity`
+  (Sammler 0.35·Speed·Arbeiter /s, ×0.35 ohne Vorkommen, Brunnen 0.22-1.22, Verarbeiter Menge/(Zeit/Speed), Jäger 0.04, Bauernhof 12/Ernte,
+  Feld-Wachstum 200 s). Neuer Gebäudetyp -> `match t:` in `build()` ergänzen; neue Beschreibung -> `DESC`.
+- Anzeige: `BuildMenu._tip*` (Hover-Timer als Child-`Timer`, Panel hängt an UIRoot, `z_index 80`). Neue Menü-Einträge, die einen
+  Tooltip brauchen: `mouse_entered -> _tip_request(btn, id)`, `mouse_exited -> _tip_hide`.
+- UI-Größe: `GraphicsSettings.UI_SCALES` / `set_ui_scale()`; Stretch-Modus ist `canvas_items`, daher skaliert nur die UI.
+- Layout-Regel: Container, die am rechten Rand verankert sind, brauchen `grow_horizontal = GROW_DIRECTION_BEGIN`, sonst
+  wachsen sie bei breiterem Inhalt nach rechts aus dem Bild.
+
+## UI-Sounds, Ladebildschirm, Performance (seit v15.8)
+- **UISounds** (`autoloads/UISounds.gd`): verdrahtet sich per `node_added` automatisch mit Buttons, Slidern, OptionButtons und
+  benannten Fenstern (Liste `WINDOWS` - neues Fenster = Name dort eintragen). `UISounds.play("confirm"|"error"|"done"|...)` manuell.
+  Sounds: `assets/sfx/ui_*.wav`, selbst synthetisiert mit `tools/gen_sfx.py` (neu erzeugen: Skript ausführen, Ausgabeordner im Skript).
+  `UISounds.suppress_windows = true` unterdrückt Fenster-Töne (der Ladebildschirm macht das automatisch).
+- **Laden = Schritte**: jeder Ladevorgang ist eine Liste `{"label","weight","fn"}`; `LoadingOverlay.run(titel, steps, ctx)` führt sie aus und
+  zeigt Balken + Frettchen. Neue Ladephase = Schritt in `new_game_steps()` / `load_game_steps()` ergänzen. Gewichte nach gemessener Dauer
+  (`tools/LoadTiming`). Sync-Wrapper (`start_new_game`, `load_game`, `build_world`) bleiben für Tests/Altcode.
+  Ladevorgänge dürfen NICHT mehr direkt synchron aus dem UI gestartet werden, sonst gibt es keinen Balken.
+- **Performance-Regeln**: UI, das jede Sekunde "aktualisiert" wird, darf nicht komplett neu gebaut werden (RichTextLabel ist teuer, ~6 ms pro Karte).
+  Vorbild: `BuildMenu._menu_signature()` (nur bei Änderung neu bauen) und `HUD._update_resources()` (Knoten behalten, Werte setzen).
+  `GameState.build_menu_update_requested` feuert sehr oft (u. a. bei jedem `build()`/`build_free()`).
+- Tooltip-Regel: Hover-Panels, die an Menü-Einträge gebunden sind, müssen einen Menü-Neuaufbau überleben (`_tip_rebind`).
+
+## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
+`TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),
+`Pano`+`stitch.py` (Panorama). Beschreibung und Aufrufe in `tools/README.md`.
+Sandbox-Stolperfallen: nach neuen `class_name`-Skripten `godot --headless --import` ausführen
+(sonst "Could not find type ..."); ein Tool-Aufruf ist auf 300 s begrenzt -> lange Läufe mit
+`setsid nohup ... &` starten und per `sleep`/Log abfragen; `pkill -f` beendet die eigene Shell.
+
+## Session v14.6 (Intensives Bugfixing)
+Siehe "Changes". Kernpunkt: Verbrauch von Wasser/Nahrung ist jetzt
+bedarfsabhängig, Brunnen-Bonus nutzt `WaterSys.get_water_volume_near()`
+(`/ 3.0`-Konstante in `BuildingEntity._collect` und `BuildingInfo.gd`).
+Offene Punkte: Testwelt-Nahrung, Saison-Faktor skaliert gesamte Spielzeit,
+Headless-Performance, Z.730-Parse-Fehler (lokale Datei weicht von ZIP ab).
+
+---
+
+## Bekannte Lücke in der Session-Historie
+
+Zwischen v13.6 (letzter in diesem Repo nachvollziehbarer Stand, siehe vorherige
+Version dieses Dokuments) und v14.5 (jetzt gepusht) liegen laut Code-Kommentaren
+im Projekt mindestens folgende Feature-Ergänzungen, deren Entwicklungsverlauf
+NICHT in diesem Repo dokumentiert ist:
+- v14.1: Doppelte Benachrichtigungs-Anzeige behoben (siehe
+  `GameController._connect_signals()`-Kommentar)
+- v14.4: Cosy-Streichel-Interaktion mit Kolonie-Frettchen im Frettchenmodus
+  (`_pet_ferret()`, `PET_RANGE`, `PET_COOLDOWN`), entspanntere Musik im
+  Frettchenmodus (`SoundSys.set_fp_mode()`)
+- v14.5: Timberborn-Feld-System (`FarmFieldSystem.gd`/`FarmSys`, Feld-Platzier-
+  Werkzeug `_place_field()`, Wachstums-Visualisierung in `_process()`)
+
+Falls relevant: beim Nutzer nachfragen, ob es für diese Lücke noch brauchbare
+Zwischenstände/Notizen gibt, oder ob v14.5 als neuer verlässlicher
+Ausgangspunkt gelten soll (letzteres ist die Annahme dieser Session).
+
+---
+
+## Kernsysteme (bekannt, Stand v14.5)
+- Frettchen-Persönlichkeitssystem (5 Traits), 18 Achievements, legendäre
+  Frettchen (50-Tage-Schwelle)
+- Bezirkssystem, radialer Tech-Baum (6 Sektionen, 3 Epochen)
+- Zelluläres Automaten-Wasser-System + Dürre-System + DAM-Gebäude
+- First-Person-Frettchenmodus: 5 Ressourcen-Minispiele + Bauen-Minispiel +
+  Streichel-Interaktion mit Kolonie-Frettchen
+- Timberborn-artiges Feld-/Landwirtschaftssystem (NEU, v14.5)
+- Speichersystem mit benannten Slots, inkl. Spielerposition (v11.25)
+
+## Dateistruktur
+```
+(ZIP-Root)/
+├── assets/              GLB-Modelle, Texturen, Musik
+├── autoloads/           GameState, MenuManager, DevMode, TouchControlsSettings
+├── game/                GameController.gd (Haupt-Logik), PlayerController.gd
+├── rendering/           WorldRenderer3D.gd, animations/
+├── scenes/              Main.gd/.tscn
+├── systems/             Alle Gameplay-Systeme (inkl. FarmFieldSystem.gd, NEU)
+├── ui/                  UI-Panels, HUD, MinigameOverlay.gd
+├── world/               WorldGenerator.gd
+└── project.godot        ✅ Vorhanden und verifiziert (config/features: "4.7")
+
+Hinweis: Im Repo existiert zusätzlich ein separater, offenbar älterer
+"FK_3D/"-Ordner mit entpackten Einzeldateien (nicht Teil dieses Sync-Commits,
+nicht mit v14.5 abgeglichen - Status unklar, ggf. veraltet/verwaist).
+```
+## Video-Intros (seit v15.9)
+- `ui/IntroPlayer.gd` (class_name): spielt Theora-OGVs aus `assets/videos/`
+  (`intro_menu.ogv` 28,7 s, `intro_story.ogv` 25 s, beide 1920x1080 mit
+  eingebackener Vorbis-Musik). Cover-Skalierung per Code (kein Verzerren,
+  keine Balken, minimaler Beschnitt an Exoten-Formaten); Skip per Klick/Touch/
+  ESC/Leertaste, Hinweis-Label erst nach 3 s (`SKIP_HINT_DELAY`).
+- Ablauf Menü: `Main._ready()` baut alles, versteckt Menü+Panorama, setzt
+  `GameState.State.INTRO`, spielt das Video auf eigener CanvasLayer (200),
+  danach `_show_main_menu()`. Menü-Musik startet erst dann (kein Doppel-Audio
+  ohne Sondercode, weil INTRO-Zone NONE ist).
+- Ablauf Story: `_on_start_game()` spielt das Video VOR `LoadingOverlay.run()`
+  (Musik via `pause_music()`/`resume_music()` angehalten). Nicht bei Testwelt
+  oder Laden. Skip ist jederzeit möglich (IntroPlayer-Guard + Loading-Guard).
+- Nahtlosigkeit: Video-Endframe == Menü-Hintergrund (Panorama-Yaw 0,35);
+  `PanoramaBackground` friert den Yaw ein, solange es versteckt ist.
+- Hinweis Größe: OGVs in der Repo-ZIP sind Theora-q5-Kopien (GitHub-API-
+  Limit); q7-Master liegen lokal bei der Blender-Quelle. Neue Intros: gleiche
+  Dateinamen ersetzen, Dauer/Seitenverhältnis 16:9 beibehalten.
