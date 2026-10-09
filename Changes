@@ -484,3 +484,15 @@ Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
   Release-ZIPs (ohne `.godot`) importieren jetzt single-threaded und
   crashen beim Oeffnen nicht mehr (nur Wiederherstellungsmodus ging).
 - `project.godot`-Version 15.11 -> 15.12.
+
+## v15.13 (Musik-Flow) - 10. Okt 2026
+- **Nutzerwunsch: epische Menue-Musik startet mit dem Spiel und laeuft
+  nahtlos durchs Menue-Intro bis ins Hauptmenue** (kein Cut/Neustart mehr).
+  `SoundSystem._on_game_state_changed` behandelt INTRO jetzt transparent:
+  Zone und laufender Titel bleiben unberuehrt, INTRO->MAIN_MENU ist damit
+  ein No-Op. Moeglich, weil das Menue-Intro v13 keine Audiospur hat.
+- Story-Intro (`intro_story.ogv` hat eingebackene Musik) weiterhin per
+  `pause_music()`/`resume_music()` stummgeschaltet - danach laeuft der
+  gleiche Titel an gleicher Stelle weiter.
+- `systems/SoundSystem.gd` mit gdtoolkit-Parser geprueft (ohne Befund);
+  `project.godot`-Version 15.12 -> 15.13. Sonst identisch zu v15.12.
