@@ -455,3 +455,11 @@ Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
   (Diff ~2,3/255, kein sichtbares Blocking/Banding).
 - Alle geänderten `.gd` mit gdtoolkit-Parser geprüft (ohne Befund);
   `project.godot`-Version 15.8 -> 15.9.
+
+## v15.10 (ZIP-Fix) - 09. Okt 2026
+- **Godot-Import schlug fehl** ("Dateien ließen sich nicht aus dem Paket
+  extrahieren", alle Dateien in Unterordnern): gleiche Ursache wie v15.2 -
+  die v15_9-ZIP war ohne explizite Ordner-Einträge gepackt (Windows
+  Compress-Archive). Neu gepackt mit Python-zipfile inkl. 19 expliziter
+  Ordner-Einträge; per Extraction-Simulation verifiziert (0 Fehler,
+  alle 130 Dateien landen). Inhalt identisch zu v15.9.
