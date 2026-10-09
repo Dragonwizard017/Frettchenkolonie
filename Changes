@@ -472,3 +472,15 @@ Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
   Cover-Verfahren (`_fit_cover()`) unveraendert.
 - Geaenderte `.gd` mit gdtoolkit-Parser geprueft (ohne Befund);
   `project.godot`-Version 15.9 -> 15.11. Inhalt sonst identisch zu v15.10.
+
+## v15.12 (Intro v13 + Import-Fix) - 10. Okt 2026
+- **Menue-Intro getauscht**: `assets/videos/intro_menu.ogv` ist jetzt die
+  v13 aus `FrettchenModell` (ohne Musik, ohne FrettchenKolonie-Logo -
+  im alten Video kamen sich die Elemente in die Quere). Story-Intro
+  (`intro_story.ogv`) unveraendert. Dateiname im Spiel gleich geblieben,
+  kein Code-Umbau noetig.
+- **Godot-4.7-Import-Fix** (vorgemerkt): `project.godot` enthaelt neu
+  `[editor] import/use_multiple_threads=false`. Frisch entpackte
+  Release-ZIPs (ohne `.godot`) importieren jetzt single-threaded und
+  crashen beim Oeffnen nicht mehr (nur Wiederherstellungsmodus ging).
+- `project.godot`-Version 15.11 -> 15.12.
