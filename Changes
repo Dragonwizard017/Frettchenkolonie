@@ -463,3 +463,12 @@ Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
   Compress-Archive). Neu gepackt mit Python-zipfile inkl. 19 expliziter
   Ordner-Einträge; per Extraction-Simulation verifiziert (0 Fehler,
   alle 130 Dateien landen). Inhalt identisch zu v15.9.
+
+## v15.11 (Intro-Fix) - 09. Okt 2026
+- **Startfehler behoben** (`FK_3D/ui/IntroPlayer.gd:35`, `Cannot find member
+  "EXPAND_IGNORE_SIZE" in base "VideoStreamPlayer"`): `VideoStreamPlayer`
+  hat in Godot 4 nur `expand: bool` (kein `expand_mode`-Enum wie
+  `TextureRect`) - Zeile ersetzt durch `_player.expand = true`.
+  Cover-Verfahren (`_fit_cover()`) unveraendert.
+- Geaenderte `.gd` mit gdtoolkit-Parser geprueft (ohne Befund);
+  `project.godot`-Version 15.9 -> 15.11. Inhalt sonst identisch zu v15.10.
