@@ -1,0 +1,457 @@
+# FrettchenKolonie – Changelog
+
+## v15.8 (Tooltip-Fix, UI-Sounds, Ladebalken mit laufendem Frettchen, Performance) – 07. Okt 2026
+
+### 1) Tooltips verschwinden nicht mehr nach kurzer Zeit
+- Ursache: Das Baumenü wird im HUD-Takt **jede Sekunde** neu aufgebaut (`GameState.build_menu_update_requested`),
+  `refresh()` schloss dabei den Tooltip -> er verschwand nach höchstens 1 s.
+- Jetzt bleibt er offen und wird nach dem Neuaufbau an den neuen Eintrag derselben Gebäude-ID gebunden (Kostenfarben aktuell).
+  Geschlossen wird nur noch: Maus verlässt den Eintrag (ein 0.1-s-Wächter prüft die echte Mausposition), Klick, Menü weg.
+- Kleine Schonfrist (250 ms) nach dem Neuaufbau, weil der neue Eintrag erst nach dem nächsten Layout-Durchlauf positioniert ist
+  (Größe 0) - ohne sie schloss der Wächter den Tooltip zufällig. Test: 40 erzwungene Neuaufbauten überstanden, Maus weg -> geschlossen.
+
+### 2) UI-Sounds (`autoloads/UISounds.gd`, Sounds in `assets/sfx/`)
+- Hängt sich AUTOMATISCH an jedes Control (`node_added`) - neue UI braucht nichts zu tun.
+- Klick (Buttons), leises Hover-Ticken, Schalter an/aus (verschiedene Töne), Auswahl (Dropdown), Tick beim Ziehen von Slidern,
+  **Fenster öffnen/schließen** (Tech-Baum, Erfolge, Expeditionen, Gedenkstätte, Statistik, Bezirke, Pause, Gebäude-Info, Laden/Welt erstellen ...),
+  Fehlerton bei roten Meldungen, Fertig-Glöckchen beim Laden.
+- Klick, der ein Fenster öffnet/schließt, spielt NUR den Fenster-Ton (Klick wird bis Frame-Ende zurückgehalten); `CloseBtn` hat keinen eigenen Klick.
+- Fenster reagieren auf ihr EIGENES `visible` (nicht auf versteckte Eltern) -> keine Sound-Flut beim Wechsel ins Hauptmenü.
+- Lautstärke = `SoundSys.master_vol * sfx_vol` (derselbe Effekt-Regler wie im Pause-Menü). Mindestabstände gegen Rattern, ±3 % Tonhöhe.
+- Die 11 Sounds sind selbst synthetisiert (`tools/gen_sfx.py`, warm/holzig, keine fremden Samples -> keine Lizenzfragen), zusammen < 200 KB.
+
+### 3) Ladebildschirm mit laufendem Frettchen (`ui/LoadingOverlay.gd`)
+- Überall, wo geladen wird: **Neue Welt, Spielstand laden, Testwelt**. Das echte Frettchen-Modell läuft (Clip "Run") über dem Balken,
+  seine Position = Fortschritt; Schritt-Text ("Bäume werden gepflanzt …") und Prozentanzeige. Am Ende "Fertig!" + Glöckchen, dann Ausblenden.
+- Damit der Balken ECHTEN Fortschritt zeigt, wurden die Abläufe in **Schritte** zerlegt (je `{"label","weight","fn"}`; zwischen den Schritten
+  wird ein Bild gezeichnet): `WorldRenderer3D.build_world_steps()`, `GameController.new_game_steps()` / `deserialize_world_steps()` /
+  `_setup_renderer_steps()`, `SaveSys.load_game_steps(slot, ctrl, ctx)`. Die alten Funktionen (`start_new_game`, `build_world`, `load_game`,
+  `deserialize_world`) bleiben als synchrone Wrapper erhalten (Tests und Altcode unverändert lauffähig).
+- Gewichte der Schritte nach GEMESSENER Dauer (`tools/LoadTiming`). Mindestlaufzeit des Balkens 1.0 s (sonst blitzt das Frettchen bei schnellem Laden nur auf).
+- Overlay in eigener CanvasLayer (layer 100) über dem HUD, fängt Klicks ab; unterdrückt während des Ladens Fenster-Sounds.
+- Fehlerfall (Slot fehlt/defekt): Balken endet mit "Laden fehlgeschlagen" + Fehlerton, Spiel springt NICHT in den Spielzustand.
+
+### 4) Performance-Funde beim Messen (mein Fehler aus v15.0, jetzt behoben)
+- **`BuildMenu.refresh()` kostete ~350-390 ms** (60 RichText-Karten) und lief jede Sekunde -> Ruckler im Sekundentakt. Außerdem rief jedes
+  `build_free`/`build` das Menü-Update auf (Testwelt: ~30 x). Jetzt baut das Menü nur noch neu, wenn sich der Inhalt WIRKLICH ändert
+  (Signatur aus freigeschalteten Gebäuden, Auswahl, Bezahlbarkeit je Kostenressource). `refresh(true)` erzwingt.
+- **HUD-Ressourcenpillen** wurden jede Sekunde neu erzeugt (~30 ms): jetzt bleiben sie bestehen, nur Text/Farbe/Sichtbarkeit werden aktualisiert.
+- Messung Spielstart MEDIUM: **1117 ms -> 342 ms**; Schritt "Kolonie gründen" 625 ms -> 9 ms.
+
+### tools
+`SndCheck`, `LoadFlow`, `MainFlow`, `TipLife`, `LoadTiming`, `FoundTiming`, `gen_sfx.py`; `Shot` kennt `loading:<Schritt>`.
+
+---
+
+---
+
+## v15.7 (Gebäude-Tooltips + kompaktere UI) – 06. Okt 2026
+
+### Gebäude-Tooltips im Baumenü
+Hover über einen Gebäude-Eintrag (nach 0.25 s) zeigt rechts neben dem Menü eine Karte mit:
+- **Kopf**: Icon, Name, Typ, Epoche · **Kurzbeschreibung**
+- **PRODUKTION**: je Typ Ertrag (voll besetzt + je Arbeiter, in "/ Min."), Umwandlung (z. B. `2× Holz → 1× Bretter, alle 2.0 s`,
+  Durchsatz), Küche = alle Rezepte, Jäger-Fleischrate, Bauernhof (Ertrag je Ernte/Feld, Wachstum, Arbeiter-Limit in Feldern),
+  Wohnplätze, Lagerkapazität/Wasserlager, Stimmungs-Bonus mit Radius, Wasserrad-Bonus
+- **BEDARF**: z. B. "Beerenbüsche im Radius 7 - ohne nur 35 % Ertrag", Wasser in der Nähe (Brunnen), Zutaten im Lager, Felder im Bezirk
+- **GEBÄUDE**: max. Arbeiter, Bauaufwand, Kosten (fehlende Ressourcen rot), Ausbau-Hinweis
+- Neues `ui/BuildingTooltip.gd`: ALLE Zahlen nutzen dieselben Formeln/Konstanten wie `BuildingEntity` (Konstanten oben in der
+  Datei mit Verweis). **Ändert sich eine Produktionsformel, muss sie dort mitgezogen werden.**
+- Beschreibungen: Tabelle `DESC` (nach ID), sonst `desc` aus BuildingData, sonst Typ-Standard (`DESC_BY_TYPE`).
+- Kein Tooltip im Touch-Modus (kein Hover). Tooltip bleibt immer im Bild und schließt bei jedem Menü-Refresh.
+
+### Kompaktere Oberfläche (weniger Bildschirmfläche)
+- Obere Leiste 48 -> 34 px, kleinere Ressourcen-Pillen; Lager-/Wasser-Meter schmaler.
+- Baumenü 256 -> 216 px breit, Einträge 56 -> 44 px hoch.
+- Rechte Spalte 232 -> 184 px: Info-Panel kleiner, Geschwindigkeits-Knöpfe 30x26, Werkzeug-Icons als **3x2-Raster** (34x34)
+  statt 6 untereinander -> belegt nur noch etwa die Hälfte der Höhe. Spalte wächst nach LINKS (`grow_horizontal = BEGIN`),
+  läuft also nie über den Bildrand.
+- Gebäude-Info-Panel und Dialoge (Pause/Welt erstellen/Laden) mit kleineren Innenabständen.
+- **Neu: UI-Größe** im Pause-Menü (85 % / 100 % / 115 %), gespeichert in `user://graphics.cfg`
+  (`GraphicsSettings.set_ui_scale`, wirkt per `content_scale_factor` nur auf die UI, nicht auf die 3D-Welt).
+
+### Geprüft
+- Tooltip-Text für alle 56 Gebäude erzeugt (kein Fehler, längster ~500 Zeichen); Screenshots im echten Spiel (Sägewerk, Bauernhof).
+- UI-Größe: Werte 0.85/1.0/1.15 werden gesetzt, ungültige ignoriert, Datei gespeichert.
+- Vollsimulation, FP-Modus, Accessoire-Editor, Gebäude-Zentrierung, Tod/Geburt/Streicheln: ohne Fehler.
+- Fehler unterwegs gefunden und behoben: rechte Spalte lief über den Bildrand (wuchs nach rechts).
+
+### tools
+`TipDump` (Tooltip aller Gebäude als Text), `UiScaleCheck`; `Shot` kennt `tip:<ID>:<Menü-Index>`.
+
+---
+
+---
+
+## v15.6 (Neue Frettchen-Animationen werden genutzt) – 05. Okt 2026
+
+Bisher spielte der Code nur "Run", fror es bei Arbeit ein und täuschte Ernten per Hand-Wippen vor;
+Schlafen = Modell um 92° gekippt. Das animierte ferret.glb (v15.2) bringt 16 Clips mit - jetzt genutzt.
+Alle Clips wurden vorher im Profil-Kontaktblatt angesehen (`tools/ClipSheet`), die Zuordnung danach festgelegt.
+
+### Zuordnung (neu: `rendering/FerretAnimDirector.gd`, reine Logik, headless testbar)
+| Zustand | Clip |
+|---|---|
+| schläft | `Sleep_LieDown` (einmal) -> `Sleep` (Loop) - echte Liegepose, kein Kippen mehr |
+| Streicheln (FP-Modus) | `Pet` (60 %) oder `Jump_Joy` (40 %) |
+| Geburt (`ferret_born`) | `Jump_Joy` |
+| Tod (`ferret_died`) | kurzer "Geist" spielt `Death`, bleibt liegen, schrumpft nach 4.5 s weg |
+| Ernten | Beeren/Weizen/Essen/Fleisch -> `Harvest`; Holz/Stein/Eisen/Kohle -> `Smash`; Wasser -> `Drink` |
+| Arbeiten im Gebäude | `Work`; Küche/Bäckerei/Taverne -> `Mash_Shake` |
+| Bauen | `Build` |
+| unterwegs | `Run`; trägt Ware -> `Carry`; Gesundheit < 35 -> `Balance_Wobble` (wackelig) |
+| steht | `Idle` |
+- Weiche Übergänge (0.18 s), jedes Frettchen mit zufälligem Start-Versatz (kein Gleichtakt).
+- Spieler-Frettchen (FP-Modus): `Idle` im Stand, `Run` beim Laufen (vorher: eingefroren).
+- Alte Modelle ohne diese Clips: automatischer Rückfall auf die bisherigen prozeduralen Posen.
+- `Nod` ist noch ungenutzt (Idee: beim Zuweisen eines Jobs).
+
+### Technik
+- `FerretEntity`: neue Felder `react_clip`, `react_until` (einmalige Reaktions-Clips; nicht gespeichert).
+- `WorldRenderer3D._drive_ferret_clip()`, `_on_ferret_died()`, `_on_ferret_born()`; Legacy-Schlafkippen nur noch ohne Clips.
+- `PlayerController._set_clip()`.
+- Prüfung: Testkolonie über 70 Tage inkl. Nächte -> Work, Run, Carry, Smash, Sleep_LieDown, Sleep, Balance_Wobble
+  tatsächlich gespielt; Tod/Geburt/Streicheln lösen die richtigen Clips aus; Vollsimulation fehlerfrei.
+- Hinweis zum Testen: Animationen laufen in Echtzeit, die Test-Simulation schneller - Häufigkeiten der Einmal-Clips
+  (z. B. Sleep_LieDown) sind in Tests deshalb überhöht, im Spiel nicht.
+
+### Neue tools
+`ClipSheet` (Kontaktblatt aller Clips im Profil), `AnimStats` (Clip-Statistik einer Simulation), `AnimEvents`
+(Tod/Geburt/Streicheln), `SleepCam` (Nahaufnahme eines Frettchens im echten Spiel: schlafen/arbeiten/tragen).
+
+---
+
+---
+
+## v15.5 (Hauptmenü-Panorama neu: Realismus-Himmel + neue Modelle) – 05. Okt 2026
+
+- **Panorama neu gerendert** (`assets/panorama/colony_panorama.jpg`, 6144x1536): Realismus-Modus
+  (Himmel mit Wolken, Sonne, Tonemapping, Bloom, SSAO, weiche Schatten, Wolkenschatten) und die
+  NEUEN Modelle aus v15.2 (Statue, Wasserturm, Häuser), Sonnenuntergangs-Stimmung (Tageszeit 0.69, Sommer),
+  Seed `alpha`. Ohne Volumetrik-Lichtstrahlen (zu langsam pro Seite).
+- **Himmel-Shader (`sky_realistic.gdshader`) korrigiert** - gilt auch für den Frettchenmodus:
+  - magentafarbener Hof um die Sonne: Orange wurde auf gesättigtes Blau ADDIERT (Verlauf läuft durch
+    Violett). Jetzt wird der Himmel nahe der Sonne erst zu neutral/warm entsättigt, dann überblendet.
+  - Sterne waren tagsüber sichtbar -> erst bei echter Nacht (night > 0.35).
+  - wärmerer Wolkenrand (Silberrand überblendet statt addiert).
+- `panorama.gdshader`: Sättigungs-/Kontrast-Nachbearbeitung entfernt (Bild ist bereits fertig getönt).
+- `tools/Pano2.tscn`: neues Capture-Skript mit Realismus-Modus (`-- <seed> <höhe> <prefix> <face> <saison> <tageszeit> <dx> <dy> [seiten]`);
+  optionaler letzter Parameter rendert nur einzelne Seiten (z. B. `up,down`), falls ein langer Lauf abbricht.
+- Ablauf zum Neu-Rendern: siehe `tools/README.md` (Pano2 -> `stitch.py`).
+
+---
+
+## v15.4 (Modell-Check, sichtbare Jahreszeiten, Realismus-Modus) – 04. Okt 2026
+
+### 1) Modell-Check nach v15.2/v15.3 (erstmals mit echter Engine geprüft)
+Die neuen GLBs (Frettchen mit 16 Clips, Gebäude, Accessoires) wurden vorher nur mit `gdparse`
+geprüft. Mit Godot 4.7.2 (Sandbox) vermessen, in der laufenden Kolonie und per Screenshot geprüft:
+- 🐛 **STORAGE / WATER_TOWER / STATUE standen 3-10 Kacheln neben ihrer Position.** Die GLBs haben
+  ihren Mittelpunkt bei X = 5 / 10 / 15 (Ausstellungs-Aufstellung beim Export, Mesh-AABB
+  min.x = 4.0 / 9.05 / 14.2) - der Renderer verschob nur in Y. Gemessen: Versatz +5.4 / +10.9 /
+  +20.6 Welteinheiten, Klick-/Kollisionsbereich lag an der richtigen Stelle.
+  Fix: `WorldRenderer3D._model_center_xz()` zentriert JEDES Gebäudemodell zur Laufzeit auf seine
+  Kachel (generisch, übersteht künftige Modelltausche). Nachmessung: alle Gebäude mittig, Basis auf Kachelhöhe.
+- 🐛 **Alle 16 Frettchen-Clips importieren mit Loop = AUS** -> "Run" lief 0.88 s und das Frettchen
+  erstarrte in Laufpose. Fix: `rendering/FerretAnimUtil.gd` setzt Dauer-Clips (Run, Idle, Carry,
+  Work, Build, Harvest, Drink, Sleep, Smash, Mash_Shake, Balance_Wobble) auf Loop; Gesten bleiben
+  einmalig. Aufruf in WorldRenderer3D (Frettchen) und PlayerController (Spieler-Frettchen).
+- ✅ Ohne Befund: Größen/Unterkanten aller Modelle passen zu den Konstanten (Brunnen mittig,
+  Höhen stimmen), Ferret-Skelett animiert (5 von 11 Knochen bewegen sich im Run-Clip), alle 10
+  Accessoires sitzen am neuen Frettchen korrekt (Nahaufnahme vorn/hinten, Idle + Run).
+- Hinweis: die neuen Clips Idle/Carry/Work/Sleep/Pet/... werden noch nicht genutzt (Code spielt nur "Run").
+  Der Schal sieht von vorn wie eine Schlaufe aus (Modell, kein Code-Problem).
+
+### 2) Sichtbare Jahreszeiten
+- Neues `rendering/SeasonVisuals.gd`: berechnet aus SeasonSys + Tageszeit eine KONTINUIERLICHE
+  Jahres-Phase und überblendet weich (Keyframes in der Saison-Mitte, kein Sprung am Saisonwechsel).
+- **Frühling**: frisches Hellgrün, fallende Blütenblätter. **Sommer**: sattes Tiefgrün, warmes helles
+  Licht. **Herbst**: goldoliver Boden, orange Büsche, gelbliche Bäume, fallendes Laub, tiefe goldene
+  Sonne. **Winter**: Schneedecke auf allen nach oben zeigenden Flächen (blockig, ungleichmäßig, baut
+  sich ab Herbst-Mitte auf und taut ab Winter-Mitte ab), bereifte Bäume/Büsche, Schneefall, **zugefrorene
+  Gewässer**, kaltes bläuliches Licht.
+- Terrain nutzt jetzt `assets/shaders/season_terrain.gdshader` (Textur + Nearest-Filter wie vorher,
+  Vertex-Farben für Dürre/Wege bleiben). Alle Saison-Werte kommen als GLOBALE Shader-Parameter
+  (`season_snow`, `season_grass_tint`, `realism_enabled`, `realism_cloud_shadow`), registriert im
+  Autoload `GraphicsSettings` (muss vor dem ersten Shader laufen).
+- Baum-/Busch-Farben: gemeinsame Materialien aus pine_tree.glb/bush.glb werden getönt (ein Aufruf
+  ändert alle Instanzen). Wasser: `WorldRenderer3D.set_water_frozen()`.
+- Partikel (GPUParticles3D) folgen dem Kamerafokus bzw. dem Spieler im Frettchenmodus.
+
+### 3) Realismus-Modus (schaltbar)
+- Schalter: Pause-Menü ("Realistische Grafik") **und** Hauptmenü ("Grafik: Standard/Realistisch");
+  gespeichert in `user://graphics.cfg`. Standard: AUS (kostet Leistung).
+- AN: prozeduraler Himmel `assets/shaders/sky_realistic.gdshader` (Wolken mit Eigenschatten, Sonnen-
+  scheibe + Korona, Auf-/Untergangsglühen, Sterne), Sonne wandert über den Tag (Schatten wandern,
+  warmes Licht morgens/abends), ACES-Tonemapping, Glow, Farbkorrektur, Himmels-Ambient, SSAO (nur
+  Forward+), weichere/weiter reichende Schatten (4 Kaskaden), 4x MSAA, wandernde Wolkenschatten auf
+  dem Boden, Dunst + Volumetrik ("Lichtstrahlen" durch Bäume) NUR bei perspektivischer Kamera
+  (Frettchenmodus), weil die orthografische Iso-Kamera sonst alles verwaschen würde.
+- AUS stellt exakt den vorherigen Zustand wieder her (Werte werden beim Einschalten gemerkt).
+- Hinweis: In der Iso-Ansicht ist KEIN Himmel sichtbar (ortho, Hintergrundfarbe) - dort wirken
+  Licht, Schatten, Tonemapping und Wolkenschatten; der Himmel zeigt sich im Frettchenmodus.
+
+### Sonstiges
+- `project.godot`: Autoload `GraphicsSettings` ergänzt.
+- `tools/`: neue Prüfer `ModelCheck`, `BldCheck`, `AnimCheck`, `Acc` (Accessoire-Nahaufnahme);
+  `Shot` kann jetzt Saison-/Realismus-Ansichten (`season:<0-3>:<0|1>[:fp[:<tageszeit>[:<yaw>]]]`).
+
+---
+
+---
+
+## v15.1 (Hotfix Accessoire-Editor) – 03. Okt 2026
+
+### 🐛 Behoben
+- ✅ **Accessoires ausrüsten funktionierte nicht / ◀ ▶ schaltete nie weiter**
+  (`CharacterEditorPanel._build_slot_row`): GDScript-Lambdas **kopieren** lokale
+  Variablen beim Erzeugen. `current_idx` wurde in den ◀/▶-Lambdas nur auf einer Kopie
+  geändert und blieb für `refresh_label`/`apply_selection` auf dem Startwert -> der Slot
+  blieb "— leer —" und eine Auswahl wurde sofort wieder auf leer gesetzt (auch mit allen
+  per Dev-Mode freigeschalteten Achievements). Jetzt gemeinsamer Zustand in einem
+  Dictionary (Referenz). Headless nachgestellt und verifiziert: Kopf-Slot schaltet
+  Krone -> Zylinder -> Zauberhut -> Bandana -> leer -> von vorn, ◀ geht zurück.
+- ✅ Slot-Zeilen werden bei JEDER Ausrüstungsänderung neu aufgebaut (vorher nur beim
+  Öffnen -> veralteter Zustand, z. B. nach Laden eines Spielstands).
+- Optik: Editor im neuen Theme (Überschrift, Icon-Pfeile, Slot-Labels).
+- Projektweit mit `tools/lambda_scan.py` nach demselben Fehlermuster gesucht
+  (Lambda ändert lokale Variable): **keine weiteren Treffer**. Der Scanner findet den
+  alten Fehler im v14.5-Code zuverlässig (Gegenprobe).
+
+### Lehre
+- In GDScript-Lambdas nie lokale Zähler/Indizes verändern, die außerhalb gelesen werden:
+  ein Dictionary/Array als Zustandsträger nutzen (`var state := {"idx": 0}`).
+
+---
+
+## v15.0 (UI-Überarbeitung + 360°-Panorama) – 03. Okt 2026
+
+### Ziel
+Die Oberfläche wirkte wie ein generisches Standard-UI (Godot-Default-Schrift,
+blau-schwarze Flächen, lose Emoji-Zahlen, knallige Vollfarb-Pillen). Neu: ein
+durchgängiger, bewusst gestalteter Look + ein rotierendes 360°-Panorama aus einer
+echten Kolonie im Hauptmenü (wie bei Minecraft).
+
+### Recherche-Ergebnis (Leitlinien, in UITheme.gd umgesetzt)
+- Hierarchie: pro Screen EINE Hauptaktion (Primär-Button), alles Nebensächliche leiser (Ghost)
+- Raster: 8 px, Abstände nur als Vielfache; überall dieselben Radien (8/10/12)
+- Maximal 2 Schriften (Titel + Fließtext), Palette nach Rollen statt Einzelfarben
+- EIN Button-Stil mit festen Zuständen (normal/hover/pressed/disabled/focus), wenige Varianten
+- Theme zentral am Root-Window (`get_tree().root.theme`), nicht pro Node überschreiben
+- Lesbarkeit vor Dekoration; Text auf freier Szene bekommt Kontur (OnScene/Display)
+
+### Neu
+- `ui/UITheme.gd` (class_name UITheme): komplette Palette, Fonts, alle Control-Stile,
+  Varianten (PrimaryButton, DangerButton, GhostButton, SegButton, IconButton, BuildItem,
+  HudBar, FloatPanel, Card, Dialog, ChipPanel; Title, Heading, Subheading, Muted, Small,
+  Chip, Display, OnScene) + Helfer `UITheme.lbl/btn/panel`.
+  **Neue UI bitte immer darüber bauen, keine Einzel-Overrides/Color-Literale mehr.**
+- Schriften (alle SIL OFL, Lizenztexte liegen daneben): Fredoka (Titel), Nunito (Text),
+  Noto Emoji (einfarbig, als Fallback -> Icons sind einfärbbar und einheitlich).
+  `assets/fonts/`
+- `ui/PanoramaBackground.gd` + `assets/panorama/panorama.gdshader`: rotierendes
+  Panorama OHNE 3D-Kamera (Shader projiziert den Equirect-Streifen), läuft nur wenn sichtbar.
+  Bild: `assets/panorama/colony_panorama.jpg` (siehe "General" für die Herstellung).
+- Hauptmenü, Welt erstellen, Welt laden: neu aufgebaut (Dialog-Karten, Primär-Button,
+  Panorama dahinter, Version aus `application/config/version`).
+- HUD: obere Leiste mit Ressourcen-"Pillen" (getönte Icons) + Lager/Wasser-Messbalken;
+  rechte Spalte (Info · Geschwindigkeit als Segment-Knöpfe mit Anzeige der aktiven
+  Stufe · Werkzeug-Icons mit Tooltips). Pfade geändert: `HUD/RightColumn/...`
+  (Tutorial angepasst, HUD.gd nutzt `find_child`).
+- Baumenü: schwebendes Panel, Einträge als Karten, Kostenzeile mit getönten Icons und
+  **roten Beträgen bei fehlenden Ressourcen**, gewählter Eintrag hervorgehoben,
+  Abschnittsköpfe als Versalien.
+- Pause-Menü (Dialog + abgedunkelter Hintergrund), Game-Over, Benachrichtigungen
+  (dunkler Toast, Meldungsfarbe nur noch als Akzentkante).
+- `project.godot`: `config/version` = 15.0 (war 14.5, Menü zeigte falsche Version).
+
+### Hinweise
+- Zum ersten Öffnen im Editor: Godot importiert die neuen Fonts/das Panorama automatisch.
+- Panels, die noch eigene Farb-Overrides haben (TechTree, FerretProfile, Minigame …),
+  erben Schrift/Buttons/Panels aus dem Theme, sind aber noch nicht einzeln überarbeitet.
+
+---
+
+## v14.7 (Hotfix Frettchenmodus) – 03. Okt 2026
+
+### 🐛 Behoben
+- ✅ **Frettchenmodus-Absturz beim Streicheln/Start**: `GameController.gd`
+  (Z. 671, 677, 743) griff auf `_fp_target_ferret.name` zu, `FerretEntity`
+  hat aber nur `ferret_name` -> `Invalid access to property or key 'name'`
+  in `_update_fp_interaction()` jedes Frame, sobald ein Frettchen in
+  `PET_RANGE` war. Jetzt `.ferret_name`. Projektweit gegrept: keine weiteren
+  Stellen. Headless reproduziert (8 Fehler) und danach fehlerfrei verifiziert
+  (Prompt-Pfad + `_pet_ferret()`, 17 Treffer).
+- Lehre: der v14.6-Testlauf hatte den FP-Modus ohne Frettchen in Reichweite
+  getestet und den Fehler daher übersehen - FP-Tests immer mit Spieler direkt
+  neben einem Frettchen (`gc.player.teleport_to(...)`).
+
+---
+
+## v14.6 (Intensives Bugfixing) – 03. Okt 2026
+
+### Neu in dieser Session: echte Engine-Tests
+Godot 4.7.2 (Linux) lässt sich in der Sandbox von GitHub laden
+(`godotengine/godot-builds`, Release `4.7.2-stable`) und läuft headless.
+Damit wurde erstmals eine echte Partie simuliert (neues Spiel, Testwelt,
+25 Felder, mehrere Spieltage, Dürre, Speichern/Laden, Verkaufen/Upgraden,
+FP-Modus): **keine Skriptfehler**. Details/How-To siehe "General".
+
+### 🐛 Behobene Bugs
+- ✅ **Wasser/Nahrung wurden bedarfsunabhängig verbraucht**
+  (`PopulationManager.gd`): jedes Frettchen verbrauchte mit voller
+  Maximalrate (0.6 Wasser/s, 0.4 Nahrung/s), auch bei Bedarf 100. Gemessen:
+  5 Frettchen = ~3 Wasser/s und ~2.3 Beeren/s bei echtem Bedarf von ~0.5/s.
+  Jetzt nimmt jedes Frettchen höchstens auf, was ihm bis 100 fehlt (maximale
+  Aufnahmerate unverändert).
+- ✅ **Brunnen-Nähe-Bonus war wirkungslos** (`WaterSystem.gd`,
+  `BuildingEntity._collect`, `BuildingInfo.gd`): Karten haben nur 3 (SMALL) /
+  8 (MEDIUM) Wasserkacheln, der Kreisdurchschnitt lag bei 0.006-0.024, jeder
+  Brunnen lief immer auf dem Grundsockel (0.22). Neu:
+  `WaterSys.get_water_volume_near()` (Summe der Pegel im Radius), Bonus
+  `min(1, Volumen/3)`. Anzeige im Info-Fenster nutzt dieselbe Basis.
+  **Balance-Änderung** - Konstante `/ 3.0` bei Bedarf nachstellen.
+- ✅ **Testwelt: 0 Arbeiter an Brunnen/Wasserturm** (`bootstrap_test_colony`):
+  Brunnen kam bei der Frettchen-Verteilung zuletzt dran, Kolonie verdurstete
+  nach ~3 Tagen. Wasser-/Beeren-Sammler werden jetzt zuerst besetzt.
+- ✅ **Felder: Dürre-Wasserkosten pro Frame statt pro Sekunde**
+  (`FarmFieldSystem.update`, framerate-abhängig, ~1.2 Wasser/s pro Feld bei
+  60 FPS). Jetzt `0.02 * dt` je Feld.
+- ✅ **Pause setzte Geschwindigkeit immer auf 1x** (`GameState.toggle_pause`,
+  `PauseMenu._on_resume`): 2x/3x bleibt jetzt erhalten.
+- ✅ **SaveSystem**: beschädigte/Nicht-Dictionary-JSON stürzt nicht mehr ab
+  (`load_game`, `get_save_info`).
+- ✅ `Main._confirm_delete_save`: Child-`Timer` statt `get_tree().create_timer()`
+  (Projekt-Konvention).
+
+### ⚠️ Offen / nicht geändert
+- Testwelt: Nahrungsvorrat (435) ist nach ~240 s aufgebraucht, keine
+  nachhaltige Nahrungsproduktion -> Hungertod nach ~10 Min. Spielzeit.
+- Saison-Faktor (`SeasonSys.production_multiplier`) skaliert die GESAMTE
+  Spielzeit (`dt` in `GameController._process`), also auch Tageslänge, Dürre-
+  und Hunger-Timer. Absicht unklar - beim Nutzer nachfragen.
+- Headless-Simulation war langsam (~80 ms je `_process`-Aufruf); ob echte
+  Performance-Schwäche oder Test-Artefakt, ungeklärt.
+- Parse-Fehler `GameController.gd` Z.730 (v14.5-Eintrag): weiter ungeklärt;
+  die ZIP lädt in echtem Godot 4.7.2 fehlerfrei.
+
+---
+
+## v14.5 (Sync-Commit) – 02. Okt 2026
+
+### Hinweis zu dieser Version
+Dies ist ein **Synchronisations-Commit**, kein von dieser KI-Session aus
+entwickeltes Feature-/Bugfix-Release. Der Nutzer hat eine lokal bereits auf
+v14.5 fortgeschrittene Projekt-ZIP bereitgestellt (das Repo stand zuvor bei
+v13.6). Diese Version wurde unverändert übernommen, vollständig validiert
+und als neuer Stand hochgeladen.
+
+### ✅ Durchgeführte Prüfungen vor dem Upload
+- `gdparse` über alle `.gd`-Dateien: keine echten Fehler (nur 6 bekannte
+  False-Positives bei einzeiligen Lambda-`if`-Ausdrücken, siehe "General")
+- `project.godot` vorhanden und vollständig
+- Keine fehlenden Autoload-Skripte
+- Keine `.tscn`-Referenzen auf fehlende Skripte/Ressourcen
+- Kein versehentlich mitgepackter `.godot`-Ordner
+
+### ⚠️ Offener Punkt
+Ein vom Nutzer per Screenshot gemeldeter Parse-Fehler in `GameController.gd`
+Zeile 730 ("Expected indented block after elif block") konnte in der
+hochgeladenen ZIP NICHT reproduziert werden - die betroffene Stelle ist dort
+korrekt eingerückt. Die lokal in Godot geöffnete Datei des Nutzers weicht an
+dieser Stelle offenbar von der hochgeladenen ZIP ab. Noch nicht geklärt.
+
+### 🧹 Aufräumarbeiten
+- Veraltete Zwischen-ZIPs `v12.9` bis `v13.6` aus dem Repo-Root gelöscht
+  (Referenz-Build `v10.6` bleibt wie vorgesehen dauerhaft erhalten)
+
+---
+
+## v13.6 (Grosse Fehlerbereinigung) – 10. Sep 2026
+
+### ⚠️ Hintergrund
+Frühere Versionen (v13.0-v13.5) enthielten durch fehlerhafte automatisierte
+Umlaut-Korrekturen mehrere schwere, versteckte Bugs. Diese Version behebt sie.
+Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
+
+### 🐛 Kritische Bugs behoben
+- ✅ **`queue_free()` war in 19 Dateien zu `üü_free()` zerstört** (39 Stellen) -
+  potenzielle Ursache diverser Abstürze beim Schliessen von UI/Entfernen von Objekten
+- ✅ **`value`/`value_changed` (Slider) waren zu `valü`/`valü_changed` zerstört**
+  (11 Dateien) - dies war die WIRKLICHE Ursache für "Pausenmenü reagiert nicht"
+- ✅ **Godot-Engine-Klasse `PhysicsRayQueryParameters3D`** war zerstört (8 Dateien)
+- ✅ **`queue_redraw()` und Variable `_queue`** waren zerstört
+- ✅ **Signal-Name `requested`** war überall (konsistent, aber falsch) zu `reüsted`
+  geworden - jetzt korrigiert (13 Dateien)
+- ✅ **Wörter wie `aktuell`, `manuell`, `individuell`, `virtuell`, `bauen`, `neu`,
+  `Dauer`, `Steuerung`, `zuerst`** waren fälschlich mit Ü verunstaltet worden -
+  36 Dateien, 174 Korrekturen
+- ✅ **Multi-Jump war komplett unerreichbar** - Sprung-Logik neu strukturiert
+  mit echter Coyote-Time (0.12s) + 1 zusätzlichem Luft-Sprung
+- ✅ **Ressourcen-Sammeln im First-Person-Modus war komplett kaputt** -
+  Original-Minigame-Klassen aus v13.3 wiederhergestellt
+
+### 🎮 Neue Features
+- ✅ Bauen als Minispiel, Minigames vereinfacht, Minigame-UI optisch
+  aufgewertet
+
+---
+
+## v13.5 (Hotfix-Versuch) – 9. Sep 2026 [teilweise fehlerhaft, s.o.]
+## v13.4 (Grosses Update) – 9. Sep 2026 [enthielt schwere Regressionen, s.o.]
+## v13.3 (Features & Performance) – 9. Sep 2026
+## v13.2 (UI-Hotfix) – 9. Sep 2026
+## v13.1 (Bugfix) – 9. Sep 2026
+## v13.0 (Anfänger-Optimierung) – 9. Sep 2026
+
+## v15.2 (Neue Modelle) – 04. Okt 2026
+
+### 🐹 Neue Modelle
+- ✅ **Animiertes Block-Frettchen** ersetzt `assets/ferret.glb` (gleiche Masse,
+  16 Clips: Idle/Run/Carry/Work/Harvest/Build/Sleep/Sleep_LieDown/Pet/Death/
+  Drink/Minispiel-Gesten). Spiel nutzt weiter `FERRET_MODEL_SCALE=2.2` und
+  spielt "Run", AnimationPlayer wird aus dem GLB erzeugt.
+- ✅ **Neue Gebäudemodelle**: Brunnen, Lager, Wasserturm, Statue
+  (`well_building.glb`, `storage_building.glb`, neu `water_tower.glb`,
+  `statue.glb` im Haus-Stil). WELL/STORAGE-Konstanten angepasst, WATER_TOWER/
+  STATUE neu in `BUILDING_MODEL_OVERRIDES` verdrahtet.
+- ✅ **Alle 10 Accessoires neu gebaut** (Block-Stil, gleiche Dateinamen) und
+  neu ausgerichtet: BOWTIE/SCARF/CAPE/MONOCLE/EYEPATCH-Offsets in
+  `FerretAccessories.gd` korrigiert (Vermessung im Kommentar dokumentiert).
+- Alle .gd-Änderungen mit gdparse geprüft (ohne Befund).
+
+## v15.3 (ZIP-Fix) – 04. Okt 2026
+
+### 🔧 Behoben
+- ✅ **Godot-Import schlug fehl** ("Dateien liessen sich nicht aus dem Paket
+  extrahieren"): Die v15.2-ZIP war mit Python-zipfile ohne explizite
+  Ordner-Einträge gepackt, Godots Entpacker legt die Unterordner dann nicht
+  an. Neu gepackt mit Ordner-Einträgen (Inhalt identisch zu v15.2).
+## v15.4-v15.8 (fehlende Einträge, aus General-Headers rekonstruiert) - 09. Okt 2026
+- v15.4: Jahreszeiten-Optik & Realismus-Modus (SeasonVisuals, RealismFX).
+- v15.5: Panorama-Neurender (Pano2 + stitch.py, Realismus-Modus).
+- v15.6: Frettchen-Animations-Director (zentrale Clip-Auswahl).
+- v15.7: BuildingTooltips + UI-Skalierung (UI_SCALES, canvas_items).
+- v15.8: UI-Sounds (synthetisiert) + Ladebildschirm mit Schritten (LoadingOverlay).
+
+## v15.9 (Intro-Animation) - 09. Okt 2026
+- **Menü-Intro bei jedem Kaltstart**: `assets/videos/intro_menu.ogv` (28,7 s,
+  Sunset-Flug + Tür-Dive, skipbar per Klick/ESC/Leertaste, Hinweis ab 3 s).
+  Eigene CanvasLayer (200, über allem); danach nahtloser Übergang, weil der
+  letzte Video-Frame dem Menü-Hintergrund entspricht (Panorama-Yaw friert bei
+  0,35 ein, solang das Panorama versteckt ist).
+- **Story-Intro bei "Kolonie gründen"**: `assets/videos/intro_story.ogv`
+  (25 s, skipbar) VOR dem Ladebalken; danach läuft der bestehende
+  Ladeablauf unverändert. Nicht bei Testwelt / Laden alter Stände.
+- **Neuer `GameState.State.INTRO`** (am Enum-Ende angehängt - alte
+  Speicherstände bleiben gültig); `SoundSystem`: INTRO-Zone NONE (keine
+  Engine-Musik während Video-Musik) + `pause_music()`/`resume_music()`
+  (nur `stream_paused`, kein Titelwechsel).
+- **Neu `ui/IntroPlayer.gd`** (class_name): Cover-Verfahren (kein Verzerren,
+  keine Balken), schwarzer Hintergrund gegen Start-Flackern, `finished`/
+  Skip als `playback_done`-Signal mit Coroutine (`await intro.play(...)`).
+- Videos in der Repo-ZIP mit Theora q5 statt q7 (GitHub-Blobs-API nimmt nur
+  Körper deutlich unter 100 MB; q7-Master bleiben lokal). Visuell geprüft
+  (Diff ~2,3/255, kein sichtbares Blocking/Banding).
+- Alle geänderten `.gd` mit gdtoolkit-Parser geprüft (ohne Befund);
+  `project.godot`-Version 15.8 -> 15.9.
