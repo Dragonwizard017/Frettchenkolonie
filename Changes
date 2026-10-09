@@ -427,3 +427,31 @@ Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
   extrahieren"): Die v15.2-ZIP war mit Python-zipfile ohne explizite
   Ordner-Einträge gepackt, Godots Entpacker legt die Unterordner dann nicht
   an. Neu gepackt mit Ordner-Einträgen (Inhalt identisch zu v15.2).
+## v15.4-v15.8 (fehlende Einträge, aus General-Headers rekonstruiert) - 09. Okt 2026
+- v15.4: Jahreszeiten-Optik & Realismus-Modus (SeasonVisuals, RealismFX).
+- v15.5: Panorama-Neurender (Pano2 + stitch.py, Realismus-Modus).
+- v15.6: Frettchen-Animations-Director (zentrale Clip-Auswahl).
+- v15.7: BuildingTooltips + UI-Skalierung (UI_SCALES, canvas_items).
+- v15.8: UI-Sounds (synthetisiert) + Ladebildschirm mit Schritten (LoadingOverlay).
+
+## v15.9 (Intro-Animation) - 09. Okt 2026
+- **Menü-Intro bei jedem Kaltstart**: `assets/videos/intro_menu.ogv` (28,7 s,
+  Sunset-Flug + Tür-Dive, skipbar per Klick/ESC/Leertaste, Hinweis ab 3 s).
+  Eigene CanvasLayer (200, über allem); danach nahtloser Übergang, weil der
+  letzte Video-Frame dem Menü-Hintergrund entspricht (Panorama-Yaw friert bei
+  0,35 ein, solang das Panorama versteckt ist).
+- **Story-Intro bei "Kolonie gründen"**: `assets/videos/intro_story.ogv`
+  (25 s, skipbar) VOR dem Ladebalken; danach läuft der bestehende
+  Ladeablauf unverändert. Nicht bei Testwelt / Laden alter Stände.
+- **Neuer `GameState.State.INTRO`** (am Enum-Ende angehängt - alte
+  Speicherstände bleiben gültig); `SoundSystem`: INTRO-Zone NONE (keine
+  Engine-Musik während Video-Musik) + `pause_music()`/`resume_music()`
+  (nur `stream_paused`, kein Titelwechsel).
+- **Neu `ui/IntroPlayer.gd`** (class_name): Cover-Verfahren (kein Verzerren,
+  keine Balken), schwarzer Hintergrund gegen Start-Flackern, `finished`/
+  Skip als `playback_done`-Signal mit Coroutine (`await intro.play(...)`).
+- Videos in der Repo-ZIP mit Theora q5 statt q7 (GitHub-Blobs-API nimmt nur
+  Körper deutlich unter 100 MB; q7-Master bleiben lokal). Visuell geprüft
+  (Diff ~2,3/255, kein sichtbares Blocking/Banding).
+- Alle geänderten `.gd` mit gdtoolkit-Parser geprüft (ohne Befund);
+  `project.godot`-Version 15.8 -> 15.9.
