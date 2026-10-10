@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://_t/Colony.gd" id="1"]
+[node name="Colony" type="Node"]
+script = ExtResource("1")

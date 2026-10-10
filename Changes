@@ -496,3 +496,49 @@ Details siehe "General"-Datei (technische Doku), Abschnitt "Session-Historie".
   gleiche Titel an gleicher Stelle weiter.
 - `systems/SoundSystem.gd` mit gdtoolkit-Parser geprueft (ohne Befund);
   `project.godot`-Version 15.12 -> 15.13. Sonst identisch zu v15.12.
+
+## v16.0 (Kolonie-Fundament: Rathaus + zweite Kolonie) - 10. Okt 2026
+Logistik-Update, Phase 0 + 1 (Fundament fuer Zuege, Erkundung, Nachbarkolonien).
+- **Neues Autoload `ColonySys`** (`systems/ColonySystem.gd`): EINE Karte, MEHRERE
+  Kolonien. Eine Kolonie ist ein Rathaus plus sein Gebiet (Radius 16 Kacheln; eine
+  Kachel gehoert zum NAECHSTEN Rathaus, dessen Radius sie umfasst).
+- **Rathaus (`TOWN_HALL`)**: die Startkolonie bekommt es gratis, es ist nicht
+  verkaufbar. Ab Epoche 2 gruendet jedes weitere Rathaus (mind. 20 Kacheln
+  Abstand zu jedem Rathaus) eine NEUE Kolonie: die Baukosten sind das
+  Gruendungspaket (80 Holz, 50 Stein, 20 Bretter, 5 Werkzeuge, 20 Beeren) und
+  werden der Gruenderkolonie abgezogen und zum Startbestand der neuen; dazu
+  gratis Bauhof + Lager und 3 Siedler-Frettchen. Die Gruenderkolonie braucht
+  mind. 5 Frettchen. Gruendung ist (noch) sofort, ohne Reise.
+- **Getrennte Ressourcen-Pools**: `ResourceSys.pools` + `use_colony(id)` tauscht
+  `resources/water/water_capacity/storage_capacity` aus - alle bestehenden
+  Zugriffe laufen unveraendert. Wissenspunkte/Tech bleiben global.
+- **Simulation je Kolonie**: `BuildingSys.update`, `PopMgr.update` (Versorgung,
+  Glueck, Arbeit, Wohnung, Nachwuchs, Hinweise), Duerre-Wasserverbrauch,
+  Feld-Wasser, Expeditionen (Beute geht an die sendende Kolonie). Die
+  Frettchen-Liste bleibt EINE Liste (Renderer ordnet nach Index zu).
+- `colony_id` auf Gebaeuden, Frettchen, Bezirken, Expeditionen. Bezirke
+  verschiedener Kolonien sind nie verbunden; Lager-, Baustellen-, Arbeits- und
+  Wohnungssuche bleiben innerhalb der Kolonie.
+- **Bauen nur im Gebiet der AKTIVEN Kolonie** (Dev-Modus: ueberall). Wer ein
+  Gebaeude einer anderen Kolonie anklickt, wechselt automatisch dorthin.
+- **UI**: Kolonien-Panel (Knopf 🏛️, auch in der Touch-Leiste: Name aendern,
+  Bevoelkerung/Betten/Lager/Wasser, "Anzeigen" springt zum Rathaus), HUD zeigt
+  bei mehreren Kolonien den Namen, Baumenue-Rubrik "Kolonie", Gebietsring beim
+  Platzieren, Bezirke-Panel nennt die Kolonie.
+- **Save v7** (`colonies`, `resources.pools`). Alte Saves werden migriert:
+  Rathaus wird nachgeruestet, das Gebiet der Kolonie 0 umfasst automatisch alle
+  vorhandenen Gebaeude.
+- **Getestet in echter Engine (Godot 4.7.2 headless)**: neues Testskript
+  `tools/Colony.tscn` (Gruendung, Gebiet, Pools, Simulation, Duerre, UI,
+  Speichern/Laden, Alt-Save-Migration): 0 Fehler. A/B-Vergleich Einzelkolonie
+  gegen v15.13: Zahlen Schritt fuer Schritt identisch. `TestRunner` ohne
+  SCRIPT ERROR (alle Frettchen verdursten im Test-Seed wie schon in v15.13).
+  Screenshots von Panel/HUD/Gebietsring geprueft. gdparse: nur die 6 bekannten
+  Fehlalarme; `lambda_scan.py`: 0 Treffer.
+- **Bekannte Einschraenkungen**: Rathaus nutzt noch das generische
+  Gebaeudemodell (+ Emoji), kein eigenes 3D-Modell. Gruendung ohne Reisezeit.
+  Gebietsradius fix (Tech-Erweiterung spaeter). Nicht testbar in der Sandbox:
+  Touch-Bedienung, Bedienkomfort. Phase 2+ (Gleise/Zuege, Mitfahren,
+  Erkundung, Nachbarkolonien) ist noch NICHT umgesetzt.
+- `project.godot`-Version 15.13 -> 16.0, Autoload `ColonySys` ergaenzt.
+

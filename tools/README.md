@@ -10,6 +10,8 @@ ausführen (nach neuen `class_name`-Skripten Pflicht!), dann:
 | `TestRunner.tscn` | Komplette Partie simulieren (Testwelt, Felder, Dürre, Speichern/Laden, Verkaufen, FP-Modus). Fehler = `SCRIPT ERROR` im Log | `godot --headless --path . res://_t/TestRunner.tscn` (dauert Minuten -> Hintergrund) |
 | `Exp5.tscn` | FP-Modus: Spieler neben Frettchen setzen, Streicheln-Pfad ausführen | `godot --headless --path . res://_t/Exp5.tscn` |
 | `Exp6.tscn` | Accessoire-Editor: alle Achievements freischalten, ▶/◀ klicken, Ausrüstung prüfen | `godot --headless --path . res://_t/Exp6.tscn` |
+| `Colony.tscn` | Kolonie-System (v16.0): gruenden, Gebiet, getrennte Pools, Duerre, UI, Speichern/Laden, Alt-Save-Migration. Ende: `FERTIG - 0 Fehler` | `godot --headless --path . res://_t/Colony.tscn` |
+| `ColShot.tscn` | Screenshots Kolonien-Panel / Gebietsring | unter xvfb: `... res://_t/ColShot.tscn -- panel|ghost|far /pfad/bild.png` |
 | `lambda_scan.py` | Findet Lambdas, die lokale Variablen ändern (siehe Lambda-Falle) | im Projektordner: `python3 lambda_scan.py` |
 | `ModelCheck.tscn` / `BldCheck.tscn` / `AnimCheck.tscn` | Neue GLBs prüfen: Maße/Mitte/Unterkante, Gebäudeversatz in der laufenden Kolonie, Animationen + Loop | `godot --headless --path . res://_t/<Name>.tscn` |
 | `Acc.tscn` | Frettchen mit allen Accessoires als Nahaufnahme (vorn/hinten, Pose frei) | unter xvfb: `... res://_t/Acc.tscn -- bild.png Idle 35` |

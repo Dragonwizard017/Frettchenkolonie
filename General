@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v15.9)
+# FrettchenKolonie – Technische Dokumentation (Stand: v16.0)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -148,6 +148,34 @@ sind aber gültiges GDScript (von Godot selbst korrekt geparst):
   Vorbild: `BuildMenu._menu_signature()` (nur bei Änderung neu bauen) und `HUD._update_resources()` (Knoten behalten, Werte setzen).
   `GameState.build_menu_update_requested` feuert sehr oft (u. a. bei jedem `build()`/`build_free()`).
 - Tooltip-Regel: Hover-Panels, die an Menü-Einträge gebunden sind, müssen einen Menü-Neuaufbau überleben (`_tip_rebind`).
+
+## Kolonien (seit v16.0) - Logistik-Update Phase 0+1
+Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
+- `ColonySys` (`systems/ColonySystem.gd`): `colonies` (id -> name, color, hall_x/y,
+  radius), `active_id` (die Kolonie, die der Spieler ansieht und fuer die er baut),
+  `colony_of_tile(tx,ty)` (naechstes Rathaus im Radius, sonst -1), `can_found_at()`,
+  `register_colony()`, `set_active()`. Konstanten: Radius 16, Mindestabstand 20,
+  mind. 5 Frettchen, 3 Siedler.
+- **Pool-Kontext (WICHTIG fuer neuen Code):** `ResourceSys.resources/water/...` sind
+  immer der Pool der Kolonie `ResourceSys.current_colony`. Jede Schleife, die
+  Gebaeude/Frettchen EINER Kolonie simuliert, ruft vorher `ResourceSys.use_colony(cid)`
+  und stellt am Ende `use_colony(ColonySys.active_id)` wieder her. Code, der ueber
+  `BuildingSys.buildings` / `PopMgr.ferrets` sucht, MUSS `colony_id` filtern
+  (Beispiele: `FerretEntity._find_nearest_storage_building`, `PopMgr._assign_work`).
+  Neue Zugriffe auf `PopMgr.get_count()`/`get_total_beds()` fuer die Anzeige: mit
+  `ColonySys.active_id` aufrufen (ohne Argument = alle Kolonien).
+- `colony_id` steckt in Gebaeuden, Frettchen, Bezirken (`DistrictSys.district_colony()`),
+  Expeditionen und im Save (v7). `DistrictSys.are_linked()` ist ueber Kolonien hinweg
+  immer false. Fehlt `colony_id` (alter Save), gilt 0.
+- Rathaus-Platzierung laeuft NICHT ueber `BuildingSys.build`, sondern
+  `GameController._found_colony()`; Gebiets-Check in `_place_building()`.
+- Migration alter Saves: `GameController.migrate_colonies_after_load()` (von
+  `SaveSystem._lg_restore` aufgerufen).
+- Test: `tools/Colony.tscn` (Gruendung, Pools, Gebiet, Duerre, Save/Load, Migration),
+  `tools/ColShot.tscn` (Screenshots Panel/Gebietsring; Intro per `_intro.skip()` ueberspringen).
+- Roadmap (Plan im Chat besprochen): Phase 2 Gleise/Bahnhof/Depot/Zuege, Phase 3 Mitfahren
+  in First Person, Phase 4 Epoche 5 + Grosskarte mit Aufdeckung + Erkundungsgebaeude,
+  Phase 5 Nachbarkolonien (Ruf, Kontrakte, Annexion), Phase 6 Feinschliff.
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),
