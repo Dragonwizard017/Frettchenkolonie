@@ -542,3 +542,10 @@ Logistik-Update, Phase 0 + 1 (Fundament fuer Zuege, Erkundung, Nachbarkolonien).
   Erkundung, Nachbarkolonien) ist noch NICHT umgesetzt.
 - `project.godot`-Version 15.13 -> 16.0, Autoload `ColonySys` ergaenzt.
 
+## v15.3 (ZIP-Fix) – 04. Okt 2026
+
+### 🔧 Behoben
+- ✅ **Godot-Import schlug fehl** ("Dateien liessen sich nicht aus dem Paket
+  extrahieren"): Die v15.2-ZIP war mit Python-zipfile ohne explizite
+  Ordner-Einträge gepackt, Godots Entpacker legt die Unterordner dann nicht
+  an. Neu gepackt mit Ordner-Einträgen (Inhalt identisch zu v15.2).
