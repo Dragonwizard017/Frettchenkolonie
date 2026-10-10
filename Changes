@@ -1,5 +1,25 @@
 # FrettchenKolonie – Changelog
 
+## v16.1 (Eigene 3D-Gebäudemodelle für alle 55 Bautypen) – 10. Okt 2026
+
+### Modelle
+- Jedes der 55 Gebäude hat jetzt ein eigenes, handgebautes Low-Poly-Modell (Blender, einheitlicher Block-Stil) statt des
+  generischen Kisten-Modells. `rendering/WorldRenderer3D.gd` → `BUILDING_MODEL_OVERRIDES`: 55 Einträge (Bautyp → GLB,
+  Rohhöhe aus Bounding-Box, Bodenversatz).
+- Skalierung weiterhin `(Zielhöhe / Rohhöhe) × 1.15`. Alle neuen Modelle stehen mit der Basis auf y=0 (bottom_off=0);
+  WELL/STORAGE/WATER_TOWER/STATUE (v12.8/v15.2) haben ihren Ursprung in der Mitte → eigener bottom_off.
+- Neue `BUILDING_VISUALS`-Einträge für DISTRICT_GATE, RESEARCH_HUT, NURSERY, WORKSHOP_ADV, QUARRY_ADV, DAM_ADV,
+  GARDEN_ADV, HOUSE_ADV, CONSTRUCTION_YARD_1_ADV, STORAGE_ADV (Vorher: Fallback-Kiste/Höhe 2.0) + passende Emojis im Baumenü.
+- TOWN_HALL (Rathaus, v16.0) behält das generische building.glb (noch kein eigenes Modell).
+
+### assets
+- 51 neue GLBs in `assets/` (zu den bestehenden 8), Namenskonvention `assets/<id>.glb`.
+
+### Technisch
+- gdparse-validiert; Farb-Quelle bleibt `BUILDING_VISUALS`; Modelle werden zur Laufzeit per `_model_center_xz()` aufs Kachelzentrum zentriert.
+
+---
+
 ## v15.8 (Tooltip-Fix, UI-Sounds, Ladebalken mit laufendem Frettchen, Performance) – 07. Okt 2026
 
 ### 1) Tooltips verschwinden nicht mehr nach kurzer Zeit
