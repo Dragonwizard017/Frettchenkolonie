@@ -116,6 +116,19 @@ sind aber gültiges GDScript (von Godot selbst korrekt geparst):
 - Beim Importieren entstehen Extra-Dateien in `assets/` (`*_atlas.png`, `*_texture*.jpg`): Import-Artefakte,
   NICHT in die ZIP packen.
 
+## Gebäude-Arbeitsanimationen (seit v16.3)
+- Quelle: Blender-Projekt FrettchenModell, Ordner `glb_alle` (52 Dateien). Fast jedes Modell enthält einen
+  `<ID>_Work`-Clip (Name = Gebäude-ID + "_Work", z. B. `SAWMILL_Work`); nur `deco_stones.glb` hat keinen.
+  STATION/DEPOT haben keine Modelle (generisches building.glb).
+- Renderer: `_start_building_work_anim()` (aus `_spawn_building()`) setzt den Clip auf LOOP_LINEAR und merkt
+  Player+Clip als Node-Meta; `refresh_building_anims(buildings)` spielt/pausiert je `is_active` (gedrosselt aus
+  `GameController._process()`, alle 30 Frames). Inaktiv = `stop()` (Reset auf Bind-Pose).
+- Vermessung ohne Engine möglich: glTF-PARSER (JSON-Chunk + Node-Transforms auf POSITION-min/max) liefert
+  Rohhöhe + Bodenversatz; alle glb_alle-Modelle stehen auf y=0 (bottom_off=0). TOWN_HALL: raw_h 3.850.
+- Push-Hinweis (Windows-Sandbox, v16.3): die Git-Blobs-API wies das ~62-MB-ZIP als "too large" (422) ab –
+  funktioniert hat: flacher Klon (dulwich, depth=1), ZIP tauschen, committen, pushen. Falls `git` fehlt:
+  `pip install dulwich`.
+
 ## Frettchen-Animation (seit v15.6)
 - Clip-Auswahl zentral in `rendering/FerretAnimDirector.gd` (Priorität: Schlafen > Reaktion > Arbeit > Bewegung > Idle).
   Neuer Zustand/Clip = dort ergänzen; `is_one_shot()` listet Clips, die nicht loopen dürfen.

@@ -1,5 +1,25 @@
 # FrettchenKolonie – Changelog
 
+## v16.3 (Neue Gebaeudemodelle + Arbeits-Animationen) - 11. Okt 2026
+- **52 Gebaeudemodelle** aus dem Blender-Projekt FrettchenModell (`glb_alle`, Stand 11.10.2026):
+  51x aktualisiert + **Rathaus (TOWN_HALL) erstmals mit eigenem Modell** (vorher generisches
+  `building.glb`). Alle stehen mit der Basis auf y=0 (bottom_off=0). Neue Rohhoehen vermessen
+  (glTF-Bounds inkl. Node-Transforms): RESEARCH_HUT 3.478 -> 3.562 (Planetarium-Umbau),
+  WATER_PUMP 1.840 -> 1.790 (Maschinen-Umbau), TOWN_HALL 3.850 (neu in `BUILDING_MODEL_OVERRIDES`).
+- **Arbeits-Animationen**: 51 der 52 Modelle enthalten einen eingebetteten `<ID>_Work`-Clip
+  (z. B. Saegeblatt, Wasserrad, Rauch); nur DECO_STONES hat keinen. `WorldRenderer3D`
+  (`_start_building_work_anim`, neu `refresh_building_anims`) loopt den Clip und spielt ihn nur,
+  solange das Gebaeude arbeitet (`BuildingEntity.is_active`: Arbeiter zugewiesen + Tag;
+  Deko/Lager/Damm/Grab immer). Aufruf gedrosselt aus `GameController._process()` (alle
+  30 Frames, zusammen mit `refresh_storage_labels()`). Baustellen zeigen weiter die Box.
+- `project.godot`-Version 16.2 -> 16.3. Alle geaenderten `.gd` mit gdtoolkit-Parser geprueft (ohne Befund).
+- **Bekannt/offen**: STATION/DEPOT weiter mit generischem Modell (kein Modell in `glb_alle`);
+  viele Work-Clips noch nicht im laufenden Spiel gesehen (nur Dateiebene + Parse-Check, kein
+  Godot-Engine-Test in dieser Sitzung).
+- **Technisch**: GitHub-Blobs-API nahm das 61,7-MB-ZIP nicht an (422 "too large to process",
+  JSON-Body ~82 MB) – gepusht per flachem Lokal-Klon (depth 1) + Push mit Token statt
+  in einem Data-API-Commit. Alte ZIP v16.2 entfernt (v10.6 bleibt Referenz).
+
 ## v16.2 (Schiene: Gleise, Bahnhof, Depot, Linien, Gueterzuege) - 11. Okt 2026
 Logistik-Update, Phase 2. Zuege verbinden die Kolonien (v16.0).
 - **Neues Autoload `RailSys`** (`systems/RailSystem.gd`) + `TrainEntity.gd`: Gleisnetz auf
