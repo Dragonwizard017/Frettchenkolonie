@@ -12,6 +12,8 @@ ausführen (nach neuen `class_name`-Skripten Pflicht!), dann:
 | `Exp6.tscn` | Accessoire-Editor: alle Achievements freischalten, ▶/◀ klicken, Ausrüstung prüfen | `godot --headless --path . res://_t/Exp6.tscn` |
 | `Colony.tscn` | Kolonie-System (v16.0): gruenden, Gebiet, getrennte Pools, Duerre, UI, Speichern/Laden, Alt-Save-Migration. Ende: `FERTIG - 0 Fehler` | `godot --headless --path . res://_t/Colony.tscn` |
 | `ColShot.tscn` | Screenshots Kolonien-Panel / Gebietsring | unter xvfb: `... res://_t/ColShot.tscn -- panel|ghost|far /pfad/bild.png` |
+| `Rail.tscn` | Schiene (v16.2): Gleisregeln, Pfadsuche, Fracht zwischen 2 Kolonien, Unterbrechung/Reparatur, Save/Load, Darstellung, UI, Alt-Save. Ende: `FERTIG - 0 Fehler`. Mit `-- /pfad/praefix` unter xvfb: Screenshots (Route, Zug, Linien-Fenster) | `godot --headless --path . res://_t/Rail.tscn` |
+| `ModelGrid.tscn` | alle Gebaeude mit eigenem Modell auf Kacheln im Raster rendern (Modell-Sichtpruefung) | unter xvfb: `... res://_t/ModelGrid.tscn -- /pfad/bild.png <zoom> <zeile0> <zeilen> <abstand>` |
 | `lambda_scan.py` | Findet Lambdas, die lokale Variablen ändern (siehe Lambda-Falle) | im Projektordner: `python3 lambda_scan.py` |
 | `ModelCheck.tscn` / `BldCheck.tscn` / `AnimCheck.tscn` | Neue GLBs prüfen: Maße/Mitte/Unterkante, Gebäudeversatz in der laufenden Kolonie, Animationen + Loop | `godot --headless --path . res://_t/<Name>.tscn` |
 | `Acc.tscn` | Frettchen mit allen Accessoires als Nahaufnahme (vorn/hinten, Pose frei) | unter xvfb: `... res://_t/Acc.tscn -- bild.png Idle 35` |

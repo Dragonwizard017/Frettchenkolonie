@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v16.1)
+# FrettchenKolonie – Technische Dokumentation (Stand: v16.2)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -173,9 +173,26 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   `SaveSystem._lg_restore` aufgerufen).
 - Test: `tools/Colony.tscn` (Gruendung, Pools, Gebiet, Duerre, Save/Load, Migration),
   `tools/ColShot.tscn` (Screenshots Panel/Gebietsring; Intro per `_intro.skip()` ueberspringen).
-- Roadmap (Plan im Chat besprochen): Phase 2 Gleise/Bahnhof/Depot/Zuege, Phase 3 Mitfahren
+- Roadmap (Plan im Chat besprochen; Phase 2 = Schiene ist seit v16.2 umgesetzt): Phase 3 Mitfahren
   in First Person, Phase 4 Epoche 5 + Grosskarte mit Aufdeckung + Erkundungsgebaeude,
   Phase 5 Nachbarkolonien (Ruf, Kontrakte, Annexion), Phase 6 Feinschliff.
+
+## Schiene (seit v16.2) - Logistik-Update Phase 2
+- `RailSys` (`systems/RailSystem.gd`, Autoload, KEIN class_name - Konstanten/Funktionen immer
+  ueber `RailSys.` ansprechen): `rails` (Schluessel = `RailSys.key(tx,ty)`), `lines`, `trains`
+  (`TrainEntity`). `RailSys.world` setzt `GameController._setup_renderer_steps()`.
+- Knoten des Netzes = Gleise + fertige Gebaeude btype `STATION`/`DEPOT`. Zwei 4er-Nachbarn
+  sind verbunden, wenn der Hoehenunterschied <= `MAX_SLOPE` (0.7) ist. Pfadsuche: `find_path()`.
+- Linien: `stops` (Bahnhofs-Schluessel) + `shipments` ({res, from, to} = Indizes in `stops`).
+  `RailSys._exchange()` entlaedt/laedt gegen den Pool der Kolonie des Bahnhofs (Pool-Kontext!).
+- Darstellung: `RailRenderer` (Kind des GameControllers). Gleis-Mesh je Kachel per SurfaceTool,
+  nur `RailSys.dirty`-Kacheln werden neu gebaut; `terrain_changed()` (aus `refresh_terrain()`)
+  setzt alles neu. Hoehenverlauf `rail_y_at()` gilt fuer Gleis UND Zug.
+- Gleis-Werkzeug = Platzierungsmodus `"RAIL"` (sub `PLACE`/`REMOVE`), analog `"PATH"`;
+  `GameController._place_rail()`. Gebaeude auf Gleisen blockiert `BuildingSys.build()` (ausser
+  STATION/DEPOT, die das Gleis ersetzen).
+- Save v8: Block `rail`. Test: `tools/Rail.tscn` (+ Screenshot-Modus `-- /pfad/praefix`).
+- Offen: Zug-Kollisionen/Signale, Bruecken/Tunnel, eigene Modelle fuer Bahnhof/Depot.
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

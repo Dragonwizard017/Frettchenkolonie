@@ -1,5 +1,47 @@
 # FrettchenKolonie – Changelog
 
+## v16.2 (Schiene: Gleise, Bahnhof, Depot, Linien, Gueterzuege) - 11. Okt 2026
+Logistik-Update, Phase 2. Zuege verbinden die Kolonien (v16.0).
+- **Neues Autoload `RailSys`** (`systems/RailSystem.gd`) + `TrainEntity.gd`: Gleisnetz auf
+  dem Kachelraster, Pfadsuche per AStar2D, Linien, Zuege. Neue Darstellung
+  `rendering/RailRenderer.gd` (haengt unter dem GameController, NICHT unter dem Renderer).
+- **Gleis-Werkzeug** (Baumenue "Gleise", Drag-Malen wie bei Wegen): kostet je Kachel
+  1 Brett + 1 Eisen aus dem Pool der aktiven Kolonie. Regeln: nicht auf Wasser (Bruecken
+  spaeter), nicht im Gebirge (Tunnel spaeter), nicht auf Gebaeuden/Feldern/Vorkommen,
+  max. 0.7 Hoehenunterschied zum Nachbargleis ("Zu steil!": Erde aufschuetten/sprengen).
+  Gleise duerfen durch Niemandsland fuehren (Gebiets-Regel gilt nur fuer Gebaeude).
+- **Bahnhof (STATION) + Depot (DEPOT)**, Epoche 4: sind selbst Knoten des Netzes und
+  ersetzen ein Gleis auf ihrer Kachel. Bahnhoefe tauschen Waren direkt mit dem
+  Ressourcen-Pool der Kolonie, in der sie stehen.
+- **Linien** (Knopf 🚂, `ui/LinePanel.gd`): Haltestellen + Frachten "Ware von Halt A nach
+  Halt B". Zug faehrt die Halte reihum an: erst entladen (was dort hingehoert), dann
+  laden (was dort abfaehrt). Anzeige: fahrbereit/Problem, Geliefert-Zaehler, Zuege je
+  Linie, Zug kaufen (8 Eisenstaebe, 8 Werkzeuge, 15 Bretter aus der Depot-Kolonie).
+  Ist das Ziel-Lager voll, bleibt die Fracht an Bord (Meldung einmal pro Tag).
+- Zuege: Lok + 2 Waggons (30 Einheiten je Waggon), 3 Kacheln/s, folgen der Spur; Rampen
+  zwischen Hoehenstufen. Gleis entfernt -> Zug wartet/plant neu bzw. wird ins Depot gestellt.
+  Noch KEINE Zug-Zug-Kollisionen/Signale.
+- **Save v8** (`rail`: Gleise, Linien, Zuege, Bahnhofsnamen). Zuege planen nach dem Laden
+  ihre Strecke neu; Saves ohne `rail`-Block laden mit leerem Netz.
+- Kleinere Fixes: `focus_colony()` zielt auf die echte Gelaendehoehe (Rathaus lag bei
+  hohem Gelaende weit ueber der Bildmitte); Feld-Duerrewasser kommt aus dem Tank der
+  Kolonie des Feldes (v16.0-Nachtrag); `_find_free_tile_ring()` ueberspringt Gleiskacheln.
+- **Pruefung der v16.1-Modelle**: Tabelle `BUILDING_MODEL_OVERRIDES` stimmt mit BuildingData
+  und den echten GLB-Massen (Hoehe, Bodenversatz) ueberein, alle Dateien vorhanden, in der
+  Engine gerendert (Texturen, Ausrichtung, Boden ok). Einige Modelle ueberragen die
+  Kachel (Kohle-/Eisenmine ca. 2.7x3.7, Expeditionslager 3.7x3.1), im Raster aber ohne
+  stoerende Ueberlappung. Rathaus/Bahnhof/Depot nutzen noch das generische Modell.
+  Das v16.1-ZIP hatte keinen `FK_3D/`-Wrapper - dieses ZIP hat ihn wieder (siehe Skill).
+- **Getestet (Godot 4.7.2 headless)**: neues `tools/Rail.tscn` (Regeln, Pfadsuche,
+  Fracht zwischen zwei Kolonien, Unterbrechung+Reparatur, Speichern/Laden, Darstellung,
+  UI, Alt-Save): 0 Fehler; `Colony.tscn` 0 Fehler; `TestRunner` ohne SCRIPT ERROR;
+  Screenshots (Gleise, Zug, Linien-Fenster) geprueft. gdparse nur die 6 bekannten
+  Fehlalarme, `lambda_scan.py` 0 Treffer.
+- **Bekannt/offen**: keine Zug-Kollisionen, keine Bruecken/Tunnel, Bahnhof/Depot ohne
+  eigenes 3D-Modell, Gleis-Erstattung beim Entfernen gibt es nicht, Touch/Bediengefuehl
+  nicht testbar. Naechste Phase: Mitfahren in First Person.
+- `project.godot`: Version 16.2, Autoload `RailSys`.
+
 ## v16.1 (Eigene 3D-Gebäudemodelle für alle 55 Bautypen) – 10. Okt 2026
 
 ### Modelle
