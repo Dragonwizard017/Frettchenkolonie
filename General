@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v16.2)
+# FrettchenKolonie – Technische Dokumentation (Stand: v16.4)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -125,6 +125,9 @@ sind aber gültiges GDScript (von Godot selbst korrekt geparst):
   `GameController._process()`, alle 30 Frames). Inaktiv = `stop()` (Reset auf Bind-Pose).
 - Vermessung ohne Engine möglich: glTF-PARSER (JSON-Chunk + Node-Transforms auf POSITION-min/max) liefert
   Rohhöhe + Bodenversatz; alle glb_alle-Modelle stehen auf y=0 (bottom_off=0). TOWN_HALL: raw_h 3.850.
+- **Tempo/Pause (v16.4):** `_update_building_work_anim()` setzt `ap.speed_scale = GameState.game_speed`;
+  Tempowechsel meldet `GameController._process()` sofort (`_anim_speed_seen`). Test: `tools/Anim.tscn`.
+- Ohne Clip (Stand v16.4): DECO_STONES, STATION, DEPOT und die 4 Altmodelle STATUE, STORAGE, WATER_TOWER, WELL.
 - Push-Hinweis (Windows-Sandbox, v16.3): die Git-Blobs-API wies das ~62-MB-ZIP als "too large" (422) ab –
   funktioniert hat: flacher Klon (dulwich, depth=1), ZIP tauschen, committen, pushen. Falls `git` fehlt:
   `pip install dulwich`.
@@ -186,7 +189,7 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   `SaveSystem._lg_restore` aufgerufen).
 - Test: `tools/Colony.tscn` (Gruendung, Pools, Gebiet, Duerre, Save/Load, Migration),
   `tools/ColShot.tscn` (Screenshots Panel/Gebietsring; Intro per `_intro.skip()` ueberspringen).
-- Roadmap (Plan im Chat besprochen; Phase 2 = Schiene ist seit v16.2 umgesetzt): Phase 3 Mitfahren
+- Roadmap (Plan im Chat besprochen; Phase 2 = Schiene ist seit v16.2 umgesetzt): Phase 3 Mitfahren (seit v16.4 umgesetzt)
   in First Person, Phase 4 Epoche 5 + Grosskarte mit Aufdeckung + Erkundungsgebaeude,
   Phase 5 Nachbarkolonien (Ruf, Kontrakte, Annexion), Phase 6 Feinschliff.
 
@@ -206,6 +209,20 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   STATION/DEPOT, die das Gleis ersetzen).
 - Save v8: Block `rail`. Test: `tools/Rail.tscn` (+ Screenshot-Modus `-- /pfad/praefix`).
 - Offen: Zug-Kollisionen/Signale, Bruecken/Tunnel, eigene Modelle fuer Bahnhof/Depot.
+
+## Mitfahren im Zug (seit v16.4) - Logistik-Update Phase 3
+- Einsteigen nur, wenn ein Zug HAELT (`TrainEntity.state == "DWELL"`, Linie gesetzt) und der Spieler innerhalb
+  `RIDE_BOARD_RANGE` (3.2) von Lok ODER Waggon steht: `GameController._find_boardable_train()`; Ziel-Art
+  `"TRAIN"` im FP-Interaktionssystem (schlaegt FERRET/Ressource), waehrend der Fahrt `"TRAIN_EXIT"` (nur am Halt).
+- `RailSys.riding` (TrainEntity oder null) ist die EINE Wahrheit; `PlayerController` haengt sich per
+  `attach_to(loco_node, RIDE_SEAT)` an den Lok-Knoten des `RailRenderer` und wird in `_process()` (priority 100!)
+  nachgefuehrt - NICHT per Physik. Blickrichtung = Lok-Yaw - 90 Grad (Lok-Vorwaerts ist +X), Yaw geglaettet.
+  `rotation.y` des Lok-Knotens benutzen, NIE `global_rotation.y` (Euler-Flip ueber 90 Grad).
+- Aussteigen: `RailSys.exit_tile()` (freie Nachbarkachel, nie Gleis/Gebaeude/Wasser), erzwungen bei Zug weg/Linie
+  entzogen/Iso-Ansicht (`_toggle_fp_mode`). Neue Welt/Laden: `RailSys.init()` setzt `riding = null`, der Spieler laesst
+  den Anker selbst los.
+- Test: `tools/Ride.tscn` (+ Screenshot-Modus `-- /pfad/praefix`: Fuehrerhaus-Ansichten).
+- Offen: Lokfuehrer-Modus, Zuggeraeusche, Mitfahren im Waggon-Innenraum.
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

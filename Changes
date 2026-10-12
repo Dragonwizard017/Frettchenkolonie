@@ -1,5 +1,40 @@
 # FrettchenKolonie – Changelog
 
+## v16.4 (Mitfahren im Zug + Pruefung der Arbeits-Animationen) - 11. Okt 2026
+Logistik-Update, Phase 3. Plus Engine-Pruefung der v16.3-Animationen (die v16.3-Session konnte nur Dateiebene).
+- **Im Zug mitfahren (Frettchenmodus)**: haelt ein Zug am Bahnhof (Zustand DWELL) und man steht
+  nah an Lok oder Waggon, erscheint "[E] Einsteigen" (hat Vorrang vor Streicheln/Ressourcen).
+  Man sitzt dann auf dem Fuehrerhaus der Lok, die Kamera folgt der Fahrt (Richtung geglaettet,
+  damit scharfe Gleiskurven nicht ruckeln), Maus = freies Umsehen (auch nach hinten zu den
+  Waggons). Waehrend der Fahrt zeigt der Hinweis "Fahrt nach <Bahnhof>", am Halt
+  "[E] Aussteigen" (Spieler wird auf die freie Kachel neben dem Zug gesetzt).
+  Automatisches Absteigen: Zug abgezogen/Linie entzogen/Zug verkauft, oder Wechsel in die
+  Iso-Ansicht (ESC). Mitfahrer werden nicht per Physik bewegt und zaehlen nicht fuer die
+  Lauf-Statistik. Neuer Erfolg "Fahrgast" (erste Zugfahrt, kein Accessoire).
+  Code: `PlayerController.attach_to()/detach()/is_riding()` (process_priority 100, damit die Kamera
+  nach dem RailRenderer laeuft), `GameController._board_train()/_exit_train()/_update_ride_prompt()`,
+  `RailRenderer.get_loco_node()/train_part_positions()`, `RailSys.riding` + `exit_tile()`.
+- **Fix (aus der Animations-Pruefung): Arbeits-Animationen folgten nicht dem Spieltempo.**
+  Bei Pause (game_speed 0) liefen Saegen/Raeder weiter, 2x/3x aenderte nichts. Jetzt setzt
+  `_update_building_work_anim()` `speed_scale = GameState.game_speed`, und
+  `GameController._process()` meldet Tempowechsel sofort (nicht erst nach <=30 Frames).
+- **Pruefung der v16.3-Animationen (Godot 4.7.2 headless, neues `tools/Anim.tscn`)**: 51 Gebaeude
+  mit Work-Clip, alle loopen, alle Track-Pfade loesen auf, alle Clips bewegen wirklich etwas,
+  Clips spielen nur bei `is_active` (auch nachts), Rathaus mit eigenem Modell + Clip, Saegewerk in
+  Kolonie 1 animiert, Verkaufen/Speichern/Laden ohne Fehler, `refresh_building_anims` 0.23 ms bei 64
+  Gebaeuden. Differenzbild zweier Screenshots zeigt Bewegung in Tueren, Raedern, Schmieden, Saegen.
+  Ohne Clip (erwartet): DECO_STONES, STATION, DEPOT sowie STATUE, STORAGE, WATER_TOWER, WELL - diese
+  vier haben noch ihre ALTEN Modelle (nicht in `glb_alle` aktualisiert), erkennbar am Bodenversatz in
+  `BUILDING_MODEL_OVERRIDES`.
+- **Getestet**: neues `tools/Ride.tscn` (einsteigen weit/nah, mitfahren, Blick folgt der Fahrtrichtung
+  auf geraden Stuecken <0.02 rad, Umsehen, aussteigen, Zug abgezogen, Iso-Ansicht, Speichern/Laden):
+  0 Fehler; `Rail`, `Colony`, `Anim` 0 Fehler; `TestRunner` ohne SCRIPT ERROR; Screenshots aus der
+  Fuehrerhaus-Perspektive geprueft. gdparse nur die 6 bekannten Fehlalarme, `lambda_scan.py` 0 Treffer.
+- **Bekannt/offen**: Lokfuehrer-Modus (selbst Gas/Bremse) und Zuggeraeusche fehlen noch; Mitfahren nur auf
+  dem Lokdach (kein Waggon-Innenraum); Touch-Bedienung/Bediengefuehl nicht in der Sandbox testbar.
+  Naechste Phase: Epoche 5 + Grosskarte mit Aufdeckung + Erkundungsgebaeude.
+- `project.godot`: Version 16.4.
+
 ## v16.3 (Neue Gebaeudemodelle + Arbeits-Animationen) - 11. Okt 2026
 - **52 Gebaeudemodelle** aus dem Blender-Projekt FrettchenModell (`glb_alle`, Stand 11.10.2026):
   51x aktualisiert + **Rathaus (TOWN_HALL) erstmals mit eigenem Modell** (vorher generisches

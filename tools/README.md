@@ -14,6 +14,9 @@ ausführen (nach neuen `class_name`-Skripten Pflicht!), dann:
 | `ColShot.tscn` | Screenshots Kolonien-Panel / Gebietsring | unter xvfb: `... res://_t/ColShot.tscn -- panel|ghost|far /pfad/bild.png` |
 | `Rail.tscn` | Schiene (v16.2): Gleisregeln, Pfadsuche, Fracht zwischen 2 Kolonien, Unterbrechung/Reparatur, Save/Load, Darstellung, UI, Alt-Save. Ende: `FERTIG - 0 Fehler`. Mit `-- /pfad/praefix` unter xvfb: Screenshots (Route, Zug, Linien-Fenster) | `godot --headless --path . res://_t/Rail.tscn` |
 | `ModelGrid.tscn` | alle Gebaeude mit eigenem Modell auf Kacheln im Raster rendern (Modell-Sichtpruefung) | unter xvfb: `... res://_t/ModelGrid.tscn -- /pfad/bild.png <zoom> <zeile0> <zeilen> <abstand>` |
+| `Anim.tscn` | Gebaeude-Arbeitsanimationen (v16.3/16.4): Clips, Loop, Track-Pfade, spielt nur bei Arbeit, Pause/Tempo, Nacht, Kolonie, Verkaufen, Save/Load, Performance. Ende: `FERTIG - 0 Fehler` | `godot --headless --path . res://_t/Anim.tscn` |
+| `AnimShot.tscn` | zwei Screenshots laufender Animationen nacheinander (+ Zahl verschiedener Pixel) | unter xvfb: `... res://_t/AnimShot.tscn -- /pfad/praefix <zeile0> <zeilen> <zoom>` |
+| `Ride.tscn` | Mitfahren im Zug (v16.4): einsteigen, mitfahren, Blick, aussteigen, Zug weg, Iso-Ansicht, Save/Load. Mit `-- /pfad/praefix` unter xvfb: Fuehrerhaus-Screenshots | `godot --headless --path . res://_t/Ride.tscn` |
 | `lambda_scan.py` | Findet Lambdas, die lokale Variablen ändern (siehe Lambda-Falle) | im Projektordner: `python3 lambda_scan.py` |
 | `ModelCheck.tscn` / `BldCheck.tscn` / `AnimCheck.tscn` | Neue GLBs prüfen: Maße/Mitte/Unterkante, Gebäudeversatz in der laufenden Kolonie, Animationen + Loop | `godot --headless --path . res://_t/<Name>.tscn` |
 | `Acc.tscn` | Frettchen mit allen Accessoires als Nahaufnahme (vorn/hinten, Pose frei) | unter xvfb: `... res://_t/Acc.tscn -- bild.png Idle 35` |
