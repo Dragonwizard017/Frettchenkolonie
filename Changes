@@ -1,5 +1,45 @@
 # FrettchenKolonie – Changelog
 
+## v16.5 (Tutorial fuer alles + Dev-Fenster, plus Gleis-Fix) - 12. Okt 2026
+- **WICHTIGER FIX (seit v16.2): Gleise gingen im echten Spiel nicht.** `RailSys.world = world` stand am
+  Anfang von `_setup_renderer_steps()`; die Funktion laeuft aber beim AUFBAU der Schrittliste, also bevor
+  die Welt erzeugt/geladen ist. RailSys zeigte dadurch auf ein leeres bzw. altes Welt-Array ("Ausserhalb der
+  Karte" fuer jede Kachel, Bahnhoefe wurden nie als Halt erkannt). Die frueheren Engine-Tests haben es
+  uebersehen, weil `bootstrap_test_colony()` die Welt indirekt nachsetzte. Jetzt wird die Referenz im ERSTEN
+  Schritt (Closure) gesetzt. Regressionstest: `Rail.tscn`/`DevTut.tscn` pruefen `RailSys.world` direkt nach
+  `start_new_game`.
+- **Tutorial war tot**: der Start in `Main._on_start_game()` war auskommentiert, es gab keinen Weg ins
+  Tutorial. Jetzt: Grundlagen starten beim ALLERERSTEN Spielstart automatisch (Fortschritt in
+  `user://tutorial.cfg`, Ueberspringen zaehlt als erledigt); alle Rundgaenge jederzeit im Pause-Menue
+  (Basis / Systeme / Logistik) und im Dev-Fenster.
+- **Drei Rundgaenge** (`ui/TutorialManager.gd`, `class_name TutorialManager`): *Grundlagen* (20 Schritte,
+  Tippfehler "Nahrungsuelle" weg, Hinweis auf die anderen Rundgaenge), *Systeme* (Bezirke, Wasser, Duerre,
+  Jahreszeiten, Felder, Expeditionen, lebendige Gebaeude: 9 Schritte), *Kolonien & Schiene* (Rathaus,
+  Kolonien-Fenster, Gruendung, Gleise, Bahnhof/Depot, Linien-Fenster, Linie einrichten, Mitfahren, Tipps:
+  13 Schritte). Neues `wait_for: "panel:<Name>"` (wartet, bis das Fenster geoeffnet wird) fuer Kolonien- und
+  Linien-Fenster; wartende Schritte haben immer "Schritt ueberspringen".
+- **Tutorial-Fix**: das Vollbild-Overlay hatte `mouse_filter = STOP` und schluckte ALLE Klicks (Bau-Menue
+  und Welt waren im Tutorial nicht bedienbar, "Dein erstes Gebaeude" unloesbar; das Spiel nutzt
+  `gui_get_hovered_control()` fuer "Maus ueber UI"). Jetzt IGNORE, nur die Box faengt Klicks. Die Box liegt
+  zwischen Bau-Menue und rechtem Rand (bei Dev-Modus bleibt Platz fuer das Dev-Fenster).
+- **Dev-Fenster neu** (`ui/DevToolsPanel.gd`): dockt am RECHTEN Rand UNTER der HUD-Spalte an (folgt deren
+  Hoehe), einklappbar, scrollt innen, 5 Reiter - Basis (alles gratis bauen, Lager-Limit aus, Ressourcen,
+  Wissen, Epochen/Tech-Baum, Frettchen, Baustellen sofort fertig, Achievements), Welt (Tageszeit,
+  Jahreszeit, Duerre, Tempo bis 12x), Kolonien (gruenden/wechseln), Schiene (TEST-LINIE in 1 Klick: 2. Kolonie,
+  2 Bahnhoefe, Depot, eingeebnete Strecke, Gleise, Linie, Zug; Zug kaufen/anhalten/hinteleportieren/entfernen),
+  Hilfe (Tutorials, Fortschritt zuruecksetzen). Neue `dev_*()`-Funktionen im GameController,
+  neues `GameState.dev_unlimited_storage` (ResourceSys.add ignoriert das Lager-Limit).
+  Frueher sass das Fenster oben links ueber Bau-Menue/Ressourcenleiste, und "alle Gebaeude" war nie
+  aktivierbar (`dev_all_buildings` wurde nirgends gesetzt).
+- **Getestet (Godot 4.7.2 headless)**: neues `tools/DevTut.tscn` - alle 42 Tutorial-Schritte, Markierungen
+  loesen auf, Warte-Schritte, Klick-Durchlass (mit Gegenprobe), Fortschritt/Autostart, Dev-Fenster ohne
+  Ueberlappung bei 4 Fenstergroessen (inkl. Tutorial-Box, Kolonien-/Linien-Fenster), jede Dev-Aktion einzeln
+  und jeder Knopf; `Rail`, `Colony`, `Anim`, `Ride` 0 Fehler; `TestRunner` ohne SCRIPT ERROR.
+  Screenshots (`tools/DevShot.tscn`) geprueft. gdparse nur die 6 bekannten Fehlalarme, `lambda_scan.py` 0.
+- **Offen**: Touch-Bedienung/Bediengefuehl nicht testbar; Tutorial-Texte fuer Erkundung/Nachbarkolonien folgen
+  mit Phase 4/5.
+- `project.godot`: Version 16.5.
+
 ## v16.4 (Mitfahren im Zug + Pruefung der Arbeits-Animationen) - 11. Okt 2026
 Logistik-Update, Phase 3. Plus Engine-Pruefung der v16.3-Animationen (die v16.3-Session konnte nur Dateiebene).
 - **Im Zug mitfahren (Frettchenmodus)**: haelt ein Zug am Bahnhof (Zustand DWELL) und man steht

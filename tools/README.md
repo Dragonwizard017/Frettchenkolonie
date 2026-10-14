@@ -17,6 +17,8 @@ ausführen (nach neuen `class_name`-Skripten Pflicht!), dann:
 | `Anim.tscn` | Gebaeude-Arbeitsanimationen (v16.3/16.4): Clips, Loop, Track-Pfade, spielt nur bei Arbeit, Pause/Tempo, Nacht, Kolonie, Verkaufen, Save/Load, Performance. Ende: `FERTIG - 0 Fehler` | `godot --headless --path . res://_t/Anim.tscn` |
 | `AnimShot.tscn` | zwei Screenshots laufender Animationen nacheinander (+ Zahl verschiedener Pixel) | unter xvfb: `... res://_t/AnimShot.tscn -- /pfad/praefix <zeile0> <zeilen> <zoom>` |
 | `Ride.tscn` | Mitfahren im Zug (v16.4): einsteigen, mitfahren, Blick, aussteigen, Zug weg, Iso-Ansicht, Save/Load. Mit `-- /pfad/praefix` unter xvfb: Fuehrerhaus-Screenshots | `godot --headless --path . res://_t/Ride.tscn` |
+| `DevTut.tscn` | Tutorial + Dev-Fenster (v16.5): alle Schritte, Markierungen, Warte-Schritte, Klick-Durchlass, Fortschritt, Ueberlappung bei 4 Fenstergroessen, jede Dev-Aktion/jeder Knopf. Ende: `FERTIG - 0 Fehler` | `godot --headless --path . res://_t/DevTut.tscn` |
+| `DevShot.tscn` | Screenshots Dev-Fenster (Reiter), Tutorial-Markierung, Pause-Menue | unter xvfb: `... res://_t/DevShot.tscn -- /pfad/praefix` |
 | `lambda_scan.py` | Findet Lambdas, die lokale Variablen ändern (siehe Lambda-Falle) | im Projektordner: `python3 lambda_scan.py` |
 | `ModelCheck.tscn` / `BldCheck.tscn` / `AnimCheck.tscn` | Neue GLBs prüfen: Maße/Mitte/Unterkante, Gebäudeversatz in der laufenden Kolonie, Animationen + Loop | `godot --headless --path . res://_t/<Name>.tscn` |
 | `Acc.tscn` | Frettchen mit allen Accessoires als Nahaufnahme (vorn/hinten, Pose frei) | unter xvfb: `... res://_t/Acc.tscn -- bild.png Idle 35` |

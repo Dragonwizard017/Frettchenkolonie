@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v16.4)
+# FrettchenKolonie – Technische Dokumentation (Stand: v16.5)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -223,6 +223,21 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   den Anker selbst los.
 - Test: `tools/Ride.tscn` (+ Screenshot-Modus `-- /pfad/praefix`: Fuehrerhaus-Ansichten).
 - Offen: Lokfuehrer-Modus, Zuggeraeusche, Mitfahren im Waggon-Innenraum.
+
+## Tutorial & Dev-Fenster (seit v16.5)
+- `TutorialManager` (`class_name`, `ui/TutorialManager.gd`): `TRACKS` = basic / systems / logistics, `start(track)`,
+  `maybe_autostart()` (nur wenn "basic" nicht erledigt), Fortschritt `user://tutorial.cfg` (`is_done/mark_done/reset_progress`).
+  Schritt-Schluessel: `title`, `text`, `highlight_path` (relativ zum Tutorial-Knoten, z. B. `../HUD/...`), `wait_for`
+  (`building_placed_at_marker` | `fp_mode_entered` | `panel:<Knotenname>`), `marker`. Das Vollbild-Control MUSS
+  `mouse_filter = IGNORE` bleiben (sonst sind UI/Welt blockiert); nur `_box` faengt Klicks. Neue HUD-Knoepfe/Fenster:
+  Pfad in `HUD_BTNS` benutzen. Beim Hinzufuegen neuer Systeme: Schritte in den passenden Track + `tools/DevTut.tscn` laufen lassen
+  (prueft Markierungen, Warte-Schritte, Klick-Durchlass).
+- Dev-Modus (`DevMode`, Passwort im Pause-Menue) blendet `DevToolsPanel` ein: dockt rechts unter `HUD/RightColumn`, passt sich laufend an.
+  Logik der Aktionen = `GameController.dev_*()`; neue Dev-Aktion = Funktion dort + Knopf in `_build_*()` des Panels.
+  `GameState.dev_all_buildings` (gratis bauen) und `dev_unlimited_storage` (kein Lager-Limit beim Einlagern) sind nur ueber das Panel schaltbar.
+- ACHTUNG Schrittlisten: `new_game_steps()`/`deserialize_world_steps()` rufen `_setup_renderer_steps()` beim AUFBAU der Liste auf -
+  alles, was die FERTIGE Welt braucht (z. B. `RailSys.world`), gehoert in eine Closure der Schritte, nicht in den Funktionskoerper.
+- Tests: `tools/DevTut.tscn` (headless), `tools/DevShot.tscn` (Screenshots unter xvfb).
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

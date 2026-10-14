@@ -53,6 +53,7 @@ func _ready() -> void:
 	for i in 5: await get_tree().process_frame
 	gc = main.get("_game_ctrl")
 	gc.call("start_new_game", "SMALL", "qa-seed", "QA")
+	check(RailSys.world.size() == gc.world.size() and gc.world.size() > 0, "RailSys kennt die Welt direkt nach dem Neustart (%d von %d)" % [RailSys.world.size(), gc.world.size()])
 	await sim(100, 0.1)
 	gc.call("bootstrap_test_colony")
 	await sim(50, 0.1)
