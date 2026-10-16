@@ -147,8 +147,10 @@ func _ready() -> void:
 	await frames(3)
 	check(tut._step == step_before + 1, "Kolonien-Fenster geöffnet -> nächster Schritt")
 	cp.hide()
-	for i in 5: tut.call("_on_next")
-	await frames(2)
+	var gd := 0
+	while tut._waiting_for != "panel:LinePanel" and gd < 20:
+		tut.call("_on_next"); gd += 1
+		await frames(2)
 	check(tut._waiting_for == "panel:LinePanel", "Logistik: wartet auf Linien-Fenster (Schritt %d)" % (tut._step + 1))
 	var lp: Control = ui("LinePanel") as Control
 	step_before = tut._step
@@ -210,7 +212,7 @@ func _ready() -> void:
 	check(float(ResourceSys.resources.get("WOOD", 0.0)) >= wood0 + 499.0, "Holz +500")
 	gc.call("dev_unlock_all_epochs", 99)
 	var ub: Array = TechTreeSys.get_unlocked_buildings()
-	check(TechTreeSys.get_epoch() == 4 and "STATION" in ub and "DEPOT" in ub and "TOWN_HALL" in ub, "alle Epochen: Bahnhof/Depot/Rathaus freigeschaltet")
+	check(TechTreeSys.get_epoch() == 5 and "STATION" in ub and "DEPOT" in ub and "TOWN_HALL" in ub and "OBSERVATORY" in ub, "alle Epochen (bis 5): Bahnhof/Depot/Rathaus/Erkundungsstation freigeschaltet")
 	gc.call("dev_unlock_all_tech")
 	check(TechTreeSys.unlocked.size() == TechTreeSys.NODES.size(), "alle %d Tech-Knoten" % TechTreeSys.NODES.size())
 	var pop0: int = PopMgr.get_count(ColonySys.active_id)

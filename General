@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v16.5)
+# FrettchenKolonie – Technische Dokumentation (Stand: v16.6)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -190,7 +190,7 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
 - Test: `tools/Colony.tscn` (Gruendung, Pools, Gebiet, Duerre, Save/Load, Migration),
   `tools/ColShot.tscn` (Screenshots Panel/Gebietsring; Intro per `_intro.skip()` ueberspringen).
 - Roadmap (Plan im Chat besprochen; Phase 2 = Schiene ist seit v16.2 umgesetzt): Phase 3 Mitfahren (seit v16.4 umgesetzt)
-  in First Person, Phase 4 Epoche 5 + Grosskarte mit Aufdeckung + Erkundungsgebaeude,
+  in First Person, Phase 4 Epoche 5 + Grosskarte mit Aufdeckung + Erkundungsgebaeude (seit v16.6 umgesetzt),
   Phase 5 Nachbarkolonien (Ruf, Kontrakte, Annexion), Phase 6 Feinschliff.
 
 ## Schiene (seit v16.2) - Logistik-Update Phase 2
@@ -238,6 +238,22 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
 - ACHTUNG Schrittlisten: `new_game_steps()`/`deserialize_world_steps()` rufen `_setup_renderer_steps()` beim AUFBAU der Liste auf -
   alles, was die FERTIGE Welt braucht (z. B. `RailSys.world`), gehoert in eine Closure der Schritte, nicht in den Funktionskoerper.
 - Tests: `tools/DevTut.tscn` (headless), `tools/DevShot.tscn` (Screenshots unter xvfb).
+
+## Erkundung / Nebel (seit v16.6) - Logistik-Update Phase 4
+- Nur die Weltgroesse `HUGE` (120x120, "Entdecker") hat Nebel: `ExploreSys.enabled`. Klassische Welten und alte Saves: `enabled == false`,
+  `is_revealed()` ist dann immer true - neuer Code darf sich darauf verlassen und braucht keinen Sonderfall.
+- `ExploreSys` (Autoload `systems/ExploreSystem.gd`): `mask` (255/0!), `reveal_circle(cx, cy, r)`, `reveal_all()`, `fraction()`, `flush()`
+  (gedrosselt vom GameController: Textur -> Shader, danach `renderer.apply_fog()`), `serialize()/deserialize()` (RLE, Save-Block `explore`).
+  Die Nebel-Zustand-Wiederherstellung passiert im Ladeschritt "Welt wird rekonstruiert" VOR dem Renderer-Aufbau.
+- Neue Platzier-/Spielregeln muessen `GameController._fog_blocks(tx, ty)` (oder `ExploreSys.is_revealed`) beachten; Logik, die ueber die
+  Karte sucht (Dev-Tools, KI), nur ueber aufgedecktes Land. Der Terrain-Shader verwirft unaufgedeckte Kacheln; Vegetation/Wasser filtert der Renderer.
+- Erkundungsstation = `OBSERVATORY` (btype `EXPLORER`): `BuildingEntity._explore()`, Radius `collection_radius` (+50% je Level), `explore_radius_now` wird gespeichert.
+- Epoche 5 "Eisenbahnzeit" (`EPOCH_5` in `TechTree.EPOCHS`) schaltet STATION, DEPOT, OBSERVATORY frei (nicht mehr Epoche 4).
+- Weltkarte: `ui/WorldMapPanel.gd` (Knopf `WorldMapBtn`), Klick -> `GameController.focus_tile()`.
+- Performance-Leitplanken (Karten ab 80x80): nichts, das JEDEN Frame ueber ALLE Kacheln laeuft (siehe `tick_resource_nodes` mit Streifen), Wasser-Mesh nur bei
+  Aenderung (`_water_sig`). Messen mit `tools/Perf.tscn` (Zeit je Teilsystem fuer MEDIUM/LARGE/HUGE).
+- Tests: `tools/Fog.tscn` (headless; im Dummy-Renderer gibt es keine globalen Shader-Parameter, der Test prueft sie dann nicht), `tools/FogShot.tscn` (Screenshots unter xvfb).
+- Offen: Nachbarkolonien/Handel/Annexion (Phase 5).
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

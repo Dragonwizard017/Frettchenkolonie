@@ -1,5 +1,44 @@
 # FrettchenKolonie – Changelog
 
+## v16.6 (Erkundung: Entdeckerkarte mit Nebel, Epoche 5, Erkundungsstation, Weltkarte) - 14. Okt 2026
+Logistik-Update, Phase 4. Die Karte waechst mit dem Spielfortschritt.
+- **Entdeckerkarte** (neue Weltgroesse "Entdecker (120x120, Nebel)", `HUGE`): die ganze Welt wird erzeugt, bekannt ist aber nur
+  ein Heimatbereich (Radius 26 um die Kartenmitte, `GameController.START_REVEAL_RADIUS`). Der Rest liegt im Nebel.
+  Klassische Welten (40/60/80) und ALLE alten Saves haben keinen Nebel und aendern sich nicht.
+- **Neues Autoload `ExploreSys`** (`systems/ExploreSystem.gd`): Maske (255 = aufgedeckt - der Shader liest das R8-Byte als
+  0..1, 1 waere unsichtbar!), `reveal_circle()`, `reveal_all()`, `is_revealed()`, RLE-Speichern. Globale Shader-Parameter
+  `explore_enabled/explore_mask/explore_world` werden in `ExploreSys._init()` registriert.
+- **Darstellung**: der Terrain-Shader (`season_terrain.gdshader`) verwirft unaufgedeckte Kacheln (Insel im Dunst), eine
+  Nebelflaeche liegt darunter (`WorldRenderer3D._update_fog_plane()`); `apply_fog()` versteckt Baeume/Buesche/Felsen/Erz im Nebel,
+  Wasser im Nebel wird nicht gezeichnet. Maske wird gedrosselt (0.5 s) uebertragen.
+- **Regeln**: im Nebel kann nichts gebaut, kein Weg/Feld/Gleis gelegt, kein Gelaende veraendert und keine Kolonie gegruendet werden
+  (`GameController._fog_blocks()`, `RailSys.can_place_rail()`); im Frettchenmodus laeuft man nicht in den Nebel
+  (`PlayerController._fog_guard()`). Eisen liegt auf Entdeckerkarten NUR ausserhalb des Heimatbereichs
+  (`WorldGenerator.push_iron_outside()`) - Erkundung und eine Bergbau-Kolonie mit Bahnstrecke werden zum Ziel.
+- **Epoche 5 "Eisenbahnzeit"** (1500 Wissen, nach Epoche 4): schaltet Bahnhof, Depot (vorher Epoche 4!) und die
+  **Erkundungsstation** frei. Bestehende Bahnhoefe/Depots bleiben stehen, neue brauchen Epoche 5.
+- **Erkundungsstation** (`OBSERVATORY`, btype `EXPLORER`, 2 Arbeiter): deckt den Nebel Ring fuer Ring auf, solange Frettchen arbeiten
+  (0.3 Kacheln/s je Arbeiter), Radius 14 / 21 / 28 je Upgrade-Stufe; im Baumenue nur auf Entdeckerkarten sichtbar. Radius wird mitgespeichert.
+- **Weltkarte** (Knopf 🧭, `ui/WorldMapPanel.gd`): Gelaende nach Biom, Nebel dunkel, Kolonie-Gebiete, Rathaeuser, Bahnhoefe, Depots,
+  Erkundungsstationen, Gleise und Zuege; Klick springt mit der Kamera dorthin (`GameController.focus_tile()`).
+- **Save v9** (`explore`-Block); Saves ohne ihn laden komplett bekannt.
+- **Performance (Godot headless in der Sandbox, Vergleichswerte)**: `WorldGenerator.tick_resource_nodes()` ging jeden Frame ueber
+  ALLE Kacheln -> jetzt nur ein Spaltenstreifen je Frame (dt hochskaliert); Wasser-Simulation/-Neuzeichnen auf grossen Karten seltener
+  (nach Flaeche); das Wasser-Mesh wird nur noch bei sichtbarer Aenderung neu gebaut (Signatur). Ergebnis `_process`: 120x120 25 -> 12 ms,
+  80x80 14 -> 10 ms (die bestehende grosse Karte profitiert also auch); Wasser-Neuzeichnen 100 -> 4 ms wenn unveraendert.
+- **Tutorial**: Rundgang "Kolonien & Schiene" bekommt 3 Schritte (Entdeckerkarte, Erkundungsstation, Weltkarte mit Warte-Schritt auf
+  das Fenster), Epoche-5-Texte; jetzt 16 Schritte. **Dev-Fenster**: Erkundungs-Knoepfe (Radius 20/40, alles aufdecken, Weltkarte);
+  `_dev_find_colony_site()` waehlt jetzt eine zu Fuss erreichbare Stelle (Test-Linie fand sonst bei Wasser/Gebirge keine Strecke).
+- **Test-Fix**: die Panels (Dev, Kolonien, Weltkarte) fanden den GameController ueber den festen Pfad `/root/Main/GameScreen`; in den
+  Tests hing die Szene woanders, die "jeder Dev-Knopf"-Pruefung erreichte deshalb gar keinen Controller. Jetzt `find_child("GameScreen")`
+  - die Knoepfe werden echt ausgeloest (0 Fehler).
+- **Getestet (Godot 4.7.2 headless)**: neues `tools/Fog.tscn` (Nebel, Regeln, Vegetation, Erkundungsstation, Epoche 5, Speichern/Laden,
+  Alt-Save, Weltkarte, Dev-Tools, Test-Linie im Nebel, Zeitmessung) 0 Fehler; `DevTut`, `Rail`, `Colony`, `Anim`, `Ride` 0 Fehler;
+  `TestRunner` ohne SCRIPT ERROR; Screenshots der Entdeckerkarte geprueft. gdparse nur die 6 bekannten Fehlalarme, `lambda_scan.py` 0.
+- **Offen**: alte Saves/klassische Karten koennen NICHT nachtraeglich wachsen (bewusst: waere eine riskante Koordinaten-Migration);
+  Nachbarkolonien/Handel/Annexion (Phase 5) fehlen noch; Lokfuehrer-Modus und Zuggeraeusche; Touch-Bedienung nicht testbar.
+- `project.godot`: Version 16.6, Autoload `ExploreSys`.
+
 ## v16.5 (Tutorial fuer alles + Dev-Fenster, plus Gleis-Fix) - 12. Okt 2026
 - **WICHTIGER FIX (seit v16.2): Gleise gingen im echten Spiel nicht.** `RailSys.world = world` stand am
   Anfang von `_setup_renderer_steps()`; die Funktion laeuft aber beim AUFBAU der Schrittliste, also bevor

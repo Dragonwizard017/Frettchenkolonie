@@ -19,6 +19,9 @@ ausführen (nach neuen `class_name`-Skripten Pflicht!), dann:
 | `Ride.tscn` | Mitfahren im Zug (v16.4): einsteigen, mitfahren, Blick, aussteigen, Zug weg, Iso-Ansicht, Save/Load. Mit `-- /pfad/praefix` unter xvfb: Fuehrerhaus-Screenshots | `godot --headless --path . res://_t/Ride.tscn` |
 | `DevTut.tscn` | Tutorial + Dev-Fenster (v16.5): alle Schritte, Markierungen, Warte-Schritte, Klick-Durchlass, Fortschritt, Ueberlappung bei 4 Fenstergroessen, jede Dev-Aktion/jeder Knopf. Ende: `FERTIG - 0 Fehler` | `godot --headless --path . res://_t/DevTut.tscn` |
 | `DevShot.tscn` | Screenshots Dev-Fenster (Reiter), Tutorial-Markierung, Pause-Menue | unter xvfb: `... res://_t/DevShot.tscn -- /pfad/praefix` |
+| `Fog.tscn` | Entdeckerkarte (v16.6): Nebel, Regeln, Vegetation, Erkundungsstation, Epoche 5, Save/Load, Alt-Save, Weltkarte, Test-Linie im Nebel, Zeitmessung. Ende: `FERTIG - 0 Fehler` | `godot --headless --path . res://_t/Fog.tscn` |
+| `FogShot.tscn` | Screenshots Heimat-Insel im Nebel / Rand / nach dem Aufdecken | unter xvfb: `... res://_t/FogShot.tscn -- /pfad/praefix` |
+| `Perf.tscn` | Zeit je Frame und Teilsystem (Process, Wasser, Bevoelkerung, Wasser-Mesh) fuer MEDIUM/LARGE/HUGE | `godot --headless --path . res://_t/Perf.tscn` |
 | `lambda_scan.py` | Findet Lambdas, die lokale Variablen ändern (siehe Lambda-Falle) | im Projektordner: `python3 lambda_scan.py` |
 | `ModelCheck.tscn` / `BldCheck.tscn` / `AnimCheck.tscn` | Neue GLBs prüfen: Maße/Mitte/Unterkante, Gebäudeversatz in der laufenden Kolonie, Animationen + Loop | `godot --headless --path . res://_t/<Name>.tscn` |
 | `Acc.tscn` | Frettchen mit allen Accessoires als Nahaufnahme (vorn/hinten, Pose frei) | unter xvfb: `... res://_t/Acc.tscn -- bild.png Idle 35` |
