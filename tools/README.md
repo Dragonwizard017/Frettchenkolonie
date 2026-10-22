@@ -22,6 +22,8 @@ ausführen (nach neuen `class_name`-Skripten Pflicht!), dann:
 | `Fog.tscn` | Entdeckerkarte (v16.6): Nebel, Regeln, Vegetation, Erkundungsstation, Epoche 5, Save/Load, Alt-Save, Weltkarte, Test-Linie im Nebel, Zeitmessung. Ende: `FERTIG - 0 Fehler` | `godot --headless --path . res://_t/Fog.tscn` |
 | `FogShot.tscn` | Screenshots Heimat-Insel im Nebel / Rand / nach dem Aufdecken | unter xvfb: `... res://_t/FogShot.tscn -- /pfad/praefix` |
 | `Perf.tscn` | Zeit je Frame und Teilsystem (Process, Wasser, Bevoelkerung, Wasser-Mesh) fuer MEDIUM/LARGE/HUGE | `godot --headless --path . res://_t/Perf.tscn` |
+| `Neighbor.tscn` | Nachbarkolonien (v16.7): Erzeugen, Nebel, Entdecken, Produktion, Handelslinie+Ruf, Auftraege, Annexion, UI, Save/Load. Ende: `FERTIG - 0 Fehler` | `godot --headless --path . res://_t/Neighbor.tscn` |
+| `NbShot.tscn` | Screenshots Nachbardorf + Nachbarn-Fenster | unter xvfb: `... res://_t/NbShot.tscn -- /pfad/praefix` |
 | `lambda_scan.py` | Findet Lambdas, die lokale Variablen ändern (siehe Lambda-Falle) | im Projektordner: `python3 lambda_scan.py` |
 | `ModelCheck.tscn` / `BldCheck.tscn` / `AnimCheck.tscn` | Neue GLBs prüfen: Maße/Mitte/Unterkante, Gebäudeversatz in der laufenden Kolonie, Animationen + Loop | `godot --headless --path . res://_t/<Name>.tscn` |
 | `Acc.tscn` | Frettchen mit allen Accessoires als Nahaufnahme (vorn/hinten, Pose frei) | unter xvfb: `... res://_t/Acc.tscn -- bild.png Idle 35` |

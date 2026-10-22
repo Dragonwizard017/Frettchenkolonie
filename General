@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v16.6)
+# FrettchenKolonie – Technische Dokumentation (Stand: v16.7)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -254,6 +254,18 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   Aenderung (`_water_sig`). Messen mit `tools/Perf.tscn` (Zeit je Teilsystem fuer MEDIUM/LARGE/HUGE).
 - Tests: `tools/Fog.tscn` (headless; im Dummy-Renderer gibt es keine globalen Shader-Parameter, der Test prueft sie dann nicht), `tools/FogShot.tscn` (Screenshots unter xvfb).
 - Offen: Nachbarkolonien/Handel/Annexion (Phase 5).
+
+## Nachbarkolonien (seit v16.7) - Logistik-Update Phase 5
+- Nachbar = ECHTE Kolonie in `ColonySys` mit `npc: true` (`ColonySys.register_colony(..., npc=true)`, `is_npc()`, `set_npc()`). Das macht sie fuer Pool-Kontext,
+  Bezirke, Bahnhof und Zuege normal behandelbar. UI-Code, der "meine Kolonien" meint, nimmt `ColonySys.player_ids()/player_count()`; `ids()/count()` sind ALLE (Simulation).
+- `NeighborSys` (Autoload `systems/NeighborSystem.gd`): `neighbors[cid]` = {profile, discovered, rep, request, next_request_day, delivered_total, annexed}.
+  `spawn(gc)` (nur Entdeckerkarten, aus `_ng_found_colony`), `check_discovery()` (~1x/s aus `_process`), `on_delivery()/limit_take()/on_take()` (aus `RailSystem._exchange()`),
+  `annex_block_reason()/annex()`, taegliche Produktion ueber `GameState.day_changed`. Konstanten `ANNEX_REP`, `ANNEX_COSTS`, `PROFILES` oben in der Datei.
+- Nachbar-Gebaeude werden in `BuildingSys.update()` NICHT simuliert (nur `update_capacity`), `PopMgr` ueberspringt sie, `sell/upgrade` sind gesperrt, `set_active(npc)` wird ignoriert.
+  Nach einer Annexion (`set_npc(cid,false)`) laufen sie ganz normal mit.
+- Gebaeude-Knoten im Nebel werden unsichtbar gesetzt (`add_building` + `apply_fog`), sonst schweben fremde Doerfer ueber der Nebelflaeche.
+- Test: `tools/Neighbor.tscn`, Screenshots `tools/NbShot.tscn`. Dev: `dev_neighbor_line()` baut in einem Klick eine Handelslinie zum ersten erreichbaren Nachbarn.
+- Offen: Konflikte/Gegenwehr (bewusst nicht), wachsende Doerfer, Lokfuehrer-Modus, Zuggeraeusche.
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

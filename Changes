@@ -1,5 +1,33 @@
 # FrettchenKolonie – Changelog
 
+## v16.7 (Nachbarkolonien: Handel, Ruf, Auftraege, Annexion) - 16. Okt 2026
+Logistik-Update, Phase 5. Auf Entdeckerkarten liegen im Nebel fremde Dorfer, mit denen man per Bahn handelt.
+- **Neues Autoload `NeighborSys`** (`systems/NeighborSystem.gd`): 4 Nachbarn je Entdeckerkarte, aus dem Welt-Seed an festen Stellen 36-50 Kacheln
+  von der Mitte (also im Nebel), je auf einem 9x9-Plateau. Profile: Bergbaudorf (garantiert, Eisen/Kohle), Bauern-, Holzfaeller-, Fischer-,
+  Schmiedestadt - mit "Bietet" (taeglich neue Ware im Dorf-Lager) und "Braucht".
+- **Jeder Nachbar ist eine ECHTE Kolonie** in `ColonySys` (`npc`-Flag, Gebiet 10, eigener Ressourcen-Pool, Rathaus + Bahnhof + Lager + 2 Haeuser).
+  Deshalb funktioniert der Handel ueber die normale Bahn ohne Sonderlogik fuer Gleise/Zuege; neue Helfer `ColonySys.is_npc()/player_ids()/player_count()`.
+  Nachbar-Gebaeude werden nicht simuliert (nur ihr Lager-Limit), sie haben keine Frettchen, lassen sich nicht verkaufen/upgraden, man kann in ihrem Gebiet
+  nicht bauen, und sie lassen sich nicht als aktive Kolonie waehlen. Kolonien-Fenster/HUD/Bezirke/Dev-Wechsel zaehlen nur eigene Kolonien.
+- **Ruf als Waehrung**: Waren, die ein Zug am Nachbar-Bahnhof ABLIEFERT, steigern den Ruf (gewuenschte doppelt, andere 0.4x), Waren, die er dort LAEDT, kosten
+  etwas Ruf (Kredit bis -30). Hook in `RailSystem._exchange()`. Stufen: Misstrauisch / Fremd / Handelspartner (20) / Freund (50) / Verbuendeter (80).
+- **Auftraege**: der Nachbar bittet um eine Menge einer gewuenschten Ware (10 Tage Frist): erfuellt = +12 Ruf und Werkzeug, abgelaufen = -4 Ruf; neuer Auftrag
+  folgt von selbst.
+- **Entdecken**: ein Nachbar gilt als entdeckt, sobald sein Rathaus-Feld aufgedeckt ist (deckt dann sein Dorf mit auf); Erfolg "Entdecker". Dorfer im Nebel
+  sind unsichtbar (Gebaeude-Knoten folgen der Aufdeck-Maske, auch beim Erzeugen).
+- **Annexion** (friedlich, Ruf >= 80 UND Gleisverbindung zu einem eigenen Bahnhof, Kosten 120 Bretter/40 Werkzeug/100 Essen): der Nachbar wird eine eigene
+  Kolonie (Bauhof + 4 Frettchen kommen dazu), Erfolg "Gute Nachbarschaft".
+- **UI**: Nachbarn-Fenster (Knopf 🤝, `ui/NeighborPanel.gd`: Ruf-Balken, Angebot mit Lagerstand, Bedarf, Auftrag, Bahnhof, "Auf Karte zeigen", "Annektieren"),
+  Weltkarte zeigt entdeckte Nachbarn (Ring/Rathaus/Bahnhof), Tutorial "Kolonien & Schiene" +2 Schritte (jetzt 18), Dev-Fenster: Nachbarn aufdecken, Ruf +30,
+  neue Auftraege, annektieren, **Handelslinie in 1 Klick** (`dev_neighbor_line()`: Bahnhof+Depot bei dir, Strecke, Linie, Zug).
+- **Save v10** (`neighbors`-Block: Profil, entdeckt, Ruf, Auftrag, annektiert); Nachbar-Gebaeude/-Pools stehen in den normalen Bloecken. Saves ohne Block: keine Nachbarn.
+- **Getestet (Godot 4.7.2 headless)**: neues `tools/Neighbor.tscn` (Erzeugen, Nebel, Entdecken, Tagesproduktion, Handelslinie+Ruf, Kredit, Auftraege inkl. Ablauf, Bauverbot im
+  Nachbargebiet, Annexion, UI, Speichern/Laden, klassische Welt ohne Nachbarn) 0 Fehler; `DevTut`, `Fog`, `Rail`, `Colony`, `Anim`, `Ride` 0 Fehler; `TestRunner` ohne
+  SCRIPT ERROR; Screenshots (Dorf, Fenster) geprueft. gdparse nur die 6 bekannten Fehlalarme, `lambda_scan.py` 0 Treffer.
+- **Offen**: Nachbarn nur auf Entdeckerkarten; Annexion ohne Gegenwehr/Konflikte (bewusst friedlich); Nachbar-Dorfer sind statisch (keine Frettchen, kein Wachstum);
+  Lokfuehrer-Modus und Zuggeraeusche; Touch-Bedienung nicht testbar.
+- `project.godot`: Version 16.7, Autoload `NeighborSys`.
+
 ## v16.6 (Erkundung: Entdeckerkarte mit Nebel, Epoche 5, Erkundungsstation, Weltkarte) - 14. Okt 2026
 Logistik-Update, Phase 4. Die Karte waechst mit dem Spielfortschritt.
 - **Entdeckerkarte** (neue Weltgroesse "Entdecker (120x120, Nebel)", `HUGE`): die ganze Welt wird erzeugt, bekannt ist aber nur

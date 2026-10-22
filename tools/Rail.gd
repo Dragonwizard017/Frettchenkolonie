@@ -198,6 +198,11 @@ func _ready() -> void:
 	await sim(900, 0.1)
 	check(tr.trips > trips_blocked + 1, "Nach Reparatur fährt der Zug weiter (Halte %d -> %d)" % [trips_blocked, tr.trips])
 
+	# Das Lager der 2. Kolonie ist nach vielen Lieferungen voll und ihr Holz aufgebraucht - dann kann der Zug zu Recht nichts
+	# mehr entladen. Für den Speichertest Platz und Ware bereitstellen.
+	ResourceSys.use_colony(1)
+	ResourceSys.resources["PLANKS"] = 20.0; ResourceSys.resources["WOOD"] = 60.0
+	ResourceSys.use_colony(ColonySys.active_id)
 	_log("── 7. Speichern / Laden mitten im Betrieb")
 	var trips_save: int = tr.trips
 	var rails_n: int = RailSys.rails.size()
@@ -210,7 +215,7 @@ func _ready() -> void:
 	await sim(900, 0.1)
 	var tr2: TrainEntity = RailSys.trains[0]
 	check(tr2.trips >= 1, "Zug fährt nach dem Laden weiter (Halte %d)" % tr2.trips)
-	check(float((RailSys.lines[line] as Dictionary)["delivered"]) > delivered_save, "weiter geliefert nach Laden (%.0f -> %.0f)" % [delivered_save, float((RailSys.lines[line] as Dictionary)["delivered"])])
+	check(float((RailSys.lines[line] as Dictionary)["delivered"]) > delivered_save + 1.0, "weiter geliefert nach Laden (%.0f -> %.0f)" % [delivered_save, float((RailSys.lines[line] as Dictionary)["delivered"])])
 
 	_log("── 8. Darstellung")
 	var rr: Node = gc.get_node_or_null("RailRenderer")
