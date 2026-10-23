@@ -1,5 +1,37 @@
 # FrettchenKolonie – Changelog
 
+## v16.9 (Zug- und Gleismodelle: echte GLB-Optik fuer Loco/Waggons, Bahnhof, Depot) - 23. Okt 2026
+Logistik-Update, Phase 6b. Die noch nicht eingebauten Modelle aus `FrettchenModell`
+sind jetzt im Spiel, Ausrichtung/Massstab geprueft.
+- **Echte Zug-Modelle**: `assets/loco.glb` + `wagon.glb` ersetzen die Box-Platzhalter
+  im `RailRenderer` (`_make_train_node()` instanziert die GLBs; Kessel, Fuehrerhaus,
+  Dach, Schlot, Raeder, Ladung etc. sind jetzt modelliert). Option "In den Zug setzen"
+  zeigt dieselben Modelle wie in der Weltansicht.
+- **Sichtbarkeits-Fix Fahrerhaus**: die Fahrtkamera sitzt jetzt IM Fuehrerstand
+  (`RIDE_SEAT` = (-0.40, 0.42, 0)): ueber dem Fensterband (roh y 0.85-1.05), unter dem
+  Dach (1.14). Fuer die spätere Innenleben-Session (Prompt in
+  `Prompt_3D_Zug_Innenleben.md`, Zielordner `FrettchenModell\glb_zug\`) wird der
+  Sitz weiter ins Modell gesetzt.
+- **Material**: Kabinen-/Ladungslaechen (`M_Linie`) faerben sich pro Linie;
+  Fenster (`M_Glas`) werden im Code transparent erzwungen (Blender lieferte opak).
+  XZ-Zentrierung der geparkten Exporte generisch ueber Mesh-AABBs (`_prep_vehicle()`).
+  Wagon-Skalierung 0.62, damit bei Wagenabstand 0.66 kein Clipping entsteht.
+- **Bahnhof + Depot**: `assets/station.glb` und `assets/depot.glb` stehen in
+  `BUILDING_MODEL_OVERRIDES`. Neu ist dort die optionale Footprint-Begrenzung
+  `raw_w`/`fit_x` (in `_spawn_building()`): Hoch-Skalierung allein wuerde die
+  Fluggebaeude auf ~3 m Grundflaeche aufblaehen und angrenzende Gleise zudecken.
+  Zielhoehe STATION 1.5 / DEPOT 1.8 in BUILDING_VISUALS geändert (Labels/Kollision
+  folgen).
+- **Tests**: `Rail.tscn` 0 Fehler, `TestRunner.tscn` FERTIG, `BldCheck.tscn` alle
+  Gebaeude exakt auf Kachelhoehe; neue Sitz-Assertions in `tools/Ride.gd` (Kamera im
+  Fuehrerstand). Bekannt flaky (auch in v16.8-Baseline): "Selbst gefahrene Halte
+  zaehlen" unter Windows-headless.
+- **Tool**: `tools/VehShot.tscn` rendert loco/wagon/station/depot aus 4 Winkeln plus
+  Sitz-Blick (Fenstermodus; fuer die Sichtpruefung neuer GLBs).
+- Vorbereitung auf die 3D-Modell-Session: `Prompt_3D_Zug_Innenleben.md` im Projektt-
+  ordner nutzen; dortiges loco.glb (mit Sitz, Hebeln `Hebel_Gas`/`Hebel_Bremse`,
+  `Kamera_Sitz`-Anker) ersetzt später die Platzhalter-Intlösung.
+
 ## v16.8 (Lokfuehrer-Modus: selbst Gas/Bremse fahren, Zuggeraeusche) - 23. Okt 2026
 Logistik-Update, Phase 6a. Im Zug (Frettchenmodus) laesst sich die Fahrt selbst steuern.
 - **Selbst fahren im Zug**: [W] = Gas, [S] = Bremse (gedrueckt halten), [T] = zurueck zur

@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v16.7)
+# FrettchenKolonie – Technische Dokumentation (Stand: v16.9)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -297,9 +297,35 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   `Input.action_press/_release`). Offen: Screenshots in echter Grafik, Touch-Bedienung,
   W/S-Konflikt mit Kamera-Tasten ist im Zug bewusst KEIN Problem (keine Bewegung moeglich).
 
+## Zug- und Logistik-Modelle (seit v16.9)
+- **assets/loco.glb, wagon.glb, station.glb, depot.glb** ersetzen die Platzhalter:
+  `RailRenderer._make_train_node()` instanziert echte GLB-Zugteile statt Box-Meshes.
+  Asset-Konventionen: Boden y=0 = Schienenoberkante, Laenge entlang **+X**, Export war
+  seitlich geparkt -> die XZ-Zentrierung geschieht generisch ueber die Mesh-AABBs
+  (`_prep_vehicle()` + `_collect_mesh_aabbs()`, gleiche Technik wie
+  `WorldRenderer3D._collect_local_aabbs()`).
+- **Material-Faerbung**: `M_Linie`-Flaechen (Kabine/Ladung) bekommen die Linienfarbe,
+  `M_Glas` wird erzwungen transparent (der Blender-Export liefert Glas opak!). Logik in
+  `RailRenderer._tint_lini_col()`.
+- **Wagon-Massstab**: `WAGON_SCALE` 0.62, damit die Waggons (roh 1.12 m lang) bei
+  `WAGON_SPACING` 0.66 nicht ineinander clippen. Loco läuft 1:1.
+- **BUILDING_MODEL_OVERRIDES**: neue Eintraege STATION/DEPOT mit `raw_w` + `fit_x`
+  (Footprint-Begrenzung, ausgewertet in `_spawn_building()`): sonst blaeht die
+  reine Hoehenskalierung Bahnhof/Depot auf ~3 m Footprint auf und sie liegen auf
+  angrenzenden Gleisen. `BUILDING_VISUALS`-Hoehe STATION 1.5 / DEPOT 1.8.
+- **RIDE_SEAT** = `(-0.40, 0.42, 0.0)`: die Fahrtkamera sitzt IM Fuehrerstand
+  (Kabine roh x -0.63..-0.17, Fensterband roh y 0.85-1.05, Dach 1.14; Kamera = Kör-
+  per-Ursprung +0.55). Das Frettchen ist im Fahrtmodus ohnehin unsichtbar
+  (`ferret_visual.visible = false`).
+- Tests: `Rail`/`TestRunner`/`BldCheck`/`Anim` green; die Seats-Assertions in
+  `tools/Ride.gd` sind fuer die Innenansicht angepasst. Der Check "Selbst gefahrene
+  Halte zaehlen" ist flaky unter Windows-headless (auch in der v16.8-Baseline,
+  Timing-abhaengig; in der Linux-Sandbox reproduziert er stabil).
+
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),
-`Pano`+`stitch.py` (Panorama). Beschreibung und Aufrufe in `tools/README.md`.
+`Pano`+`stitch.py` (Panorama), `VehShot` (Modell-Sichtpruefung der Zug-/Gebaeude-GLBs,
+Fenstermodus statt Xvfb). Beschreibung und Aufrufe in `tools/README.md`.
 Sandbox-Stolperfallen: nach neuen `class_name`-Skripten `godot --headless --import` ausführen
 (sonst "Could not find type ..."); ein Tool-Aufruf ist auf 300 s begrenzt -> lange Läufe mit
 `setsid nohup ... &` starten und per `sleep`/Log abfragen; `pkill -f` beendet die eigene Shell.

@@ -1,6 +1,6 @@
 ## TouchControlsSettings.gd – Autoload: speichert, ob Touch-Controls aktiv sind.
 ## Trennt die Einstellung bewusst vom Overlay selbst, damit sie auch im
-## Hauptmenue abfragbar ist (das Overlay existiert nur im Spiel-Screen).
+## Hauptmenü abfragbar ist (das Overlay existiert nur im Spiel-Screen).
 extends Node
 
 const SAVE_FILE := "user://touch_controls.cfg"

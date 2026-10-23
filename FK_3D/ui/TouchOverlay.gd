@@ -1,4 +1,4 @@
-## TouchOverlay.gd – Virtuelles Gamepad für Touch-Steuerung.
+## TouchOverlay.gd – Virtülles Gamepad für Touch-Steuerung.
 ## Deckt alle Spielaktionen ab, die sonst per Tastatur/Maus ausgelöst werden:
 ##   - Kamera-Zoom rein/raus
 ##   - Frettchenmodus starten/verlassen  (= KEY_F)
@@ -19,6 +19,11 @@
 extends Control
 
 # Referenz auf GameController (wird nach dem Erzeugen von Main.gd gesetzt)
+
+## Feature (v13.3, Performance): UI-Update nur bei Bedarf (nicht jeden Frame)
+var _last_ui_update: float = 0.0
+const UI_UPDATE_INTERVAL: float = 0.016  # 60 FPS
+
 var _game_ctrl: Node = null
 
 # Laufbefehl-Modus: nächster Tap auf die 3D-Welt wird als Walk-Ziel interpretiert
@@ -42,6 +47,7 @@ func _ready() -> void:
 	TouchControlsSettings.changed.connect(_on_setting_changed)
 	GameState.state_changed.connect(_on_state_changed)
 	GameState.fp_mode_changed.connect(_on_fp_mode_changed)
+	MenuManager.open_state_changed.connect(func(_any_open): _update_visibility())
 	_update_visibility()
 
 # ── Hilfsfunktionen ──────────────────────────────────────────────────────────
@@ -108,31 +114,37 @@ func _build_camera_dpad() -> void:
 	var up_b := _touch_btn("▲", 52)
 	up_b.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	up_b.offset_left = -26; up_b.offset_right = 26; up_b.offset_top = 0; up_b.offset_bottom = 52
-	up_b.pressed.connect(func(): _send_key(KEY_W, true))
+	up_b.button_down.connect(func(): _send_key(KEY_W, true))
+	up_b.button_up.connect(func(): _send_key(KEY_W, false))
 	base.add_child(up_b)
 
 	var down_b := _touch_btn("▼", 52)
 	down_b.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	down_b.offset_left = -26; down_b.offset_right = 26; down_b.offset_top = -52; down_b.offset_bottom = 0
-	down_b.pressed.connect(func(): _send_key(KEY_S, true))
+	down_b.button_down.connect(func(): _send_key(KEY_S, true))
+	down_b.button_up.connect(func(): _send_key(KEY_S, false))
 	base.add_child(down_b)
 
 	var left_b := _touch_btn("◄", 52)
 	left_b.set_anchors_preset(Control.PRESET_CENTER_LEFT)
 	left_b.offset_left = 0; left_b.offset_right = 52; left_b.offset_top = -26; left_b.offset_bottom = 26
-	left_b.pressed.connect(func(): _send_key(KEY_A, true))
+	left_b.button_down.connect(func(): _send_key(KEY_A, true))
+	left_b.button_up.connect(func(): _send_key(KEY_A, false))
 	base.add_child(left_b)
 
 	var right_b := _touch_btn("►", 52)
 	right_b.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 	right_b.offset_left = -52; right_b.offset_right = 0; right_b.offset_top = -26; right_b.offset_bottom = 26
-	right_b.pressed.connect(func(): _send_key(KEY_D, true))
+	right_b.button_down.connect(func(): _send_key(KEY_D, true))
+	right_b.button_up.connect(func(): _send_key(KEY_D, false))
 	base.add_child(right_b)
 
-	_iso_only_group.append(up_b)
-	_iso_only_group.append(down_b)
-	_iso_only_group.append(left_b)
-	_iso_only_group.append(right_b)
+	# WICHTIG (v12.6-Bugfix): up_b/down_b/left_b/right_b NICHT zu
+	# _iso_only_group hinzufügen. Sie steuern dieselben move_up/down/left/
+	# right-Input-Actions, die sowohl die Kamera (Iso-Modus, GameController.gd)
+	# als auch das Frettchen-Ich (FP-Modus, PlayerController.gd) auswerten.
+	# Vorher wurden sie bei FP_mode_changed mitversteckt -> im Touch-Modus war
+	# im Frettchenmodus GAR KEINE Bewegung möglich, da kein Ersatz existierte.
 
 	# Zoom rein/raus – rechts vom D-Pad
 	var zoom_col := VBoxContainer.new()
@@ -169,7 +181,7 @@ func _build_action_buttons() -> void:
 	top_row.name = "TopRow"
 	top_row.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	top_row.offset_right = 0; top_row.offset_top = 0
-	top_row.offset_left = -290; top_row.offset_bottom = 52
+	top_row.offset_left = -512; top_row.offset_bottom = 52
 	top_row.add_theme_constant_override("separation", 6)
 	base.add_child(top_row)
 
@@ -179,6 +191,10 @@ func _build_action_buttons() -> void:
 		["🗺️", "Expeditionen",   func(): _open_panel("ExpeditionPanel")],
 		["🪦", "Gräberfeld",     func(): _open_panel("GraveyardPanel")],
 		["🏘️", "Bezirke",        func(): _open_panel("DistrictPanel")],
+		["🏛️", "Kolonien",       func(): _open_panel("ColonyPanel")],
+		["🚂", "Linien",         func(): _open_panel("LinePanel")],
+		["🧭", "Weltkarte",      func(): _open_panel("WorldMapPanel")],
+		["🤝", "Nachbarn",       func(): _open_panel("NeighborPanel")],
 	]
 	for pd in panel_buttons:
 		var b := _touch_btn(pd[0], 48, Color(0.14, 0.16, 0.24, 0.82))
@@ -249,9 +265,9 @@ func _build_fp_buttons() -> void:
 	base.name = "FPActionBase"
 	base.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	base.offset_right  = -12
-	base.offset_bottom = -290  # über den normalen Aktions-Buttons
 	base.offset_left   = -132
-	base.offset_top    = -132
+	base.offset_bottom = -242  # 12px Abstand über ActionBase (deren Oberkante liegt bei -230)
+	base.offset_top    = -354  # 112px hoch: Platz für die zwei Button-Reihen darunter
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	base.visible = false
 	add_child(base)
@@ -375,8 +391,13 @@ func _send_key(keycode: Key, pressed: bool) -> void:
 # ── Sichtbarkeits-Steuerung ──────────────────────────────────────────────────
 
 func _update_visibility() -> void:
-	var playing: bool = GameState.is_playing() or GameState.state == GameState.State.PAUSED
-	visible = TouchControlsSettings.enabled and playing
+	var playing: bool = GameState.is_playing() or GameState.current_state == GameState.State.PAUSED
+	# v12.7-Bugfix: solange irgendein Menü (Pause, TechTree, Achievements, ...)
+	# offen ist, das virtuelle Gamepad komplett ausblenden. Vorher blieb es
+	# sichtbar UND interaktiv über den Menüs (später im Baum hinzugefügt =
+	# lag optisch UND bei der Eingabe über allem) und fing auf dem Handy
+	# Taps ab, die eigentlich für Speichern/Hauptmenü/DevMode bestimmt waren.
+	visible = TouchControlsSettings.enabled and playing and not MenuManager.is_any_open()
 
 func _on_setting_changed(_enabled: bool) -> void:
 	_update_visibility()
@@ -385,7 +406,7 @@ func _on_state_changed(_state: GameState.State) -> void:
 	_update_visibility()
 	# Pause-Button-Icon anpassen
 	if _pause_btn != null:
-		if GameState.state == GameState.State.PAUSED:
+		if GameState.current_state == GameState.State.PAUSED:
 			_pause_btn.text = "▶"
 		else:
 			_pause_btn.text = "⏸"
