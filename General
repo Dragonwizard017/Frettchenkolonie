@@ -265,7 +265,37 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   Nach einer Annexion (`set_npc(cid,false)`) laufen sie ganz normal mit.
 - Gebaeude-Knoten im Nebel werden unsichtbar gesetzt (`add_building` + `apply_fog`), sonst schweben fremde Doerfer ueber der Nebelflaeche.
 - Test: `tools/Neighbor.tscn`, Screenshots `tools/NbShot.tscn`. Dev: `dev_neighbor_line()` baut in einem Klick eine Handelslinie zum ersten erreichbaren Nachbarn.
-- Offen: Konflikte/Gegenwehr (bewusst nicht), wachsende Doerfer, Lokfuehrer-Modus, Zuggeraeusche.
+- Offen: Konflikte/Gegenwehr (bewusst nicht), wachsende Doerfer.
+
+## Lokfuehrer-Modus (seit v16.8) - Logistik-Update Phase 6a
+- **Steuerung**: im Zug (Mitfahren aus v16.4) steuert der Spieler selbst: `[W]` Gas,
+  `[S]` Bremse (gedrueckt halten), `[T]` Wechsel Automatik/Hand. `[W]` am Bahnhof =
+  vorzeitige Abfahrt. Ohne Mitfahrer bleibt alles Automatik (konstant `TRAIN_SPEED`).
+- **Logik**: `RailSys._driver_input()` (je Frame fuer den mitgefahrenen Zug) + Tempo-Modell
+  in `_move()` (`t.speed` nur bei Handsteuerung; Deckel = `TRAIN_SPEED`; Konstanten im
+  Block `RailSys.MANUAL_*`/`PUNCTUAL_*`/`DRIVER_REP_BONUS` oben in der Datei). Bei Anfahrt
+  mit >= 60 % Tempo gilt der Halt als "puenktlich" (`PUNCTUAL_*`): Haltezeit halbiert sich. Selbst gefahren abgelieferte Waren geben
+  25 % mehr Ruf (`DRIVER_REP_BONUS` -> `NeighborSys.on_delivery(cid, res, amount,
+  rep_bonus)`, Default 1.0). `_exchange()` erhaelt dafuer einen 3. float-Parameter -
+  UNBEDINGT einen float uebergeben (ein `bool` wirkte im ersten Versuch als Faktor 0!).
+- **Zaehler/Erfolg**: `TrainEntity.manual_stops` (Serialisierung erweitert, alte Saves
+  Default 0) und `AchievementSystem.manual_driver_stops`;
+  `AchievementSys.report_manual_stop()` schaltet "PLAYER_LOCO_25" frei.
+- **Sound** (`systems/SoundSystem.gd`): eigener Generator-Player fuer das Roll-Geraeusch
+  (Rauschen + Hum + Koppl-Klack, `set_train_audio(active, speed01)` je Frame aus dem
+  Fahrt-Prompt); Lokpfeife/Bahnhofsglocke ueber den Tone-Pool, `_tone()` hat jetzt ein
+  optionales `delay`-Argument (4. Parameter, Default 0) und `_sfx_state` ein `delay`-Feld.
+  Neue Play-Methoden: `play_train_whistle()`, `play_station_bell()`.
+- **Musik**: `SoundSys.set_riding(active)` senkt im Zug zusaetzlich Lautstaerke (x0.60)
+  und Tonhoehe (0.90) - `SoundSys._music_pitch_now()` entscheidet die Tonhoehe.
+- **Prompt**: `GameController._update_ride_prompt()` zeigt Tempo/Steuerhinweise; beim
+  Boarding `SoundSys.set_riding(true)` + Pfeife, beim Aussteigen beides aus.
+- **Dev**: `GameController.dev_ride_train()` (1 Klick in den Zug) + Knopf im DevToolsPanel
+  ("Schiene"-Sektion). **Tutorial**: "Kolonien & Schiene" hat den Schritt
+  "Selbst fahren (Lokfuehrer)".
+- Test: `tools/Ride.tscn` (Abschnitt "9. Lokfuehrer-Modus" simuliert W/S via
+  `Input.action_press/_release`). Offen: Screenshots in echter Grafik, Touch-Bedienung,
+  W/S-Konflikt mit Kamera-Tasten ist im Zug bewusst KEIN Problem (keine Bewegung moeglich).
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

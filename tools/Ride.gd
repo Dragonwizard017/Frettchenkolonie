@@ -305,6 +305,75 @@ func _ready() -> void:
 	check(RailSys.riding == null and not player.is_riding(), "nach dem Laden: kein Mitfahrer")
 	await sim(200, 0.1)
 	check(RailSys.trains.size() == 1, "Zug existiert nach Laden weiter")
+
+	# ── 9. Lokführer-Modus (v16.8): selbst Gas/Bremse steuern ─────────────────
+	_log("── 9. Lokführer-Modus")
+	# Wichtig: nach dem Laden in Abschnitt 8 sind Züge/Renderer neu aufgebaut.
+	tr = RailSys.trains[0]
+	rr = gc.get_node("RailRenderer")
+	guard = 0
+	while tr.state != "DWELL" and guard < 1500:
+		await sim(1, 0.1, 50); guard += 1
+	await get_tree().process_frame; await get_tree().process_frame
+	parts = rr.train_part_positions(tr)
+	player.teleport_to(parts[0] + Vector3(1.2, 0, 1.0)); player.global_position.y = parts[0].y
+	gc.call("_update_fp_interaction"); gc.call("_try_start_fp_interaction")
+	check(RailSys.riding == tr, "Lokführer-Test: eingestiegen")
+	var stops_before: int = tr.manual_stops
+	# 9a) [W] halten -> Automatik geht aus, Zug fährt an
+	Input.action_press("move_up")
+	guard = 0
+	while tr.state != "MOVING" and guard < 600:
+		await sim(1, 0.1, 50); guard += 1
+	guard = 0
+	while (not tr.manual or tr.speed < 0.2) and guard < 600:
+		await sim(1, 0.1, 50); guard += 1
+	check(tr.manual, "[W] übernimmt die Steuerung")
+	check(tr.speed > 0.2, "Gas beschleunigt (%.2f Kacheln/s)" % tr.speed)
+	check(tr.speed <= RailSys.TRAIN_SPEED + 0.01, "Tempo bleibt auf TRAIN_SPEED begrenzt (%.2f)" % tr.speed)
+	# 9b) [S] halten -> Zug bremst und bleibt stehen
+	Input.action_release("move_up")
+	Input.action_press("move_down")
+	guard = 0
+	while tr.speed > 0.05 and guard < 900:
+		await sim(1, 0.1, 50); guard += 1
+	check(tr.speed < 0.06, "[S] bremst den Zug (Resttempo %.2f)" % tr.speed)
+	var head_stop: Vector2 = tr.head
+	for i in 20: await sim(1, 0.1, 1000)
+	check(tr.head.distance_to(head_stop) < 0.001, "Ohne Gas dreht sich nichts mehr (%.2f Kachel-Drift)" % tr.head.distance_to(head_stop))
+	Input.action_release("move_down")
+	# 9c) Gas bis zum Halt halten -> 'pünktlich', Stopp halbiert sich
+	Input.action_press("move_up")
+	guard = 0
+	while tr.state != "DWELL" and guard < 3000:
+		await sim(1, 0.1, 50); guard += 1
+	Input.action_release("move_up")
+	check(tr.state == "DWELL" and guard < 3000, "Selbst gefahrene Anfahrt endet im Halt (%d Schritte)" % guard)
+	check(tr.manual_stops == stops_before + 1, "Selbst gefahrene Halte zählen (%d -> %d)" % [stops_before, tr.manual_stops])
+	check(AchievementSys.manual_driver_stops >= 1, "Zähler im Erfolgssystem läuft")
+	var drv_before: int = AchievementSys.manual_driver_stops
+	check(tr.timer <= RailSys.DWELL_TIME * RailSys.PUNCTUAL_DWELL_FACTOR + 0.25, "'Pünktlich' = halbe Haltezeit (timer %.2f/%.2f)" % [tr.timer, RailSys.DWELL_TIME])
+	if not AchievementSys.is_unlocked("PLAYER_LOCO_25"):
+		AchievementSys.manual_driver_stops = 24
+		AchievementSys.report_manual_stop()
+	check(AchievementSys.is_unlocked("PLAYER_LOCO_25"), "Erfolg 'Lokführer' ab 25 Halten")
+	AchievementSys.manual_driver_stops = drv_before
+	# 9d) Ruf-Bonus-Parameter: auf SMALL gibt es keine Nachbarn - der Aufruf
+	# muss den 4. Parameter annehmen und ohne Nebenwirkungen bleiben
+	NeighborSys.on_delivery(0, "PLANKS", 1.0, RailSys.DRIVER_REP_BONUS)
+	check(true, "on_delivery mit Lokführer-Bonus crasht nicht")
+	# 9e) Zug-Audio ein/aus
+	SoundSys.set_train_audio(true, 0.8)
+	check(SoundSys._train_player != null and SoundSys._train_player.playing, "Zug-Rollgeräusch läuft während der Fahrt")
+	SoundSys.set_train_audio(false, 0.0)
+	check(not SoundSys._train_player.playing, "Zug-Rollgeräusch verstummt bei Stillstand")
+	# 9f) Aussteigen: Automatik übernimmt
+	await sim(1, 0.1)
+	gc.call("_update_fp_interaction")
+	check(gc._fp_target_kind == "TRAIN_EXIT", "am Halt wieder aussteigbar (Ziel=%s)" % gc._fp_target_kind)
+	gc.call("_try_start_fp_interaction")
+	check(RailSys.riding == null, "ausgestiegen")
+	check(tr.manual == false, "Automatik übernimmt nach dem Aussteigen")
 	_log("FERTIG - %d Fehler" % fails)
 	get_tree().quit(1 if fails > 0 else 0)
 

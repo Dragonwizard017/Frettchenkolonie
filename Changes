@@ -1,5 +1,62 @@
 # FrettchenKolonie – Changelog
 
+## v16.8 (Lokfuehrer-Modus: selbst Gas/Bremse fahren, Zuggeraeusche) - 23. Okt 2026
+Logistik-Update, Phase 6a. Im Zug (Frettchenmodus) laesst sich die Fahrt selbst steuern.
+- **Selbst fahren im Zug**: [W] = Gas, [S] = Bremse (gedrueckt halten), [T] = zurueck zur
+  Automatik. Am Bahnhof ist [W] zudem die vorzeitige Abfahrt (mit Pfeife). Ohne Steuerkraft
+  faehrt die Automatik weiter (normales Streckentempo). Die Handsteuerung gilt immer nur
+  fuer den Zug, in dem man sitzt (`RailSys.riding`); Zuege ohne Fahrer verhalten sich
+  unveraendert. Tempo-Modell in `RailSystem.gd`: `MANUAL_ACCEL` 1.6 Kacheln/s² anfahren,
+  `MANUAL_BRAKE` 3.2 Kacheln/s² bremsen, Deckel bei `TRAIN_SPEED` (3.0). Das Tempo steht
+  im Fahrt-Prompt: "Fahrt nach X · 87 % · [W] Gas · [S] Bremse · [T] Automatik".
+- **Bonus fuer selbst gefahrene Fahrten**: Anfahrt mit >= 60 % Streckentempo zaehlt als
+  "puenktlich" (`PUNCTUAL_SPEED_FRAC` 0.6) und halbiert die Haltezeit am Bahnhof
+  (`PUNCTUAL_DWELL_FACTOR` 0.5). Ablieferungen am Nachbar-Bahnhof, die man selbst gefahren
+  hat, bringen 25 % mehr Ruf (`DRIVER_REP_BONUS` 1.25; `NeighborSys.on_delivery(...,
+  rep_bonus)` hat einen neuen 4. Parameter mit Default 1.0 - bestehende Aufrufe unveraendert).
+- **Neuer Erfolg "Lokfuehrer"**: 25 selbst gefahrene Halte. Zaehler:
+  `TrainEntity.manual_stops` (pro Zug im Save-Block mitgespeichert; alte Saves laden mit 0,
+  unkritisch) und `AchievementSystem.manual_driver_stops` (im Erfolgs-Save-Block).
+- **Zuggeraeusche (prozedural, keine neuen WAV-Dateien)** ueber das SoundSystem:
+  - Roll-Geraeusch (geglättetes Tiefpass-Rauschen) plus tiefes Antriebs-Hum und das
+    "Klack-Klack" der Koppeln (alle ca. 0.42 Kacheln) in einem eigenen
+    AudioStreamGenerator (`TrainPlayer`). Pegel und Tonhoehe folgen dem Zugtempo,
+    im Stand verstummt es.
+  - Lokpfeife (zweistimmiger Dampf-Pfeifen-Akkord, 494/660 Hz mit Oberton und einem
+    kuerzeren zweiten Puff) beim Einsteigen und bei der vorzeitigen Abfahrt.
+  - Bahnhofsglocke (drei Schellenschlaege, G6 mit C7-Oberton, zeitversetzt) bei jeder
+    selbst gefahrenen Anfahrt; bei "puenktlicher" Anfahrt zusaetzlich die Meldung
+    "puenktlich angefahren - kurzer Stopp".
+  - Dafuer hat `_tone()` ein optionales 4. Argument `delay` (Start-Verzoegerung in
+    Sekunden, verbraucht stille Samples); der SFX-Zustand hat ein neues `delay`-Feld.
+    Bestehende Sound-Aufrufe sind unveraendert.
+  - Anbindung: `SoundSys.set_train_audio(active, speed01)` wird je Frame aus
+    `GameController._update_ride_prompt()` aufgerufen (Fahrt) bzw. beim Aussteigen
+    deaktiviert.
+- **Musik im Zug ruhiger**: zusaetzlich zur Frettchenmodus-Drosselung (v14.4: Faktor 0.75
+  Lautstaerke, 0.94 Tonhoehe) gilt im Zug `RIDE_MUSIC_VOL_MULT` 0.6 und
+  `RIDE_MUSIC_PITCH` 0.90 (`SoundSys.set_riding(true/false)` beim Ein-/Aussteigen; die
+  Drosselungen legen sich zusammen).
+- **Dev-Fenster**: neuer Knopf "In den Zug setzen (Lokfuehrer, 1 Klick)"
+  (`GameController.dev_ride_train()`: nimmt den ersten Zug mit Linie, stellt ihn auf Halt
+  und setzt den Spieler auf die Lok - zum schnellen Testen ohne Anlaufphase).
+- **Tutorial** "Kolonien & Schiene" um den Schritt "Selbst fahren (Lokfuehrer)" erweitert
+  (jetzt 19 Schritte).
+- Behobener Fehler aus der Testrunde: der Ruf-Faktor bekam bei Automatik-Fahrten
+  versehentlich `false` statt 1.0 uebergeben (Abliefern gab dann keinen Ruf mehr).
+  `_arrive()` uebergibt jetzt immer einen float (1.0 ohne Fahrer, 1.25 mit Fahrer).
+- **Getestet (Godot 4.7.2 headless, lokal Windows)**: `Ride.tscn` mit neuem Abschnitt
+  "9. Lokfuehrer-Modus" (Uebergabe Automatik->Hand, Gas-Beschleunigung bis TRAIN_SPEED,
+  Bremsen bis Stillstand inkl. Stillstands-Check, selbst gefahrene Anfahrt mit halbem
+  Stopp, Halte-Zaehler, Erfolg 'Lokfuehrer', Ruf-Bonus-Parameter, Zug-Audio an/aus,
+  sauberes Aussteigen mit Rueckwechsel zur Automatik) 0 Fehler; `Rail`, `Colony`,
+  `DevTut`, `Neighbor`, `Anim` 0 Fehler; `TestRunner` ohne SCRIPT ERROR; gdparse nur
+  die 6 bekannten Fehlalarme; `lambda_scan.py` 0 Treffer.
+- **Offen**: Screenshots des Lokfuehrer-Modus in echter Grafik (bisher nur headless);
+  Sound hoert man nur mit echter Audio-Ausgabe (im headless-Test nur Logik-Checks);
+  keine Touch-Bedienung fuer Gas/Bremse.
+- `project.godot`: Version 16.8.
+
 ## v16.7 (Nachbarkolonien: Handel, Ruf, Auftraege, Annexion) - 16. Okt 2026
 Logistik-Update, Phase 5. Auf Entdeckerkarten liegen im Nebel fremde Dorfer, mit denen man per Bahn handelt.
 - **Neues Autoload `NeighborSys`** (`systems/NeighborSystem.gd`): 4 Nachbarn je Entdeckerkarte, aus dem Welt-Seed an festen Stellen 36-50 Kacheln
