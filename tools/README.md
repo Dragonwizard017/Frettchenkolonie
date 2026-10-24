@@ -34,6 +34,7 @@ ausführen (nach neuen `class_name`-Skripten Pflicht!), dann:
 | `TipDump.tscn` | Tooltip-Text ALLER Gebäude als Klartext (prüft auf Fehler/fehlende Icons; "inf" in "einfache" ist ein bekannter Fehlalarm) | `godot --headless --path . res://_t/TipDump.tscn` |
 | `UiScaleCheck.tscn` | UI-Größe setzen/speichern prüfen | `godot --headless --path . res://_t/UiScaleCheck.tscn` |
 | `LoadFlow.tscn` / `MainFlow.tscn` | Ladeabläufe (neue Welt, Laden, Fehlerfall, Testwelt) über Overlay bzw. die echten Menü-Handler | `godot --headless --path . res://_t/<Name>.tscn` |
+| `Export.tscn` | Welt-Export/-Import (v16.11): MEDIUM/LARGE/HUGE mit echtem Inhalt (Gebäude, 2. Kolonie, Gleise+Zug, Acker, 7 Tage) -> .fkw-Round-Trip (Blöcke exakt, Terrain quantisiert, echter Lade-Round-Trip, Kopf-Vorschau, Weltcode-Weg) + 6 Negativfälle (abgeschnitten, Prüfsumme, Magic, Formatversion, Save-Version, Entpack-Wache) + Pfad-Angriffsprobe. Größen-Messung im Log. Ende: `FERTIG fails=0` | `godot --headless --path . res://_t/Export.tscn` (dauert ~11 Min -> Hintergrund) |
 | `SndCheck.tscn` / `TipLife.tscn` | UI-Sounds (Klick, Fenster, Schalter, Slider, Fehlerton) bzw. Tooltip-Lebensdauer über Menü-Neuaufbauten | headless, wie oben |
 | `LoadTiming.tscn` / `FoundTiming.tscn` | Dauer jedes Ladeschritts (Gewichte!) bzw. Kosten einzelner Init-Aufrufe - so wurde der 350-ms-Menü-Fund gefunden | headless |
 | `gen_sfx.py` | erzeugt die UI-Sounds (assets/sfx) | `python3 gen_sfx.py` |

@@ -1,4 +1,4 @@
-﻿# FrettchenKolonie – Technische Dokumentation (Stand: v16.10)
+﻿# FrettchenKolonie – Technische Dokumentation (Stand: v16.11)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -321,6 +321,49 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   `tools/Ride.gd` sind fuer die Innenansicht angepasst. Der Check "Selbst gefahrene
   Halte zaehlen" ist flaky unter Windows-headless (auch in der v16.8-Baseline,
   Timing-abhaengig; in der Linux-Sandbox reproduziert er stabil).
+
+## Welt-Export/-Import (seit v16.11)
+- **Format/Codec**: `systems/FKWCodec.gd` (class_name, reine static-Funktionen - kein
+  Autoload). Kopf unkomprimiert (fuer Vorschau ohne Entpacken): Magic "FKW1" |
+  format_version u16 | save_version u16 | Spielversion-String (u8-Laenge + UTF-8,
+  max 255) | Weltname-String | seed s64 | w/h u16 | day u32 | pop u32 | payload_len
+  u32 | payload_raw_len u32 | SHA-256-Pruefsumme (erste 8 Bytes ueber die
+  KOMPRIMIERTEN Nutzdaten). Nutzdaten zstd: `[u32 meta_json_Laenge][meta_json]
+  [Terrain-Ebenen]`; meta_json = kompletter Spielstand OHNE "world" als
+  full_precision-JSON + Paletten "biomes"/"paths" + sparse "res" ([x, y,
+  resource_node]). Terrain: 7 Byte/Kachel, Spaltenmajor (Index = x*h + y):
+  biom u8 | hoehe u16 (m*2000) | wasser u16 (m*2048) | pfad u8 (0 = keiner) |
+  flag u8 (Bit0 Ruine, Bit1 Wasserquelle). Quantisierung: Hoehe 0,0005 m,
+  Wasser 1/2048 m - exakte Spielstufen/Schwellen bleiben exakt ( Begruendung im
+  Changes-Eintrag).
+- **SaveSystem (v16.11-Zusaetze)**: `build_save_dict()` / `write_save_dict()`
+  (aus save() ausgekoppelt - Speichern und Export nutzen exakt dasselbe
+  Dictionary), `read_save_dict()`, `export_fkw_file()` (aus Slot-.json),
+  `export_current_fkw()` (aus der laufenden Welt), `import_fkw_file/_worldcode/
+  _bytes`, `read_fkw_preview/_worldcode` (nur Kopf), `sanitize_slot_name()` +
+  `unique_slot_name()` (Import-Namen mit Pfad-Angriffs-Neutralisierung),
+  `_copy_code_to_clipboard()` (nur wenn `FEATURE_CLIPBOARD`).
+- **UI**: Main.gd `_on_import_button()` / `_show_import_dialog()` (Vorschau +
+  Bestaetigung, "ImportDialog" ist in `UISounds.WINDOWS` eingetragen),
+  `_export_slot_dialog()` (pro Zeile) und `_export_current_dialog()` (Pausemenue).
+  Nativer Datei-Dialog via `FEATURE_NATIVE_DIALOG_FILE`; **Callback-Signatur ist
+  `(status: bool, paths: PackedStringArray, filter_index: int)`**. ohne Feature:
+  Weltcode-TextEdit im Import-Dialog.
+- **Engine-Details (4.7)**: `PackedByteArray.compress(compression_mode)` hat NUR 1
+  Argument (kein buffer_size mehr), `decompress(buffer_size, mode)` hat 2; `const
+  PackedByteArray` ist NICHT const-tauglich -> `static var MAGIC`. `JSON.parse_string`
+  liefert Zahlen als float zurueck - Typpruefungen daher int ODER float. Die
+  Quantisierungsschritte sind gegen das JSON-Float-Rounding (%f-Ausgabe) mit
+  Faktor ~500 Abstand sicher.
+- **Import-Pfad**: immer ueber `write_save_dict()` in einen NORMALEN Slot (.json) ->
+  normaler Lade-Pfad inkl. Migrationen. Kein zweiter Lade-Weg.
+- **Test**: `tools/Export.tscn` (auch hier `_t/`-Kopie noetig): 3 Weltgroessen mit
+  echtem Inhalt (Gebaeude, 2. Kolonie, Bahnhofspaar + Gleise + Zug, Acker, 7
+  Spieltage), Block-Gleichheit nach Export->Import (Terrain quantisiert), echter
+  Lade-Round-Trip, Kopf-Vorschau, Weltcode-Weg, 6 Negativfaelle + Angriffsprobe.
+  Laufdauer ~11 Minuten headless (zwei vollstaendige Laeufe machbar). Größen:
+  MEDIUM 897,6 -> 32,4 KB, LARGE 1,557 -> 49,5 KB, HUGE 3,439 -> 102,7 KB (3-4 %
+  vom JSON-Save).
 
 ## Zug-Innenleben (seit v16.10)
 - **assets/loco.glb / wagon.glb** sind jetzt die erweiterten Versionen aus

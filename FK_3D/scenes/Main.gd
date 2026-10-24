@@ -205,6 +205,13 @@ func _build_load_screen() -> void:
 
 	vbox.add_child(UITheme.lbl("Welt laden", "Heading"))
 	vbox.add_child(_spacer(8))
+	# Feature (v16.11, Welt-Export/-Import): Knopf zum Importieren einer
+	# .fkw-Weltdaten-Datei (bzw. Weltcode auf Geraeten ohne Datei-Dialog).
+	var imp_b := UITheme.btn("Weltcode importieren (.fkw)", "", Vector2(300, 48))
+	imp_b.tooltip_text = "Eine Welt-Exportdatei (.fkw) importieren. Auf Geraeten ohne Datei-Dialog den Weltcode aus der Zwischenablage einfügen."
+	imp_b.pressed.connect(_on_import_button)
+	vbox.add_child(imp_b)
+	vbox.add_child(_spacer(8))
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 380)
@@ -265,6 +272,11 @@ func _build_save_row(info: Dictionary) -> Control:
 	var load_b := UITheme.btn("Laden", "PrimaryButton", Vector2(120, 40))
 	load_b.pressed.connect(func(): _load_from_slot(slot))
 	btn_vb.add_child(load_b)
+	# Feature (v16.11, Welt-Export/-Import): Export als .fkw pro Spalte.
+	var exp_b := UITheme.btn("Export", "GhostButton", Vector2(120, 32))
+	exp_b.tooltip_text = "Diese Welt als Datei exportieren (platzsparendes .fkw-Format)."
+	exp_b.pressed.connect(func(): _export_slot_dialog(slot))
+	btn_vb.add_child(exp_b)
 	var del_b := UITheme.btn("Löschen", "GhostButton", Vector2(120, 32))
 	del_b.add_theme_color_override("font_color", UITheme.C_DANGER)
 	del_b.pressed.connect(func(): _confirm_delete_save(slot, del_b))
@@ -297,6 +309,130 @@ func _load_from_slot(slot_name: String) -> void:
 	await _loading.run("Spielstand wird geladen", steps, ctx)
 	if not bool(ctx.get("ok", false)): return
 	GameState.set_state(GameState.State.PLAYING)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Feature (v16.11, WELT-EXPORT/-IMPORT): eine Welt als platzsparende .fkw-Datei
+# exportieren (Welt-Auswahl: pro Spalte; Pause-Menü: laufende Welt) und
+# importieren (Welt-Auswahl: Datei-Dialog bzw. Weltcode).
+# ══════════════════════════════════════════════════════════════════════════════
+## Nativer Datei-Dialog verfügbar? (Windows/Android: ja; Tests/Headless: nein -
+## dann bleibt der Weltcode-Zwischenablage-Weg, die UI meldet das ehrlich).
+func _has_native_file_dialog() -> bool:
+	return DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG_FILE)
+
+func _default_export_dir() -> String:
+	var d: String = OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
+	if d.is_empty(): d = OS.get_user_data_dir()
+	return d
+
+## Wortlaut für den angebotenen Dateinamen ohne verbotene Zeichen.
+func _export_file_name(raw: String) -> String:
+	var clean: String = raw.strip_edges()
+	for ch in ["/", "\\", ":", "*", "?", "\"", "<", ">", "|"]:
+		clean = clean.replace(ch, "")
+	return clean.substr(0, 60)
+
+func _export_slot_dialog(slot: String) -> void:
+	if not _has_native_file_dialog():
+		_meldung_kein_dateidialog()
+		return
+	DisplayServer.file_dialog_show("Welt exportieren", _default_export_dir(), _export_file_name(slot) + ".fkw",
+		false, DisplayServer.FILE_DIALOG_MODE_SAVE_FILE,
+		PackedStringArray(["*.fkw;FrettchenKolonie Weltdaten"]),
+		func(ok: bool, files: PackedStringArray, _fi: int):
+			if not ok or files.is_empty(): return
+			var msg: String = SaveSys.export_fkw_file(slot, files[0])
+			if msg != "":
+				GameState.notify(msg, Color(0.8, 0.2, 0.1)))
+
+## Export aus dem Pause-Menü: exportiert den JETZT laufenden Stand (auch mit
+## noch nicht gespeicherten Änderungen), nicht den letzten Speicher-Zeipunkt.
+func _export_current_dialog(default_name: String) -> void:
+	if not _has_native_file_dialog():
+		_meldung_kein_dateidialog()
+		return
+	DisplayServer.file_dialog_show("Welt exportieren", _default_export_dir(), _export_file_name(default_name) + ".fkw",
+		false, DisplayServer.FILE_DIALOG_MODE_SAVE_FILE,
+		PackedStringArray(["*.fkw;FrettchenKolonie Weltdaten"]),
+		func(ok: bool, files: PackedStringArray, _fi: int):
+			if not ok or files.is_empty(): return
+			var msg: String = SaveSys.export_current_fkw(_game_ctrl, files[0])
+			if msg != "":
+				GameState.notify(msg, Color(0.8, 0.2, 0.1)))
+
+func _meldung_kein_dateidialog() -> void:
+	GameState.notify("Auf diesem Gerät gibt es keinen Datei-Dialog - benutze den Weltcode (Zwischenablage) zum Austausch.", Color(0.8, 0.2, 0.1))
+
+## Import-Knopf über der Welt-Liste: .fkw-Datei auswählen (oder, wenn es
+## keinen Datei-Dialog gibt, den Weltcode direkt einfügen).
+func _on_import_button() -> void:
+	if _has_native_file_dialog():
+		DisplayServer.file_dialog_show("Welt-Datei öffnen", _default_export_dir(), "",
+			false, DisplayServer.FILE_DIALOG_MODE_OPEN_FILE,
+			PackedStringArray(["*.fkw;FrettchenKolonie Weltdaten"]),
+			func(ok: bool, files: PackedStringArray, _fi: int):
+				if not ok or files.is_empty(): return
+				var pv: Dictionary = SaveSys.read_fkw_preview(files[0])
+				if pv.has("err"):
+					GameState.notify(str(pv["err"]), Color(0.8, 0.2, 0.1))
+					return
+				_show_import_dialog(pv, files[0], ""))
+	else:
+		_show_import_dialog({}, "", "")
+
+## Bestätigungs-Fenster mit Vorschau (Name, Tag, Grösse, Bevölkerung,
+## Spielversion) - inhaltlich gleich für Datei- und Weltcode-Wege.
+func _show_import_dialog(preview: Dictionary, src_path: String, _pre_code: String) -> void:
+	var dlg := CenterContainer.new()
+	dlg.name = "ImportDialog"
+	dlg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dlg.theme = UITheme.get_theme()
+	_load_screen.add_child(dlg)
+	MenuManager.register(dlg)
+	var panel := UITheme.panel("Dialog")
+	panel.custom_minimum_size = Vector2(600, 0)
+	dlg.add_child(panel)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 8); panel.add_child(vb)
+	vb.add_child(UITheme.lbl("Welt importieren", "Heading"))
+	var code_edit: TextEdit = null
+	if src_path.is_empty():
+		# Ohne Datei-Dialog (z.B. Android): Weltcode aus der Zwischenablage.
+		vb.add_child(UITheme.lbl("Kein Datei-Dialog verfügbar - füge hier den Weltcode ein (aus dem Export in die Zwischenablage gekommen):", "Muted"))
+		code_edit = TextEdit.new()
+		code_edit.custom_minimum_size = Vector2(0, 160)
+		code_edit.placeholder_text = "FKW Weltcode hier einfügen ..."
+		code_edit.wrap_mode = TextEdit.LINE_WRAPPING_NONE
+		vb.add_child(code_edit)
+	else:
+		# Vorschau der Datei (aus dem Kopf, ohne Entpacken).
+		vb.add_child(UITheme.lbl("Vorschau der Welt:", "Muted"))
+		var info := "%s\nTag %d  ·  Welt %dx%d Kacheln  ·  %d Frettchen\nErstellt in Spielversion %s (Spielstand-Struktur v%d, Format v%d)" % [
+			str(preview.get("name", "?")), int(preview.get("day", 0)), int(preview.get("w", 0)),
+			int(preview.get("h", 0)), int(preview.get("pop", 0)), str(preview.get("game_version", "?")),
+			int(preview.get("save_version", 0)), int(preview.get("format", 0))]
+		var inf := UITheme.lbl(info, ""); inf.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vb.add_child(inf)
+		vb.add_child(UITheme.lbl("Die Welt wird als neuer Spielstand beigelegt und dann normal geladen.", "Muted"))
+	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); vb.add_child(hb)
+	var imp := UITheme.btn("Importieren", "PrimaryButton", Vector2(200, 48))
+	imp.pressed.connect(func():
+		var msg: String = ""
+		if not src_path.is_empty():
+			msg = SaveSys.import_fkw_file(src_path)
+		else:
+			if code_edit == null or code_edit.text.strip_edges().is_empty():
+				GameState.notify("Bitte zuerst einen Weltcode einfügen.", Color(0.8, 0.2, 0.1))
+				return
+			msg = SaveSys.import_fkw_worldcode(code_edit.text)
+		if msg != "":
+			GameState.notify(msg, Color(0.8, 0.2, 0.1))
+			return
+		dlg.hide()
+		_refresh_load_list())
+	hb.add_child(imp)
+	var cancel := UITheme.btn("Abbrechen", "GhostButton", Vector2(140, 48))
+	cancel.pressed.connect(func(): dlg.hide())
+	hb.add_child(cancel)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # GAME SCREEN
@@ -810,6 +946,10 @@ func _build_pause_menu(root: Control) -> void:
 	sa_row.add_child(sa_input)
 	var sa_btn := Button.new(); sa_btn.name="SaveAsBtn"; sa_btn.text="Speichern unter"; sa_btn.custom_minimum_size=Vector2(0,36)
 	sa_row.add_child(sa_btn)
+	# Feature (v16.11, Welt-Export/-Import): die JETZT laufende Welt (auch mit
+	# noch nicht gespeicherten Aenderungen) als .fkw-Datei nach Draussen geben.
+	var xb:=Button.new(); xb.name="ExportBtn"; xb.text="Welt exportieren (.fkw)"; xb.custom_minimum_size=Vector2(0,36)
+	vb.add_child(xb)
 	var mb:=Button.new(); mb.name="MenuBtn"; mb.text="Hauptmenü"; mb.theme_type_variation="GhostButton"; mb.custom_minimum_size=Vector2(0,44); vb.add_child(mb)
 
 	# Feature (v12.4): dauerhaft angedockte Frettchen-Ich-Vorschau.

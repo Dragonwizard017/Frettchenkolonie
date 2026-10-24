@@ -29,6 +29,8 @@ func _ready() -> void:
 	# Feature (v11.4, Speicherslot-System): "Speichern unter" legt einen neuen,
 	# zusätzlichen benannten Speicherstand an, ohne den aktuellen Slot zu überschreiben.
 	_connect_btn("Row/Panel/VBox/SaveAsRow/SaveAsBtn", func(): _on_save_as())
+	# Feature (v16.11, Welt-Export/-Import): laufende Welt als .fkw exportieren.
+	_connect_btn("Row/Panel/VBox/ExportBtn", func(): _on_export())
 	_connect_btn("Row/Panel/VBox/MenuBtn",   func(): _on_main_menu())
 	_connect_btn("Row/Panel/VBox/Speed/Btn1", func(): GameState.set_game_speed(1.0))
 	_connect_btn("Row/Panel/VBox/Speed/Btn2", func(): GameState.set_game_speed(2.0))
@@ -92,6 +94,17 @@ func _on_save_as() -> void:
 	gc.current_world_name = raw_name
 	SaveSys.save(new_slot, gc)
 	input.text = ""
+
+## Feature (v16.11, Welt-Export/-Import): die laufende Welt als .fkw nach
+## Draussen geben. Delegiert an Main.gd (dort liegen der Datei-Dialog und die
+## Vorschau/Konventionen), ohne laufende Simulationen zu unterbrechen.
+func _on_export() -> void:
+	var gc: Node = get_node_or_null("/root/Main/GameScreen")
+	var main: Node = get_node_or_null("/root/Main")
+	if gc == null or main == null: return
+	var name_base: String = str(gc.current_save_slot)
+	if name_base.is_empty(): name_base = str(gc.current_world_name)
+	main.call("_export_current_dialog", name_base)
 
 func _on_main_menu() -> void:
 	SoundSys.stop_music()

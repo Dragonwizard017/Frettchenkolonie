@@ -1,4 +1,50 @@
-﻿# FrettchenKolonie – Changelog
+﻿# FrettchenKolonie - Changelog
+
+## v16.11 (Welt-Export/-Import: platzsparendes .fkw + Weltcode) - 24. Okt 2026
+Austausch-Update. Eine Welt kann jetzt als sehr kleine `.fkw`-Datei exportiert und auf
+einem anderen System wieder importiert werden. Die lokalen Speicherstaende bleiben
+ungeraendert lesbares JSON - `.fkw` ist nur der Export-/Austausch-Weg.
+- **Export-Einstiege**: Welt-Auswahl -> pro Spielstand der "Export"-Knopf; Pausemenue ->
+  "Welt exportieren (.fkw)" (exportiert die LAUFENDE Welt inklusive noch nicht
+  gespeicherter Aenderungen, nicht den letzten Speicher-Zeitpunkt). Nach dem Export liegt
+  der Weltcode automatisch in der Zwischenablage.
+- **Import-Einstieg**: Welt-Auswahl -> "Weltcode importieren (.fkw)" - nativer
+  Datei-Dialog (Windows/Android via `FEATURE_NATIVE_DIALOG_FILE`); ohne Datei-Dialog
+  oeffnet sich direkt ein Textfeld fuer den Weltcode. Danach Vorschau (Name, Tag,
+  Groesse, Bevoelkung, Spielversion) plus Bestaetigung ("Importieren"). Der Import
+  erzeugt einen NORMALEN Slot (.json) mit bereinigtem Namen (Kollision -> " (2)") -
+  danach laeuft der gewohnte Lade-Pfad inkl.aller Migrationen, es gibt keinen zweiten
+  Lade-Weg.
+- **Format** (`systems/FKWCodec.gd`, Aufbau auch als Datei-Kommentar): Kopf "FKW1",
+  format_version, save_version, Spielversion-String, Weltname, Seed, Groesse,
+  Tag, Bevoelkung, Nutzdaten-Groesse(n) und SHA-256-Pruefsumme (8 Bytes) - der Kopf
+  laesst sich OHNE Entpacken lesen (Import-Vorschau). Nutzdaten: zstd-komprimiert aus
+  full_precision-JSON ALLER Systeme ohne "world" (inkl. Biome-/Weg-Paletten und der
+  sparse Ressourcen-Knotenliste) plus Binaer-Ebenen fuer das Terrain (7 Byte pro
+  Kachel: Biom u8, Hoehe u16, Wasser u16, Weg u8, Flags u8 fuer Ruine/Wasserquelle).
+- **Quantisierung** (dokumentiert, durch Test abgedeckt): Hoehe in 0,0005-m-Schritten -
+  alle exakten Spielstufen (1 m Aufschuetten, 3 m Dynamit, Schwellen 14/5/2 m) bleiben
+  exakt; Wasser in 1/2048-m-Schritten - Startwerte 0/1/4 bleiben exakt, der halbe
+  Schritt (0,00024 m) liegt weit unter `WaterSys.MIN_FLOW` (0,0008 m). Gebaeude,
+  Frettchen und alle uebrigen Systeme laufen verlustfrei als full_precision-JSON durch
+  zstd.
+- **Import-Sicherheit**: Magic/Format-/Save-Version, Groesse-vs-Dateilaenge, Pruefsumme,
+  256-MB-Entpack-Wache (kein Memory-Bombing), Block-Typpruefungen, klare deutsche
+  Fehlermeldungen - nie ein Absturz. Pfad-Angriffe ueber den Weltname werden beim
+  Slot-Namen neutralisiert (`../../Evil` -> `Evil`, getestet).
+- **Weltcode**: dieselbe Datei als Base64-Text. Beim Einlesen wird Zeilenumbruch/
+  Leerraum entfernt und das Anzeige-Praefix "FKW Weltcode: ..." toleriert (Handy-Weg).
+- **Groeissen (gemessen, `tools/Export.tscn`)**: MEDIUM 897,6 KB -> 32,4 KB (4 %),
+  LARGE 1,557 MB -> 49,5 KB (3 %), HUGE 3,439 MB -> 102,7 KB (3 % vom JSON-Save);
+  Weltcode (Base64): 43/66/137 KB.
+- **Tests**: `_t/Export.tscn` headless - MEDIUM/LARGE/HUGE mit echtem Inhalt (Gebaeude,
+  2. Kolonie, Bahnhofspaar + Gleise + Zug, Acker, 7 simulierte Spieltage): alle
+  Spielstand-Bloecke nach Export->Import exakt identisch, Terrain identisch innerhalb
+  der Quantisierung, derselbe Check ueber den ECHTEN Ladevorgang, Kopf-Vorschau ohne
+  Entpacken korrekt, Datei- und Weltcode-Import liefern denselben Spielstand, 6
+  Negativfaelle (abgeschnitten, Pruefsumme, Magic, Formatversion, Save-Version,
+  Riesen-Entpackgroesse) + Angriffsprobe. Zwei saubere Laeufe (`FERTIG fails=0`),
+  gdparse 0 Fehler, lambda_scan 0 Treffer im Spielcode.
 
 ## v16.10 (Zug-Innenleben: Fahrerhaus mit Sitz + animierte Gas-/Bremshebel) - 24. Okt 2026
 Logistik-Update, Phase 6c. Die GLB-Lok aus `FrettchenModell/glb_zug` (Session nach

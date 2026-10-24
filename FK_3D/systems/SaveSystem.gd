@@ -23,6 +23,16 @@ func get_save_names() -> Array:
 ## direkt auf oberster Ebene, damit die Welt-Auswahl-Liste (get_save_info)
 ## diese Werte lesen kann, ohne den kompletten Speicherstand zu deserialisieren.
 func save(slot_name: String, game_ctrl: Node) -> bool:
+	var data: Dictionary = build_save_dict(slot_name, game_ctrl)
+	if not write_save_dict(slot_name, data):
+		return false
+	GameState.notify("Gespeichert: " + slot_name)
+	return true
+
+## v16.11: den Spielstand als Dictionary aufbauen (Kern aus save(), jetzt auch
+## fuer den Welt-Export nutzbar - genau dasselbe Dictionary fuettert SaveSystem
+## UND den FKWCodec).
+func build_save_dict(slot_name: String, game_ctrl: Node) -> Dictionary:
 	var meta: Dictionary = {}
 	if game_ctrl.has_method("get_save_metadata"):
 		meta = game_ctrl.call("get_save_metadata") as Dictionary
@@ -73,14 +83,18 @@ func save(slot_name: String, game_ctrl: Node) -> bool:
 		# gespeichert - PlayerAccessories.is_unlocked() leitet daraus ab).
 		"player_accessories": PlayerAccessories.serialize()
 	}
+	return data
+
+## v16.11 (aus save() ausgekoppelt): schreibt ein fertiges Spielstand-Dictionary
+## als Slot-.json - wird von save() und vom Welt-Import gleichermaßen genutzt.
+func write_save_dict(slot_name: String, data: Dictionary) -> bool:
 	var path: String = SAVE_DIR + slot_name + ".json"
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
-		push_error("SaveSystem: Cannot open file " + path)
+		push_error("SaveSystem: Kann Datei nicht schreiben: " + path)
 		return false
 	file.store_string(JSON.stringify(data, "\t"))
 	file.close()
-	GameState.notify("Gespeichert: " + slot_name)
 	return true
 
 func load_game(slot_name: String, game_ctrl: Node) -> bool:
@@ -231,3 +245,166 @@ func delete_save(slot_name: String) -> bool:
 		GameState.notify("Speicherstand gelöscht: " + slot_name)
 		return true
 	return false
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Feature (v16.11, WELT-EXPORT/-IMPORT): eine Welt als platzsparende .fkw-Datei
+# exportieren und auf einem anderen System wieder importieren. Design: der
+# Export liest denselben Speicherstand-Woerterbuch (build_save_dict bzw. den
+# Slot-.json) und verpackt ihn per FKWCodec (zstd + Binaerezustand, siehe
+# systems/FKWCodec.gd). Der Import erzeugt einen NORMALen Slot (.json) und
+# laeuft danach ueber den normalen Lade-Pfad - Migrationen bleiben wirksam,
+# es gibt KEINEN zweiten Ladepfad. Der "Weltcode" ist dieselbe Datei als
+# Base64-Text (Zwischenablage, gilt als Weg fuer Geraete ohne Datei-Dialog).
+# ══════════════════════════════════════════════════════════════════════════════
+
+## Vorschau einer .fkw-Datei (nur Kopf, OHNE Entpacken).
+## Rueckgabe {} oder ein info-Dictionary mit "err" bei Problemen.
+func read_fkw_preview(path: String) -> Dictionary:
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {"err": "Die Datei konnte nicht gelesen werden."}
+	var buf: PackedByteArray = file.get_buffer(4096)   # der Kopf ist immer unter 512 Bytes
+	file.close()
+	return FKWCodec.read_head(buf)
+
+## Die Datei aus einem bestehenden Slot als .fkw exportieren (Welt-Auswahl).
+## Rueckgabe: "" bei Erfolg, sonst deutsche Fehlermeldung.
+func export_fkw_file(slot_name: String, out_path: String) -> String:
+	var data: Dictionary = read_save_dict(slot_name)
+	if data.is_empty():
+		return "Der Spielstand '%s' konnte nicht gelesen werden." % slot_name
+	var buf: PackedByteArray = FKWCodec.encode(data)
+	if buf.is_empty():
+		return "Die Welt konnte nicht gepackt werden (keine Welt-Daten vorhanden)."
+	var err_msg: String = _write_fkw(out_path, buf)
+	if not err_msg.is_empty(): return err_msg
+	_copy_code_to_clipboard(buf)
+	GameState.notify("Welt exportiert: " + slot_name)
+	return ""
+
+## Die aktuell laufende Welt als .fkw exportieren (Pausenmenue).
+## Rueckgabe: "" bei Erfolg, sonst deutsche Fehlermeldung.
+func export_current_fkw(game_ctrl: Node, out_path: String) -> String:
+	var slot: String = str(game_ctrl.get("current_save_slot"))
+	if slot.is_empty():
+		slot = str(game_ctrl.get("current_world_name"))
+		if slot.is_empty(): slot = "Kolonie"
+	var data: Dictionary = build_save_dict(slot, game_ctrl)
+	var buf: PackedByteArray = FKWCodec.encode(data)
+	if buf.is_empty():
+		return "Die Welt konnte nicht gepackt werden (keine Welt-Daten vorhanden)."
+	var err_msg: String = _write_fkw(out_path, buf)
+	if not err_msg.is_empty(): return err_msg
+	_copy_code_to_clipboard(buf)
+	GameState.notify("Welt exportiert: " + slot)
+	return ""
+
+## .fkw-Datei importieren (erzeugt einen neuen Slot im normalen Format).
+## Rueckgabe: "" bei Erfolg, sonst deutsche Fehlermeldung.
+func import_fkw_file(path: String) -> String:
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return "Die Datei konnte nicht gelesen werden."
+	var buf: PackedByteArray = file.get_buffer(FKWCodec.PAYLOAD_RAW_MAX)
+	file.close()
+	return import_fkw_bytes(buf)
+
+## .fkw-Weltcode (Base64-Text, z.B. aus der Zwischenablage) importieren.
+## Rueckgabe: "" bei Erfolg, sonst deutsche Fehlermeldung.
+func import_fkw_worldcode(code: String) -> String:
+	# Sauber halten: Zeilenumbrueche/Leerraum entfernen; ist ein Anzeigepraefix
+	# ("FKW Weltcode: ...") dabei, wird alles bis zum Doppelpunkt uebersprungen.
+	var clean: String = code.strip_edges().replace("\n", "").replace("\r", "").replace("\t", "").replace(" ", "")
+	if clean.begins_with("FKW"):
+		var pos: int = clean.find(":")
+		if pos > 0 and pos < 30:
+			clean = clean.substr(pos + 1)
+	var buf: PackedByteArray = Marshalls.base64_to_raw(clean)
+	if buf.is_empty():
+		return "Der Weltcode ist ungültig (keine gültigen Base64-Daten)."
+	return import_fkw_bytes(buf)
+
+func import_fkw_bytes(buf: PackedByteArray) -> String:
+	var decoded: Dictionary = FKWCodec.decode(buf)
+	if decoded.has("err"):
+		return str(decoded["err"])
+	var save_data: Dictionary = decoded["save"] as Dictionary
+	var head: Dictionary = decoded["head"] as Dictionary
+	var base_name: String = sanitize_slot_name(str(head.get("name", "Import")))
+	var slot: String = unique_slot_name(base_name)
+	save_data["slot"] = slot
+	# Der Slot traegt den Namen der importierten Welt; der Spiecherzeitpunkt
+	# (timestamp) bleibt der der Export-Datei.
+	if not write_save_dict(slot, save_data):
+		return "Der importierte Spielstand konnte nicht gespeichert werden."
+	GameState.notify("Welt importiert: " + str(save_data.get("colony_name", slot)))
+	return ""
+
+## Vorschau per Weltcode (fuer den Import-Dialog OHNE Datei).
+func read_fkw_preview_worldcode(code: String) -> Dictionary:
+	# Gleiches Praefix-Wegputzen wie in import_fkw_worldcode.
+	var clean: String = code.strip_edges().replace("\n", "").replace("\r", "").replace("\t", "").replace(" ", "")
+	if clean.begins_with("FKW"):
+		var pos: int = clean.find(":")
+		if pos > 0 and pos < 30:
+			clean = clean.substr(pos + 1)
+	var buf: PackedByteArray = Marshalls.base64_to_raw(clean)
+	if buf.is_empty():
+		return {"err": "Der Weltcode ist ungültig (keine gültigen Base64-Daten)."}
+	return FKWCodec.read_head(buf)
+
+## Slot-Namen fuer den IMPORT reinigen (kein "../", keine
+## Sonderzeichen vom Betriebssystem, max 40 Zeichen).
+func sanitize_slot_name(raw: String) -> String:
+	var clean: String = raw.strip_edges()
+	for ch in ["/", "\\", ":", "*", "?", "\"", "<", ">", "|", "%", "#", "&", "{", "}", "$", "!", "'", "+", "`", "=", "@", "~"]:
+		clean = clean.replace(ch, "")
+	clean = clean.replace("..", ".")
+	clean = clean.strip_edges()
+	# Keine fuehrenden Punkte (Windows/Unix-Hilfsdateien) und keine abschliessenden.
+	while clean.begins_with("."):
+		clean = clean.substr(1).strip_edges()
+	while clean.ends_with("."):
+		clean = clean.substr(0, clean.length() - 1).rstrip(" ")
+	clean = clean.substr(0, 40).strip_edges()
+	if clean.is_empty():
+		clean = "Import"
+	return clean
+
+## Eindeutigen Slotlinamen machen (bei Kollision "(2)", "(3)", ...).
+func unique_slot_name(base: String) -> String:
+	var existing: Array = get_save_names()
+	if not existing.has(base): return base
+	var i: int = 2
+	while existing.has(base + " (%d)" % i): i += 1
+	return base + " (%d)" % i
+
+## Liest den VOLLESTAENDIGEN Spielstand eines Slots (fuer den Export).
+func read_save_dict(slot_name: String) -> Dictionary:
+	var path: String = SAVE_DIR + slot_name + ".json"
+	if not FileAccess.file_exists(path): return {}
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null: return {}
+	var json_str: String = file.get_as_text()
+	file.close()
+	var parsed: Variant = JSON.parse_string(json_str)
+	if not (parsed is Dictionary): return {}
+	return parsed as Dictionary
+
+func _write_fkw(out_path: String, buf: PackedByteArray) -> String:
+	var target: String = out_path
+	if not target.to_lower().ends_with(".fkw"):
+		target += ".fkw"
+	var file: FileAccess = FileAccess.open(target, FileAccess.WRITE)
+	if file == null:
+		return "'%s' konnte nicht geschrieben werden." % target
+	file.store_buffer(buf)
+	file.close()
+	return ""
+
+## Weltcode in die Zwischenablage (wenn die Platform es kann) - oder still.
+func _copy_code_to_clipboard(buf: PackedByteArray) -> void:
+	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+		DisplayServer.clipboard_set("FKW Weltcode:\n" + Marshalls.raw_to_base64(buf))
+		GameState.notify("Weltcode in die Zwischenablage kopiert (fuer Handy/Messenger).")
+

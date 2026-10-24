@@ -25,7 +25,7 @@ const GAIN: Dictionary = {"click": 0.9, "hover": 0.45, "open": 0.8, "close": 0.7
 const MIN_GAP: Dictionary = {"hover": 55, "tick": 70, "click": 35}
 
 ## Namen der Fenster/Panels, die beim Öffnen/Schließen klingen sollen.
-const WINDOWS: PackedStringArray = ["AchievementPanel", "DistrictPanel", "ColonyPanel", "LinePanel", "WorldMapPanel", "NeighborPanel", "ExpeditionPanel", "GraveyardPanel",
+const WINDOWS: PackedStringArray = ["AchievementPanel", "DistrictPanel", "ColonyPanel", "LinePanel", "WorldMapPanel", "NeighborPanel", "ExpeditionPanel", "GraveyardPanel", "ImportDialog",
 	"StatsPanel", "TechTreePanel", "FerretProfilePanel", "DevToolsPanel", "BuildingInfo", "PauseMenu",
 	"LoadScreen", "WorldCreation", "GameOverScreen", "MinigameOverlay", "ProductionChainPanel"]
 
