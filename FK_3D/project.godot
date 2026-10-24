@@ -6,7 +6,7 @@ config_version=5
 config/name="FrettchenKolonie"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
-config/version="16.9"
+config/version="16.10"
 
 [autoload]
 

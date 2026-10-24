@@ -893,7 +893,18 @@ func _fog_blocks(tx: int, ty: int, silent: bool = false) -> bool:
 ## Führerhaus der Lok (Kamera über dem Dach, freier Umblick) und steigt an einem
 ## beliebigen Halt wieder aus - die Fahrt dazwischen ist reines Mitfahren.
 const RIDE_BOARD_RANGE: float = 3.2             # Welteinheiten, gemessen zu Lok UND Waggons
-const RIDE_SEAT: Vector3 = Vector3(-0.40, 0.42, 0.0)   # Körper-Ursprung relativ zur Lok; v16.9: GLB-Lok mit Führerhäuschen (Kabine roh x -0.63..-0.17, Fensterband roh y 0.85-1.05, Dach 1.14) → Sitz in Kabinnenmitte, Kamera (= +0.55) auf Fensterhöhe im Führerstand; Frettchen-Optik ist im Fahrtmodus unsichtbar
+const RIDE_SEAT: Vector3 = Vector3(-0.40, 0.42, 0.0)   # Fallback-Sitz relativ zur Lok; v16.10 benutzt den Kamera_Sitz-Anker aus der GLB-Lok (Interieur/Fuehrerhaus), dieserFallback gilt nur, falls die Lok ihn nicht hat
+
+## v16.10: Sitz-/Kamera-Anker der Fahrt = der "Kamera_Sitz"-Empty aus der
+## GLB-Lok (ein Augpunkt, -Z zeigt nach vorn). Verbraucher uebergeben den
+## Koerper-Ursprung: Kamera = +0.55 darueber → hier genau 0.55 abziehen,
+## damit die Kamera genau auf dem Anker-Punkt sitzt. Fehlt der Anker
+## (alte Modelle), gilt die feste Konstante RIDE_SEAT.
+func _ride_seat_offset(loco: Node3D) -> Vector3:
+	var anchor := loco.find_child("Kamera_Sitz", true, false) as Node3D
+	if anchor != null and anchor.is_inside_tree():
+		return (loco.global_transform.affine_inverse() * anchor.global_transform).origin - Vector3(0.0, 0.55, 0.0)
+	return RIDE_SEAT
 
 func _rail_renderer() -> RailRenderer:
 	return get_node_or_null("RailRenderer") as RailRenderer
@@ -920,7 +931,7 @@ func _board_train(t: TrainEntity) -> void:
 	if loco == null: return
 	RailSys.riding = t
 	t.manual = false   # v16.8: beim Einsteigen fährt erstmal die Automatik
-	player.attach_to(loco, RIDE_SEAT)
+	player.attach_to(loco, _ride_seat_offset(loco))
 	AchievementSys.report_train_ride()
 	_fp_target_kind = ""; _fp_target_train = null
 	SoundSys.set_riding(true)   # v16.8: ruhigere Musik + Begrüßungs-Pfeife

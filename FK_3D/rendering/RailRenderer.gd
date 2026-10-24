@@ -14,12 +14,20 @@ const SLEEPER: Color = Color(0.34, 0.23, 0.14)
 const STEEL: Color = Color(0.30, 0.31, 0.34)
 const WAGON_SPACING: float = 0.66      # in Kacheln
 const SUBDIV: int = 4
-# v16.9: echte GLB-Modelle fuer Loco/Waggon statt Box-Platzhalter
-# (assets/loco.glb / wagon.glb, beide Boden y=0, Laenge entlang +X).
+# v16.10: echtes Zug-Modell mit Innenleben (assets/loco.glb / wagon.glb aus
+# FrettchenModell/glb_zug): Boden y=0 = Schienenoberkante, Laenge entlang +X,
+# Anker "Kamera_Sitz", Hebel_Gas/Hebel_Bremse als animierbare Node-Gruppen.
 const LOCO_SCENE: PackedScene = preload("res://assets/loco.glb")
 const WAGON_SCENE: PackedScene = preload("res://assets/wagon.glb")
-const LOCO_SCALE: float = 1.0           # roh 1.29 x 0.80 x 1.14 - passt 1:1 zum Gleismassstab
-const WAGON_SCALE: float = 0.62         # roh 1.12 lang -> 0.69, damit der Wagen spitz nach dem Vorderwagen liegt (WAGON_SPACING = 0.66)
+const LOCO_SCALE: float = 1.0           # roh 1.84 x 0.76 x 1.26 - passt 1:1 zum Gleismassstab
+const WAGON_SCALE: float = 1.0          # roh 0.62 lang (inkl. Puffer) - laeuft exakt im 0.66er Abstand
+const LOCO_HITCH: float = 1.27          # Kopf -> 1. Waggon: Lok-Rueckseite (-0.92) + Wagon-Frontpuffer (0.31) + Luecke (0.04)
+
+## v16.10: Abstand des Waggons i vom Zugkopf - die Lok ist laenger als die
+## Waggons, darum haengt nur der erste Waggon am kuerzeren KUPPLUNGS-Puffer
+## (LOCO_HITCH), alle weiteren in der bewaehrten WAGen-Kette (WAGON_SPACING).
+func _wagon_dist(i: int) -> float:
+	return LOCO_HITCH + WAGON_SPACING * float(i)
 
 var _mat: StandardMaterial3D
 var _tile_nodes: Dictionary = {}       # Schlüssel -> MeshInstance3D
@@ -135,9 +143,9 @@ func _collect_mesh_aabbs(n: Node, xf: Transform3D, out: Array, is_root: bool) ->
 		out.append(t * (n as MeshInstance3D).mesh.get_aabb())
 	for c in n.get_children(): _collect_mesh_aabbs(c, t, out, false)
 
-## v16.9: faerbt Mesh-Flaechen der Zug-GLBs um:
-## - M_Linie (Kabine / Ladung) -> Linienfarbe (opak), analog _tint_building_wall()
-## - M_Glas (Fenster) -> transparent erzwingen (Blender-Export liefert opak!)
+## v16.10: faerbt Mesh-Flaechen der Zug-GLBs um:
+## - M_Linie (Fuehrerhaus-Panele / Waggon-Waende) -> Linienfarbe (opak), analog _tint_building_wall()
+## - M_Glas (alter Export) oder "Glass" (neuer Export) -> transparent erzwingen (Blender liefert opak)
 func _tint_lini_col(n: Node, col: Color) -> void:
 	if n is MeshInstance3D:
 		var mi := n as MeshInstance3D
@@ -149,7 +157,7 @@ func _tint_lini_col(n: Node, col: Color) -> void:
 					var tinted := StandardMaterial3D.new()
 					tinted.albedo_color = col; tinted.roughness = 0.7
 					mi.set_surface_override_material(i, tinted)
-				elif m.resource_name == "M_Glas":
+				elif m.resource_name == "M_Glas" or m.resource_name == "Glass":
 					var glass := StandardMaterial3D.new()
 					glass.albedo_color = Color(0.77, 0.91, 0.98, 0.30)
 					glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -181,6 +189,9 @@ func _make_train_node(t: TrainEntity) -> Node3D:
 	var line_col: Color = RailSys.line_color(t.line_id) if t.line_id >= 0 else Color(0.55, 0.55, 0.6)
 	var loco := _prep_vehicle(LOCO_SCENE, LOCO_SCALE, line_col)
 	loco.name = "Loco"
+	# v16.10: Hebel-Gruppen cachen - _animate_hebel() kippt sie beim Fahren
+	for hn in ["Hebel_Gas", "Hebel_Bremse"]:
+		loco.set_meta("hebel_" + ("gas" if hn == "Hebel_Gas" else "bremse"), loco.find_child(hn, true, false))
 	root.add_child(loco)
 	for i in t.wagons:
 		var w := _prep_vehicle(WAGON_SCENE, WAGON_SCALE, line_col)
@@ -199,7 +210,7 @@ func get_loco_node(t: TrainEntity) -> Node3D:
 func train_part_positions(t: TrainEntity) -> Array:
 	var out: Array = [_world_pos(t.head)]
 	for i in t.wagons:
-		var tp: Array = _trail_point(t, WAGON_SPACING * float(i + 1))
+		var tp: Array = _trail_point(t, _wagon_dist(i))
 		out.append(_world_pos(tp[0] as Vector2))
 	return out
 
@@ -222,6 +233,35 @@ func _place_part(node: Node3D, p: Vector2, dir: Vector2) -> void:
 	node.position = Vector3(w.x, w.y + 0.12, w.z)
 	node.rotation.y = atan2(-dir.y, dir.x)
 
+## v16.10: kippt Gas-/Bremshebel im Fuehrerstand je nach Fahrmodus. Die Hebel-
+## Gruppen liegen mit ihrem Ursprung am Hebel-Fuss, darum reicht rotation.z:
+## der Gashebel neigt nach vorn (+X, negative Rotation), der Bremshebel nach
+## hinten. Der Modus bleibt erhalten, bis er sich aendert - so bleibt z.B. der
+## Bremshebel unten stehen, solange [S] am Halt festgehalten wird.
+func _animate_hebel(node: Node3D, t: TrainEntity) -> void:
+	var loco := node.get_node_or_null("Loco") as Node3D
+	if loco == null: return
+	var hg := loco.get_meta("hebel_gas", null) as Node3D
+	var hb := loco.get_meta("hebel_bremse", null) as Node3D
+	if hg == null and hb == null: return
+	var mode: int = int(node.get_meta("hebel_mode", 0))   # 1 = Gas, 2 = Bremse
+	var prev: float = float(node.get_meta("prev_speed", t.speed))
+	var dv: float = t.speed - prev
+	if not t.manual:
+		mode = 0
+	elif dv > 0.002:
+		mode = 1
+	elif dv < -0.002:
+		mode = 2
+	# dv ~ 0: Modus bleibt (Fahren mit [W] gehalten / Bremse am Halt festgehalten)
+	node.set_meta("hebel_mode", mode)
+	node.set_meta("prev_speed", t.speed)
+	var dt: float = minf(1.0, 8.0 * get_process_delta_time())
+	var hg_target: float = -0.45 if mode == 1 else 0.0
+	var hb_target: float = 0.45 if mode == 2 else 0.0
+	if hg != null: hg.rotation.z = lerpf(hg.rotation.z, hg_target, dt)
+	if hb != null: hb.rotation.z = lerpf(hb.rotation.z, hb_target, dt)
+
 func _update_trains() -> void:
 	var alive: Dictionary = {}
 	for tv in RailSys.trains:
@@ -234,8 +274,9 @@ func _update_trains() -> void:
 			node = _make_train_node(t); add_child(node); _train_nodes[t.id] = node
 		_place_part(node.get_node("Loco") as Node3D, t.head, t.heading)
 		for i in t.wagons:
-			var tp: Array = _trail_point(t, WAGON_SPACING * float(i + 1))
+			var tp: Array = _trail_point(t, _wagon_dist(i))
 			_place_part(node.get_node("Wagon%d" % i) as Node3D, tp[0] as Vector2, tp[1] as Vector2)
+		_animate_hebel(node, t)
 		# im Depot geparkte Züge (ohne Linie) stehen sichtbar, laufen aber nicht
 	for id in _train_nodes.keys():
 		if not alive.has(id):

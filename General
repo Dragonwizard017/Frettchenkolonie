@@ -1,4 +1,4 @@
-# FrettchenKolonie – Technische Dokumentation (Stand: v16.9)
+﻿# FrettchenKolonie – Technische Dokumentation (Stand: v16.10)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -321,6 +321,26 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   `tools/Ride.gd` sind fuer die Innenansicht angepasst. Der Check "Selbst gefahrene
   Halte zaehlen" ist flaky unter Windows-headless (auch in der v16.8-Baseline,
   Timing-abhaengig; in der Linux-Sandbox reproduziert er stabil).
+
+## Zug-Innenleben (seit v16.10)
+- **assets/loco.glb / wagon.glb** sind jetzt die erweiterten Versionen aus
+  `FrettchenModell/glb_zug`: Fuehrerhaus-Innenleben (Sitz-Bank mit Lehne,
+  Hebel_Gas mit rotem Knauf, Hebel_Bremse mit dunklem Knauf) in benannten
+  GLB-Node-Gruppen (`loco/Interieur/Fuehrerhaus/...`). Siehe
+  `Prompt_3D_Zug_Innenleben.md` fuer die Konventionen (Boden y=0, +X vorn,
+  ASCII-Node-Namen).
+- **Kamera_Sitz-Anker**: `GameController._ride_seat_offset()` liest den Empty und
+  haengt den Spieler-Koerper 0.55 UNTER dem Anker ab (Kamera sitzt dann genau auf
+  dem Anker). Fallback: `RIDE_SEAT`. Bei neuen GLBs fuer andere Sitze einfach den
+  Anker im Modell versetzen - der Code folgt.
+- **Hebel-Animation**: `RailRenderer._animate_hebel()` (per Frame im Zug-Update):
+  Hebel-Gruppen drehen um rotation.z (der Pivot liegt im GLB an der Fussplatte).
+  Modus-Persistenz ueber `set_meta("hebel_mode")` am Zugknoten; Zielwinkel
+  +/-0.45 rad, Uebergaenge mit 8/s Lerp.
+- **Wagon-Hitch**: `WAGON_SPACING` (0.66) gilt nur noch innerhalb der Waggon-Kette;
+  der erste Abstand kommt von `LOCO_HITCH` (1.27, `RailRenderer._wagon_dist()`).
+  Wenn Zuglaengen aendern, pruefen: 1.27 + n*0.66 muss unter der Trail-Reichweite
+  (40 Punkte x 0.2 m) liegen.
 
 ## Test-Werkzeuge im Repo (`tools/`, nicht in der ZIP)
 `TestRunner` (Vollsimulation), `Exp5` (FP-Modus), `Shot` (Screenshots per Xvfb+Software-Vulkan),

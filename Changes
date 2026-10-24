@@ -1,4 +1,37 @@
-# FrettchenKolonie – Changelog
+﻿# FrettchenKolonie – Changelog
+
+## v16.10 (Zug-Innenleben: Fahrerhaus mit Sitz + animierte Gas-/Bremshebel) - 24. Okt 2026
+Logistik-Update, Phase 6c. Die GLB-Lok aus `FrettchenModell/glb_zug` (Session nach
+`Prompt_3D_Zug_Innenleben.md`) ist eingebaut - dieselben Konventionen wie zuletzt:
++X = Fahrtrichtung, Raeder-Unterkante y = 0.
+- **Neue Loco/Waggon-GLBs**: loco.glb (154 KB, ~120 Bauteile: Kessel mit Bändern,
+  Kamin mit Teller/Krone, Lampe, Glocke, Pfeife, Speichenraeder, Fuehrerhaus mit
+  Glas-Panels, Dach mit Kanten, Kupplungen/Puffer), wagon.glb (offener Wagen mit
+  Klappladen, Puffer, Kupplungskette). Beide zentriert exportiert (x -0.92..+0.92
+  bzw. 0.62 lang) - Wagon jetzt massstabsgerecht, WAGON_SCALE 1.0.
+- **Fahrerhaus-Innenleben**: `Sitz` (Holzbank mit Lehne), `Hebel_Gas` (M_Rot-Knauf)
+  und `Hebel_Bremse` (dunkler Knauf) als eigene Node-Gruppen.
+- **Kamera_Sitz-Anker**: GameController nutzt jetzt den "Kamera_Sitz"-Empty (-0.5,
+  0.65, 0; -Z zeigt nach vorn) statt der festen RIDE_SEAT-Konstante - Koerper-Ursprung
+  = Anker - 0.55, damit die Kamera exakt auf dem Anker sitzt. Fallback bleibt RIDE_SEAT
+  (fuer Modelle ohne Anker). Entsprechend leichte Anpassung der Ride-Test-Schwellen.
+- **Animierte Hebel**: `RailRenderer._animate_hebel()` kippt die Hebel-Gruppen um
+  ihren wirklichen Fuss-Pivot: [W] = Gas neigt nach VORN, [S] = Bremse nach HINTEN,
+  [T]/kein Fahrer → neutral. Der Modus bleibt solange stehen, bis er sich aendert
+  (W gehalten beim Fahren = Gas bleibt unten, S am Halt = Bremse bleibt unten).
+  Sanfte Uebergange (8/s-Lerp).
+- **Neues Wagon-Hitch**: Der neue, laengere Zug passt nicht mehr in den alten
+  Wagon-Spacing-Schritt: `LOCO_HITCH` (1.27) ist der Abstand Kopf -> 1. Waggon
+  (Lok-Rueckseite + Wagon-Frontpuffer + Luecke), weitere Waggons haengen in der
+  Kette mit WAGON_SPACING (0.66) - Puffer beruehren sich nahezu. Trail-Kapazitaet
+  (40 Pt. x 0.2 m = 8 m) reicht leicht (1.27 + n x 0.66).
+- **Material-Spezifikationen**: der neue Export nutzt "Glass" statt "M_Glas" - die
+  Glas-Transparenz-Erzwungung matcht jetzt beide Namen. M_Linie (Fuehrerhaus-Panel
+  + Waggon-Waende) faerbt weiter auf die Linienfarbe.
+- **Tests**: Rail 0 Fehler; Ride-Hauptmeldungen ok (nur der bekannte flaky
+  "Halte zaehlen"-Check); TestRunner FERTIG; BldCheck sauber; gdparse/lambda_scan
+  clean. Sichtpruefung mit echtem Fenstermodus: VehShot (Modellwinkel + Fahrerhaus-
+  Blick + Koppelmodus mit 3 Waggons) und Ride.tscn Cab-Screenshots.
 
 ## v16.9 (Zug- und Gleismodelle: echte GLB-Optik fuer Loco/Waggons, Bahnhof, Depot) - 23. Okt 2026
 Logistik-Update, Phase 6b. Die noch nicht eingebauten Modelle aus `FrettchenModell`

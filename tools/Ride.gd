@@ -186,7 +186,11 @@ func _ready() -> void:
 	var loco: Node3D = rr.get_loco_node(tr)
 	var off: float = Vector2(player.global_position.x - loco.global_position.x, player.global_position.z - loco.global_position.z).length()
 	check(off < 0.6, "Spieler sitzt auf der Lok (Abstand %.2f)" % off)
-	check(absf(player.camera.global_position.y - loco.global_position.y) > 1.0, "Kamera über dem Führerhaus (Höhe %.2f über Lok)" % (player.camera.global_position.y - loco.global_position.y))
+	var dy: float = player.camera.global_position.y - loco.global_position.y
+	# v16.10: Kamera am "Kamera_Sitz"-Anker der GLB-Lok (Augpunkt auf Fensterhöhe:
+	# Glas roh y 0.50..0.93, Dachkante 1.03; Anker = (-0.5, 0.65, 0), Blick +X)
+	check(dy > 0.5, "Kamera auf dem Kamera_Sitz-Fensterband (Höhe %.2f über Lok)" % dy)
+	check(dy <= 1.14, "Kamera unter dem Dach (Höhe %.2f von roh 1.14)" % dy)
 	# WASD-Physik darf nicht bewegen
 	var p_before: Vector3 = player.global_position
 	player._physics_process(0.016)
