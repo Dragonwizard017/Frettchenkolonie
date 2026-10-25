@@ -9,6 +9,42 @@ var _vol_sfx: HSlider    = null
 # Der ScrollContainer kapsst die Panel-Hoehe auf die Fensterhoehe; siehe
 # Main.gd/_build_pause_menu fuer den Layout-Umbau.
 var _scroll: ScrollContainer = null
+# v16.12-Hotfix 3 (Nutzer-Idee): Akkordeon - Menue in Einklapp-Sektionen
+# geteilt, immer hoechstens EINE offen, damit die Hoehe nie aus dem Bild
+# hinauslaufen kann (auch bei sehr breiten, kurzen Fenstern).
+var _acc_bodies: Dictionary = {}   # Name des Koerpers -> Control
+var _acc_headers: Dictionary = {}  # Name des Koerpers -> Kopf-Button
+
+## Registrierung kommt aus Main.gd/_build_pause_menu (beim Aufbau).
+func _acc_register(header: Button, body: Control, title: String) -> void:
+	var key: String = str(body.name)
+	_acc_bodies[key] = body
+	_acc_headers[key] = header
+	header.set_meta("acc_title", title)
+	header.pressed.connect(func(): _acc_toggle(key))
+	_acc_refresh()
+
+## Wunsch-Sektion oeffnen, ALLE ANDEREN schliessen (Klick auf die offene
+## Sektion schliesst sie -> alle zu = minimale Hoehe).
+func _acc_toggle(key: String) -> void:
+	var body: Control = _acc_bodies.get(key)
+	if body == null:
+		return
+	var open: bool = not body.visible
+	for k in _acc_bodies:
+		(_acc_bodies[k] as Control).visible = false
+	body.visible = open
+	_acc_refresh()
+	# Hoehe des Scroll-Containers neu kappen (Inhalt hat sich veraendert)
+	_fit_height.call_deferred()
+
+func _acc_refresh() -> void:
+	for k in _acc_headers:
+		var h: Button = _acc_headers[k]
+		if not is_instance_valid(h):
+			continue
+		var title: String = str(h.get_meta("acc_title", k))
+		h.text = ("\u25BE " if (_acc_bodies[k] as Control).visible else "\u25B8 ") + title
 
 func _ready() -> void:
 	hide()
@@ -30,22 +66,23 @@ func _ready() -> void:
 	_vol_music  = get_node_or_null("Row/Panel/Scroll/VBox/Audio/MusicSlider")
 	_vol_sfx    = get_node_or_null("Row/Panel/Scroll/VBox/Audio/SfxSlider")
 	_connect_btn("Row/Panel/Scroll/VBox/ResumeBtn", func(): _on_resume())
-	_connect_btn("Row/Panel/Scroll/VBox/SaveBtn",   func(): _on_save())
+	_connect_btn("Row/Panel/Scroll/VBox/Save/SaveBtn",   func(): _on_save())
 	# Feature (v11.4, Speicherslot-System): "Speichern unter" legt einen neuen,
 	# zusätzlichen benannten Speicherstand an, ohne den aktuellen Slot zu überschreiben.
-	_connect_btn("Row/Panel/Scroll/VBox/SaveAsRow/SaveAsBtn", func(): _on_save_as())
-	# Feature (v16.11, Welt-Export/-Import): laufende Welt als .fkw exportieren.
-	_connect_btn("Row/Panel/Scroll/VBox/ExportBtn", func(): _on_export())
-	_connect_btn("Row/Panel/Scroll/VBox/MenuBtn",   func(): _on_main_menu())
-	_connect_btn("Row/Panel/Scroll/VBox/Speed/Btn1", func(): GameState.set_game_speed(1.0))
-	_connect_btn("Row/Panel/Scroll/VBox/Speed/Btn2", func(): GameState.set_game_speed(2.0))
-	_connect_btn("Row/Panel/Scroll/VBox/Speed/Btn3", func(): GameState.set_game_speed(3.0))
+	_connect_btn("Row/Panel/Scroll/VBox/Game/Speed/Btn1", func(): GameState.set_game_speed(1.0))
+	_connect_btn("Row/Panel/Scroll/VBox/Game/Speed/Btn2", func(): GameState.set_game_speed(2.0))
+	_connect_btn("Row/Panel/Scroll/VBox/Game/Speed/Btn3", func(): GameState.set_game_speed(3.0))
 	# Feature (v11.10, Dev Mode):
-	_connect_btn("Row/Panel/Scroll/VBox/DevModeRow/DevModeBtn", func(): _on_dev_mode_activate())
+	_connect_btn("Row/Panel/Scroll/VBox/Dev/DevModeRow/DevModeBtn", func(): _on_dev_mode_activate())
 	# Feature (v16.5): Tutorial-Rundgänge
-	_connect_btn("Row/Panel/Scroll/VBox/TutorialRow/TutBasicBtn", func(): _on_tutorial("basic"))
-	_connect_btn("Row/Panel/Scroll/VBox/TutorialRow/TutSystemsBtn", func(): _on_tutorial("systems"))
-	_connect_btn("Row/Panel/Scroll/VBox/TutorialRow/TutLogisticsBtn", func(): _on_tutorial("logistics"))
+	_connect_btn("Row/Panel/Scroll/VBox/Tutorial/TutorialRow/TutBasicBtn", func(): _on_tutorial("basic"))
+	_connect_btn("Row/Panel/Scroll/VBox/Tutorial/TutorialRow/TutSystemsBtn", func(): _on_tutorial("systems"))
+	_connect_btn("Row/Panel/Scroll/VBox/Tutorial/TutorialRow/TutLogisticsBtn", func(): _on_tutorial("logistics"))
+	# Feature (v16.12-Hotfix 3): Akkordeon-Pfade - Save/Export/Hauptmenue liegen
+	# in der Sektion "Speichern & Verlassen".
+	_connect_btn("Row/Panel/Scroll/VBox/Save/SaveAsRow/SaveAsBtn", func(): _on_save_as())
+	_connect_btn("Row/Panel/Scroll/VBox/Save/ExportBtn", func(): _on_export())
+	_connect_btn("Row/Panel/Scroll/VBox/Save/MenuBtn",   func(): _on_main_menu())
 	_update_dev_mode_status()
 	_scroll = get_node_or_null("Row/Panel/Scroll")
 	if _scroll:
@@ -119,7 +156,7 @@ func _on_save() -> void:
 ## zusätzlich unter einem neuen Namen als eigenen Speicherstand.
 func _on_save_as() -> void:
 	var gc: Node = get_node_or_null("/root/Main/GameScreen")
-	var input: LineEdit = get_node_or_null("Row/Panel/Scroll/VBox/SaveAsRow/SaveAsInput")
+	var input: LineEdit = get_node_or_null("Row/Panel/Scroll/VBox/Save/SaveAsRow/SaveAsInput")
 	if gc == null or input == null: return
 	var raw_name: String = input.text.strip_edges()
 	if raw_name.is_empty():
@@ -155,7 +192,7 @@ func _update_volumes() -> void:
 ## Feature (v11.10, Dev Mode): Passwort-Eingabefeld in den Einstellungen -
 ## siehe DevMode.gd für die eigentliche Freischalt-Logik/Konvention.
 func _on_dev_mode_activate() -> void:
-	var input: LineEdit = get_node_or_null("Row/Panel/Scroll/VBox/DevModeRow/DevPasswordInput")
+	var input: LineEdit = get_node_or_null("Row/Panel/Scroll/VBox/Dev/DevModeRow/DevPasswordInput")
 	if input == null: return
 	if DevMode.try_enable(input.text):
 		GameState.notify("🛠️ Dev Mode aktiviert!", Color(0.3, 0.85, 0.4))
@@ -165,7 +202,7 @@ func _on_dev_mode_activate() -> void:
 	_update_dev_mode_status()
 
 func _update_dev_mode_status() -> void:
-	var status: Label = get_node_or_null("Row/Panel/Scroll/VBox/DevModeStatus")
+	var status: Label = get_node_or_null("Row/Panel/Scroll/VBox/Dev/DevModeStatus")
 	if status == null: return
 	if DevMode.enabled:
 		status.text = "🛠️ Dev Mode: AN"
@@ -180,7 +217,7 @@ func _on_state_changed(state: GameState.State) -> void:
 	# aktuellen Kolonie, damit klar ist, in welchen Slot "Speichern" schreibt.
 	if visible:
 		var gc: Node = get_node_or_null("/root/Main/GameScreen")
-		var save_btn: Button = get_node_or_null("Row/Panel/Scroll/VBox/SaveBtn")
+		var save_btn: Button = get_node_or_null("Row/Panel/Scroll/VBox/Save/SaveBtn")
 		if gc and save_btn:
 			save_btn.text = "Speichern: " + str(gc.current_world_name)
 		_update_dev_mode_status()

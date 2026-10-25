@@ -915,15 +915,23 @@ func _build_pause_menu(root: Control) -> void:
 	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var tl:=UITheme.lbl("Pause","Heading"); tl.horizontal_alignment=1; vb.add_child(tl)
 	var rb:=Button.new(); rb.name="ResumeBtn"; rb.text="Weiterspielen"; rb.theme_type_variation="PrimaryButton"; rb.custom_minimum_size=Vector2(0,52); vb.add_child(rb)
-	var ab:=VBoxContainer.new(); ab.name="Audio"; ab.add_theme_constant_override("separation",4); vb.add_child(ab)
+	# v16.12-Hotfix 3 (Nutzer-Idee): Das Menue in EINKLAPPBARE Untermenues
+	# teilen. Immer hoechstens EINE Sektion offen (Klick auf die offene schliesst
+	# sie schliesslich), damit die Spaltenhoehe auch bei sehr breiten, kurzen
+	# Fenstern niemals aus dem Bild laufen kann. ScrollContainer + _fit_height
+	# (PauseMenu.gd) bleiben als Sicherheitsnetz. Kopfzeile + Koerper werden
+	# ueber PauseMenu.gd _acc_register(header, body, titel) registriert.
+	var sound_body:=VBoxContainer.new(); sound_body.name="Audio"; sound_body.add_theme_constant_override("separation",4)
 	for p in [["MasterLabel","Master"],["MasterSlider",80.0],
 					  ["MusicLabel","Musik"],["MusicSlider",60.0],
 					  ["SfxLabel","Effekte"],["SfxSlider",70.0]]:
 		if p[1] is String:
-			ab.add_child(UITheme.lbl((p[1] as String).to_upper(), "Subheading"))
+			sound_body.add_child(UITheme.lbl((p[1] as String).to_upper(), "Subheading"))
 		else:
-			var sl:=HSlider.new(); sl.name=p[0] as String; sl.min_value=0; sl.max_value=100; sl.value=p[1] as float; ab.add_child(sl)
-	var sr:=HBoxContainer.new(); sr.name="Speed"; vb.add_child(sr)
+			var sl:=HSlider.new(); sl.name=p[0] as String; sl.min_value=0; sl.max_value=100; sl.value=p[1] as float; sound_body.add_child(sl)
+	var game_body:=VBoxContainer.new(); game_body.name="Game"; game_body.add_theme_constant_override("separation",6)
+	game_body.visible = false  # Akkordeon: geschlossen (Standard offen = "Ton")
+	var sr:=HBoxContainer.new(); sr.name="Speed"; game_body.add_child(sr)
 	sr.add_child(UITheme.lbl("Geschwindigkeit", "Muted"))
 	for p2 in [["Btn1","1x"],["Btn2","2x"],["Btn3","3x"]]:
 		var b:=Button.new(); b.name=p2[0]; b.text=p2[1]; sr.add_child(b)
@@ -934,9 +942,9 @@ func _build_pause_menu(root: Control) -> void:
 	gfx.toggled.connect(func(on: bool): GraphicsSettings.set_realistic(on))
 	GraphicsSettings.changed.connect(func():
 		if is_instance_valid(gfx): gfx.set_pressed_no_signal(GraphicsSettings.realistic))
-	vb.add_child(gfx)
+	game_body.add_child(gfx)
 	# v15.7: UI-Größe (skaliert alle Oberflächen-Elemente, nicht die 3D-Welt)
-	var ui_row := HBoxContainer.new(); ui_row.name = "UiScaleRow"; vb.add_child(ui_row)
+	var ui_row := HBoxContainer.new(); ui_row.name = "UiScaleRow"; game_body.add_child(ui_row)
 	ui_row.add_child(UITheme.lbl("UI-Größe", "Muted"))
 	var ui_opt := OptionButton.new(); ui_opt.name = "UiScaleOption"; ui_opt.focus_mode = Control.FOCUS_NONE
 	ui_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -956,14 +964,24 @@ func _build_pause_menu(root: Control) -> void:
 		# UI-Groesse im Dropdown nachziehen (z. B. wenn set_ui_scale programmatisch laeuft)
 		if is_instance_valid(ui_opt) and GraphicsSettings.UI_SCALES.has(GraphicsSettings.ui_scale):
 			ui_opt.selected = GraphicsSettings.UI_SCALES.find(GraphicsSettings.ui_scale))
-	vb.add_child(fs)
-	var svb:=Button.new(); svb.name="SaveBtn"; svb.text="Speichern"; svb.custom_minimum_size=Vector2(0,44); vb.add_child(svb)
+	game_body.add_child(fs)
+	# Sektion 1 "Ton" in die Spalte haengen: Kopf, dann STANDARDMAESSIG offener
+	# Koerper; danach Sektion 2 "Spiel & Grafik" (geschlossen).
+	var h_sound:=_pm_section_header("Ton", "SecAudio"); vb.add_child(h_sound); vb.add_child(sound_body)
+	cc.call("_acc_register", h_sound, sound_body, "Ton")
+	var h_game:=_pm_section_header("Spiel & Grafik", "SecGame"); vb.add_child(h_game); vb.add_child(game_body)
+	cc.call("_acc_register", h_game, game_body, "Spiel & Grafik")
+	var save_body:=VBoxContainer.new(); save_body.name="Save"; save_body.add_theme_constant_override("separation",6)
+	save_body.visible = false  # Akkordeon: geschlossen
+	var svb:=Button.new(); svb.name="SaveBtn"; svb.text="Speichern"; svb.custom_minimum_size=Vector2(0,44); save_body.add_child(svb)
+	var h_save:=_pm_section_header("Speichern & Verlassen", "SecSave"); vb.add_child(h_save); vb.add_child(save_body)
+	cc.call("_acc_register", h_save, save_body, "Speichern & Verlassen")
 	# Feature (v11.4, Speicherslot-System): "Speichern unter" erlaubt es, den
 	# aktuellen Stand zusätzlich unter einem neuen Namen als eigenen,
 	# separaten Speicherstand abzulegen (statt nur den aktuellen Slot zu
 	# überschreiben) - so lassen sich beliebig viele Welten/Zwischenstände
 	# parallel behalten.
-	var sa_row := HBoxContainer.new(); sa_row.name="SaveAsRow"; sa_row.add_theme_constant_override("separation",6); vb.add_child(sa_row)
+	var sa_row := HBoxContainer.new(); sa_row.name="SaveAsRow"; sa_row.add_theme_constant_override("separation",6); save_body.add_child(sa_row)
 	var sa_input := LineEdit.new(); sa_input.name="SaveAsInput"; sa_input.placeholder_text="Neuer Name..."
 	sa_input.custom_minimum_size = Vector2(180,36); sa_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sa_row.add_child(sa_input)
@@ -972,8 +990,8 @@ func _build_pause_menu(root: Control) -> void:
 	# Feature (v16.11, Welt-Export/-Import): die JETZT laufende Welt (auch mit
 	# noch nicht gespeicherten Aenderungen) als .fkw-Datei nach Draussen geben.
 	var xb:=Button.new(); xb.name="ExportBtn"; xb.text="Welt exportieren (.fkw)"; xb.custom_minimum_size=Vector2(0,36)
-	vb.add_child(xb)
-	var mb:=Button.new(); mb.name="MenuBtn"; mb.text="Hauptmenü"; mb.theme_type_variation="GhostButton"; mb.custom_minimum_size=Vector2(0,44); vb.add_child(mb)
+	save_body.add_child(xb)
+	var mb:=Button.new(); mb.name="MenuBtn"; mb.text="Hauptmen\u00fc"; mb.theme_type_variation="GhostButton"; mb.custom_minimum_size=Vector2(0,44); save_body.add_child(mb)
 
 	# Feature (v12.4): dauerhaft angedockte Frettchen-Ich-Vorschau.
 	var cep := PanelContainer.new(); cep.name = "CharacterEditorPanel"
@@ -986,16 +1004,21 @@ func _build_pause_menu(root: Control) -> void:
 	# DevMode.gd für Details/Konvention). Rein clientseitig, kein
 	# Sicherheitsfeature - nur ein Schutz vor versehentlichem Aktivieren.
 	# Feature (v16.5): Tutorial-Rundgänge jederzeit (wieder) starten
-	vb.add_child(HSeparator.new())
-	vb.add_child(UITheme.lbl("TUTORIAL", "Subheading"))
-	var tut_row := HBoxContainer.new(); tut_row.name = "TutorialRow"; tut_row.add_theme_constant_override("separation", 4); vb.add_child(tut_row)
+	var tut_body:=VBoxContainer.new(); tut_body.name="Tutorial"; tut_body.add_theme_constant_override("separation",6)
+	tut_body.visible = false  # Akkordeon: geschlossen
+	tut_body.add_child(UITheme.lbl("TUTORIAL", "Subheading"))
+	var tut_row := HBoxContainer.new(); tut_row.name = "TutorialRow"; tut_row.add_theme_constant_override("separation", 4); tut_body.add_child(tut_row)
 	for tp in [["TutBasicBtn", "Basis", "Tutorial: Grundlagen (Kamera, Bauen, Versorgung, Forschung)"], ["TutSystemsBtn", "Systeme", "Tutorial: Systeme (Bezirke, Wasser, Dürre, Jahreszeiten, Expeditionen)"], ["TutLogisticsBtn", "Logistik", "Tutorial: Kolonien & Schiene (Rathaus, Gleise, Linien, Mitfahren)"]]:
 		var tbtn := Button.new(); tbtn.name = tp[0]; tbtn.text = tp[1]; tbtn.tooltip_text = tp[2]
 		tbtn.custom_minimum_size = Vector2(0, 32); tbtn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tbtn.clip_text = true
 		tut_row.add_child(tbtn)
-	vb.add_child(HSeparator.new())
-	var dev_row := HBoxContainer.new(); dev_row.name="DevModeRow"; dev_row.add_theme_constant_override("separation",6); vb.add_child(dev_row)
+	var h_tut:=_pm_section_header("Tutorial", "SecTutorial"); vb.add_child(h_tut); vb.add_child(tut_body)
+	cc.call("_acc_register", h_tut, tut_body, "Tutorial")
+	var dev_body:=VBoxContainer.new(); dev_body.name="Dev"; dev_body.add_theme_constant_override("separation",6)
+	dev_body.visible = false  # Akkordeon: geschlossen
+	dev_body.add_child(HSeparator.new())
+	var dev_row := HBoxContainer.new(); dev_row.name="DevModeRow"; dev_row.add_theme_constant_override("separation",6); dev_body.add_child(dev_row)
 	var dev_input := LineEdit.new(); dev_input.name="DevPasswordInput"
 	dev_input.placeholder_text = "Dev-Passwort..."; dev_input.secret = true
 	dev_input.custom_minimum_size = Vector2(140,32); dev_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1005,7 +1028,20 @@ func _build_pause_menu(root: Control) -> void:
 	var dev_status := Label.new(); dev_status.name="DevModeStatus"
 	dev_status.text = "🛠️ Dev Mode: AUS"
 	dev_status.theme_type_variation = "Small"
-	vb.add_child(dev_status)
+	dev_body.add_child(dev_status)
+	var h_dev:=_pm_section_header("Dev-Modus", "SecDev"); vb.add_child(h_dev); vb.add_child(dev_body)
+	cc.call("_acc_register", h_dev, dev_body, "Dev-Modus")
+
+## v16.12-Hotfix 3: Kopfzeile einer Akkordeon-Sektion im Pausenmenue
+## (Pfeil wird von PauseMenu.gd _acc_refresh gesetzt).
+func _pm_section_header(title: String, node_name: String) -> Button:
+	var h := Button.new(); h.name = node_name
+	h.theme_type_variation = "GhostButton"
+	h.custom_minimum_size = Vector2(0, 30); h.clip_text = true
+	h.text = "\u25B8 " + title
+	h.set_meta("acc_title", title)
+	return h
+
 
 func _build_notifications(root: Control) -> void:
 	var nl:=Control.new(); nl.name="Notifications"

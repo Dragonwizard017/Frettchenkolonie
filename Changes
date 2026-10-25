@@ -59,6 +59,27 @@ gemeldete "Spiel in einem bestimmten Format").
   Verifiziert mit `_t/PauseFit.gd` (echtes Fenster): 1280x720, 960x540,
   1500x1000 und UI-Skala 115 % - Scroll-Hoehe je unter Viewport-Grenze
   ("in Window: true" x4), Screenshots im Repo-Verlauf geprueft.
+- **Hotfix 3 (25. Okt 2026, Nutzer-Idee "Splitte die Menue-UI in mehrere
+  ausklappbare Untermenues")**: Das Pausenmenue ist jetzt ein AKKORDEON - die
+  linke Spalte in 5 Sektionen geteilt: Ton (Master/Musik/Effekte, STANDARD-
+  MAESSIG offen), Spiel & Grafik (Tempo 1x/2x/3x, Realistische Grafik,
+  UI-Groesse, Vollbild), Speichern & Verlassen (Speichern, Speichern unter,
+  Welt exportieren, Hauptmenue), Tutorial, Dev-Modus. REGEL: hoechstens EINE
+  Sektion offen; Klick auf eine andere schliesst die offene, Klick auf die
+  offene schliesst sie ganz (alle zu = minimale Hoehe). Die maximale
+  Menuehoehe sinkt damit auf ~460 vpx (26 % weniger als 720) - es kann KEINE
+  Fensterform mehr die Spalte aus dem Bild druecken, auch sehr breite und
+  dafuer kurze Fenster nicht. Umsetzung (Main.gd _build_pause_menu + neue
+  `_pm_section_header(title, name)`; PauseMenu.gd `_acc_register/_acc_toggle/
+  _acc_refresh` mit Pfeil-Markern ▸/▾): Node-Pfad der Sektionen
+  "Audio", "Game", "Save", "Tutorial", "Dev" -> alle PauseMenu-Button-Pfade
+  entsprechend erweitert (z. B. "Row/Panel/Scroll/VBox/Game/Speed/Btn1",
+  ".../Save/SaveAsRow/SaveAsInput", ".../Dev/DevModeRow/DevPasswordInput").
+  ScrollContainer + `_fit_height()` bleiben als Sicherheitsnetz fuer
+  Sonderfaelle (z. B. UI-Skala). Verifiziert mit `_t/PauseFit.gd` (echtes
+  Fenster): alle 4 Resize/Probes "in Window: true"; Sektion-Wechsel
+  (Dev oeffnen -> genau 1 Koerper sichtbar; nochmal Klick -> 0) sowie
+  Shrink-Log evidence in den Screenshots (pause_*).
 
 ## v16.11 (Welt-Export/-Import: platzsparendes .fkw + Weltcode) - 24. Okt 2026
 Austausch-Update. Eine Welt kann jetzt als sehr kleine `.fkw`-Datei exportiert und auf

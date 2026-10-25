@@ -370,6 +370,17 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   Main.gd `_build_pause_menu` (Scroll "Row/Panel/Scroll/VBox"). Bei
   Fenster-/Skala-Umbauten IMMER einen Probe-Lauf mit `_t/PauseFit.gd`
   (echtes Fenster, "in Window: true" für alle Groessen) mitlaufen lassen.
+- **Akkordeon-Regel für lange Menüs (Hotfix 3, Nutzer-Idee)**: Lieber IM
+  VORRAUS in ausklappbare Sektionen teilen, als auf Scrollen zu hoffen:
+  hoechstens EINE Sektion offen (Klick auf andere schliesst die offene,
+  Klick auf die offene schliesst alles -> minimale Hoehe). Umsetzung im
+  Pausenmenue: Sektionen Audio/Game/Save/Tutorial/Dev mit Kopf-Buttons
+  (Main.gd `_pm_section_header(title, name)`) und Register/Logik in
+  PauseMenu.gd `_acc_register/_acc_toggle/_acc_refresh` (Pfeil ▸/▾ im
+  Text). Neue Menue-Elemente MUESSEN in eine Sektion statt einfach an
+  die Spalte gehaengt zu werden - sonst waechst die Hoehe wieder.
+  Probe dafuer: `_t/PauseFit.gd` (oeffnen/schliessen-Zyklen + 0/1-Sichtbar-
+  Asserts).
 
 ## Welt-Export/-Import (seit v16.11)
 - **Format/Codec**: `systems/FKWCodec.gd` (class_name, reine static-Funktionen - kein
