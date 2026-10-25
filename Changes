@@ -1,5 +1,35 @@
 ﻿# FrettchenKolonie - Changelog
 
+## v16.12 (Fenstermodus: Fenster frei ziehbar + Vollbild) - 25. Okt 2026
+Fenster-Update. Der eigentliche Kern ist eine Zeile in project.godot: vorher stand
+`stretch/mode` auf "canvas_items", `stretch/aspect` aber auf Godots Default "keep" -
+dadurch blieb das Fenster beim Ziehen IMMER auf 16:9 mit schwarzen Balken (das
+gemeldete "Spiel in einem bestimmten Format").
+- **project.godot**: `window/stretch/aspect="expand"` - Fenster jetzt in jeder
+  Groesse/Form frei zieh- und verzerrbar (resizable war schon aktiv); die
+  ankerbasierte UI (Hauptmenue, BuildMenu, Panels, Pausenmenue, ...) folgt der
+  Fensterform automatisch - dafuer war KEIN UI-Code noetig.
+- **Vollbild-Toggle** (`autoloads/GraphicsSettings.gd`): CheckButton "Vollbild
+  (F11 / Alt+Enter)" im Pausenmenue plus Hotkeys F11 und Alt+Enter (bewusst ueber
+  `_unhandled_key_input`, damit Tippen in Textfeldern nicht ausloest). Persistiert
+  in user://graphics.cfg und beim Start wiederhergestellt.
+- **Fenstermodus gemerkt**: Groesse und Position werden beim Resize (debounced,
+  1,2 s) und beim Fenster-Schliessen gespeichert; Maximiert-Zustand ebenfalls.
+  Beim Start wird das Fenster dort wiederhergestellt (Position nur, wenn plausibel
+  auf einem Monitor). Das Spiel oeffnet also nicht mehr starr 1280x720.
+- **Mindestfenster 960x540**, damit die UI nicht zusammenfaellt.
+- Schutzbereich: alle DisplayServer-Aufrufe stehen hinter `_has_window`
+  (`get_name() != "headless"`) - Tests/Headless bleiben unberuehrt.
+  Engine-Fakten 4.7: `FEATURE_WINDOW`/`FEATURE_FULLSCREEN` existieren NICHT und
+  `DisplayServer.window_is_maximized()` gibt es nicht - gelesen wird
+  `get_tree().root.is_maximized()`; `WINDOW_MODE_*` und `window_set_min_size()`
+  funktionieren normal.
+- Tests: TestRunner FERTIG (0 SCRIPT-Errors), Rail FERTIG - 0 Fehler, gdparse
+  77 Dateien 0 Fehler, lambda_scan nur der bekannte _t/FoundTiming.gd-Treffer,
+  gfx-Probe (Skript laedt, Toggle, cfg-Persistenz) OK. Nur manuell pruefbar (bitte
+  ausprobieren und melden): Fenster wirklich ziehen, maximieren, F11/Alt+Enter,
+  Neustart nach Resize.
+
 ## v16.11 (Welt-Export/-Import: platzsparendes .fkw + Weltcode) - 24. Okt 2026
 Austausch-Update. Eine Welt kann jetzt als sehr kleine `.fkw`-Datei exportiert und auf
 einem anderen System wieder importiert werden. Die lokalen Speicherstaende bleiben

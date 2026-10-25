@@ -934,6 +934,16 @@ func _build_pause_menu(root: Control) -> void:
 	ui_opt.selected = GraphicsSettings.UI_SCALES.find(GraphicsSettings.ui_scale) if GraphicsSettings.UI_SCALES.has(GraphicsSettings.ui_scale) else 1
 	ui_opt.item_selected.connect(func(i: int): GraphicsSettings.set_ui_scale(float(GraphicsSettings.UI_SCALES[i])))
 	ui_row.add_child(ui_opt)
+	# Feature (v16.12, Fenstermodus): Vollbild-Schalter im Pause-Menü, synchron
+	# mit den Hotkeys F11 / Alt+Enter (GraphicsSettings._unhandled_key_input).
+	var fs := CheckButton.new(); fs.name = "FullscreenToggle"; fs.text = "Vollbild (F11 / Alt+Enter)"
+	fs.tooltip_text = "Fenster füllt den ganzen Bildschirm. Zurück mit erneutem F11,\nAlt+Enter oder dem Schalter hier. Die gemerkte Fenstergröße/Position\nbleibt für den normalen Fenstermodus erhalten."
+	fs.focus_mode = Control.FOCUS_NONE
+	fs.button_pressed = GraphicsSettings.window_fullscreen
+	fs.toggled.connect(func(on: bool): GraphicsSettings.set_fullscreen(on))
+	GraphicsSettings.changed.connect(func():
+		if is_instance_valid(fs): fs.set_pressed_no_signal(GraphicsSettings.window_fullscreen))
+	vb.add_child(fs)
 	var svb:=Button.new(); svb.name="SaveBtn"; svb.text="Speichern"; svb.custom_minimum_size=Vector2(0,44); vb.add_child(svb)
 	# Feature (v11.4, Speicherslot-System): "Speichern unter" erlaubt es, den
 	# aktuellen Stand zusätzlich unter einem neuen Namen als eigenen,

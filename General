@@ -1,4 +1,4 @@
-﻿# FrettchenKolonie – Technische Dokumentation (Stand: v16.11)
+﻿# FrettchenKolonie – Technische Dokumentation (Stand: v16.12)
 
 ## ⚠️ WICHTIGER HINWEIS FÜR DIE NÄCHSTE KI (bitte zuerst lesen!)
 
@@ -321,6 +321,32 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   `tools/Ride.gd` sind fuer die Innenansicht angepasst. Der Check "Selbst gefahrene
   Halte zaehlen" ist flaky unter Windows-headless (auch in der v16.8-Baseline,
   Timing-abhaengig; in der Linux-Sandbox reproduziert er stabil).
+
+## Fenstermodus & Vollbild (seit v16.12)
+
+- `project.godot` `[display]`: `stretch/mode="canvas_items"` + `stretch/aspect="expand"`.
+  Vorher war `aspect` auf dem Godot-Default "keep" - das Fenster hielt beim Ziehen immer
+  16:9 (schwarze Balken). Mit "expand" folgt die ankerbasierte UI der Fensterform,
+  ohne zusaetzlichen UI-Code. Basis-Viewport bleibt 1280x720.
+- Fenster-/Vollbild-Logik komplett in `autoloads/GraphicsSettings.gd` (v16.12-Block):
+  `window_fullscreen` + `set_fullscreen()`; CheckButton "FullscreenToggle" im
+  Pausenmenue (synchronisiert ueber `changed`); Hotkeys F11 und Alt+Enter ueber
+  `_unhandled_key_input` (GUI-Fokus schuetzt Textfeld-Eingaben).
+- Persistenz in `user://graphics.cfg`, Sektion `[window]`: `fullscreen`,
+  `win_maximized`, `win_size`, `win_pos` (gemerkter windowed-Zustand).
+- Fenster-Groesse/Position: debounced 1,2 s nach Resize (Timer im Autoload) und
+  einmal beim Schliessen via `NOTIFICATION_WM_CLOSE_REQUEST` (deckt reines
+  Verschieben ab); Maximieren wird als Zustand gemerkt, NICHT als Rect.
+  Beim Start deferred wiederhergestellt; Position nur, wenn sie plausibel am
+  aktuellen Monitor liegt (komponentenweiser bounding-check gegen screen_get_usable_rect).
+- Mindestfenster 960x540 (`WINDOW_MIN_SIZE`, `window_set_min_size`), damit die UI
+  nicht zusammenfaellt.
+- Headless-Schutz: Alle DisplayServer-Aufrufe nur, wenn `_has_window`
+  (`DisplayServer.get_name() != "headless"`). Godot 4.7 hat KEINE
+  `FEATURE_WINDOW`/`FEATURE_FULLSCREEN`-Flags und keine
+  `DisplayServer.window_is_maximized()`-Funktion - maximiert wird ueber
+  `get_tree().root.is_maximized()` gelesen. Vorbeugung fuer naechste Versionen:
+  Fenster-API immer erst gegen die eigene Engine-Version proben.
 
 ## Welt-Export/-Import (seit v16.11)
 - **Format/Codec**: `systems/FKWCodec.gd` (class_name, reine static-Funktionen - kein
