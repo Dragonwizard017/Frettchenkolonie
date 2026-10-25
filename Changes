@@ -20,15 +20,29 @@ gemeldete "Spiel in einem bestimmten Format").
 - **Mindestfenster 960x540**, damit die UI nicht zusammenfaellt.
 - Schutzbereich: alle DisplayServer-Aufrufe stehen hinter `_has_window`
   (`get_name() != "headless"`) - Tests/Headless bleiben unberuehrt.
-  Engine-Fakten 4.7: `FEATURE_WINDOW`/`FEATURE_FULLSCREEN` existieren NICHT und
-  `DisplayServer.window_is_maximized()` gibt es nicht - gelesen wird
-  `get_tree().root.is_maximized()`; `WINDOW_MODE_*` und `window_set_min_size()`
-  funktionieren normal.
+  Engine-Fakten 4.7 (Fix im Nachhinein, gemeldeter Vollbild-Crash):
+  `FEATURE_WINDOW`/`FEATURE_FULLSCREEN` existieren NICHT, `DisplayServer.
+  window_is_maximized()` existiert NICHT und auch `Window.is_maximized()`
+  existiert NICHT (Nutzer-Errorreport). Gelesen wird daher
+  `DisplayServer.window_get_mode() == WINDOW_MODE_MAXIMIZED`
+  (`_is_window_maximized()` in GraphicsSettings.gd).
 - Tests: TestRunner FERTIG (0 SCRIPT-Errors), Rail FERTIG - 0 Fehler, gdparse
   77 Dateien 0 Fehler, lambda_scan nur der bekannte _t/FoundTiming.gd-Treffer,
   gfx-Probe (Skript laedt, Toggle, cfg-Persistenz) OK. Nur manuell pruefbar (bitte
   ausprobieren und melden): Fenster wirklich ziehen, maximieren, F11/Alt+Enter,
   Neustart nach Resize.
+- **Hotfix (25. Okt 2026)**: Vollbild-Klick crashte mit
+  `Window.is_maximized() existiert nicht` - 4.7 liest den Maximized-Status nur
+  ueber `DisplayServer.window_get_mode()`. Verifiziert mit dem NEUEN
+  Fenstertest `_t/Winsize.gd` (echtes Fenster, nicht headless): Resize auf
+  1280x720 / 960x650 / 1500x1000 und Vollbild 1920x1200, je Screenshot:
+  HUD dockt sauber an allen Kanten an, Welt inklusive Weltkarten-Aufnahme
+  ohne schwarzen Rand, Vollbild-Aus wiederherstellt die gemerkte
+  Windowed-Groesse (1500x1000). Hinweis: im EMBEDDED Game-Fenster des
+  EDITORS (Auswahl "1280x720" oben rechts) zeigt der Editor eine fixe
+  Preview-Flaeche mit Bearbeitungs-Balken an - das ist editorseitig eigenes
+  Format/Centerverhalten, KEIN expand-Bug. Standalone (ZIP + Godot.exe)
+  verhaelt sich einwandfrei.
 
 ## v16.11 (Welt-Export/-Import: platzsparendes .fkw + Weltcode) - 24. Okt 2026
 Austausch-Update. Eine Welt kann jetzt als sehr kleine `.fkw`-Datei exportiert und auf

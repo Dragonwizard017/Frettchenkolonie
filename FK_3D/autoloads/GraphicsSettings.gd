@@ -116,8 +116,9 @@ func _capture_and_save_window() -> void:
 	if not _has_window or window_fullscreen: return
 	# Maximiert? Dann nur den Zustand merken - die Maximized-Rect ist sonst
 	# keine sinnvolle windowed-Größe für den nächsten Start.
-	# (is_maximized() nur am Window-Node: DisplayServer hat das in 4.7 nicht.)
-	var maximized: bool = get_tree().root.is_maximized()
+	# (Hotfix, gemeldet vom Nutzer: Window.is_maximized() existiert in Godot
+	#  4.7 nicht - der Modus steht nur am DisplayServer-Fenster.)
+	var maximized: bool = _is_window_maximized()
 	win_maximized = maximized
 	if not maximized:
 		var pos := DisplayServer.window_get_position()
@@ -127,6 +128,11 @@ func _capture_and_save_window() -> void:
 		_win_size = size
 		_win_pos_valid = true
 	_save()
+
+## v16.12-Hotfix: "maximiert?" liest den Fenster-Modus am DisplayServer -
+## Window.is_maximized() fehlt in Godot 4.7 (Nutzer-Fehlerreport).
+func _is_window_maximized() -> bool:
+	return _has_window and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MAXIMIZED
 
 func _notification(what: int) -> void:
 	# v16.12: Fenster wird geschlossen/Beenden -> letzte Position/Größe sichern,
@@ -145,7 +151,7 @@ func _apply_window_mode() -> void:
 		return
 	if window_fullscreen:
 		# Vor dem Wechsel die aktuelle windowed-Rect sichern (für Rückwechsel).
-		var was_max: bool = get_tree().root.is_maximized()
+		var was_max: bool = _is_window_maximized()
 		win_maximized = was_max
 		if not was_max:
 			_win_pos = DisplayServer.window_get_position()

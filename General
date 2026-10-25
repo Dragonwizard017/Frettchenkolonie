@@ -343,10 +343,20 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   nicht zusammenfaellt.
 - Headless-Schutz: Alle DisplayServer-Aufrufe nur, wenn `_has_window`
   (`DisplayServer.get_name() != "headless"`). Godot 4.7 hat KEINE
-  `FEATURE_WINDOW`/`FEATURE_FULLSCREEN`-Flags und keine
-  `DisplayServer.window_is_maximized()`-Funktion - maximiert wird ueber
-  `get_tree().root.is_maximized()` gelesen. Vorbeugung fuer naechste Versionen:
-  Fenster-API immer erst gegen die eigene Engine-Version proben.
+  `FEATURE_WINDOW`/`FEATURE_FULLSCREEN`-Flags, KEIN
+  `DisplayServer.window_is_maximized()` UND - vom Nutzer beim Vollbild-Versuch
+  gemeldet - auch KEIN `Window.is_maximized()`. "Maximiert?" wird deshalb ueber
+  `DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MAXIMIZED`
+  gelesen (Hilfsfunktion `_is_window_maximized()` in GraphicsSettings.gd).
+  Lektion fuer naechste Versionen: Fenster-API immer erst gegen die
+  tatsaechliche Engine-Version proben - beide is_maximized-Varianten
+  scheiterten unter 4.7, nur der Modus-Vergleich funktioniert.
+- Editor-Hinweis: Läuft das Spiel im EMBEDDED Game-Fenster des Editors
+  (Auswahl "1280x720" oben rechts in der Game-View), ist das eine fixe
+  Preview-Fläche mit eigener Balken-/Center-Darstellung - das ist KEIN expand-Bug.
+  Das echte Fensterverhalten gilt im Standalone-Start (ZIP entpacken, Godot.exe)
+  und wurde per Skript mit Screenshots gegenprüft (_t/Winsize.gd, siehe
+  Changes v16.12).
 
 ## Welt-Export/-Import (seit v16.11)
 - **Format/Codec**: `systems/FKWCodec.gd` (class_name, reine static-Funktionen - kein
