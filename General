@@ -357,6 +357,19 @@ Leitidee: eine Karte, mehrere Kolonien; spaeter Logistik (Zuege) zwischen ihnen.
   Das echte Fensterverhalten gilt im Standalone-Start (ZIP entpacken, Godot.exe)
   und wurde per Skript mit Screenshots gegenprüft (_t/Winsize.gd, siehe
   Changes v16.12).
+- **Min-Größen-Faustregel für Panels (Hotfix 2, gemeldet "UI geht aus dem
+  Bild heraus")**: Ein CenterContainer passt seine Größe den KINDERN an, nie
+  dem Fenster - ist der Inhalt (hier Pausemenü-Spalte) höher als der Viewport,
+  wird er oben+unten schlicht abgeschnitten, ohne Fehlermeldung. Pattern zum
+  Nachahmen: Inhaltstiefe in einen ScrollContainer legen, dessen
+  `custom_minimum_size.y` auf `min(Inhalt, Viewport-Höhe - Rand)` kappen und
+  bei `resized` + Viewport `size_changed` NACHZIEHEN. Fatal wäre, die Kappe
+  aus der EIGENEN Container-Größe zu lesen: die ist wegen der Min-Größen-
+  Kaskade (Scroll -> Panel -> Row -> CenterContainer) genau dann eingefroren,
+  wenn man sie braucht. Bewährter Code: PauseMenu.gd `_fit_height()` +
+  Main.gd `_build_pause_menu` (Scroll "Row/Panel/Scroll/VBox"). Bei
+  Fenster-/Skala-Umbauten IMMER einen Probe-Lauf mit `_t/PauseFit.gd`
+  (echtes Fenster, "in Window: true" für alle Groessen) mitlaufen lassen.
 
 ## Welt-Export/-Import (seit v16.11)
 - **Format/Codec**: `systems/FKWCodec.gd` (class_name, reine static-Funktionen - kein

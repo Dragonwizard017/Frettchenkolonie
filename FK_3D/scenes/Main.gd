@@ -902,7 +902,17 @@ func _build_pause_menu(root: Control) -> void:
 	cc.add_child(row)
 
 	var panel:=UITheme.panel("Dialog"); panel.name="Panel"; panel.custom_minimum_size=Vector2(360,0); row.add_child(panel)
-	var vb:=VBoxContainer.new(); vb.name="VBox"; vb.add_theme_constant_override("separation",6); panel.add_child(vb)
+	# v16.12-Hotfix (Nutzer-Meldung "UI geht aus dem Bild heraus"): Die VBox ist
+	# durch Vollbild-Schalter + UI-Skala + Tutorial + Dev-Zeile hoeher als ein
+	# 16:9-Viewport (720 vpx) - ein CenterContainer schneidet groessere Kinder
+	# oben und unten schlicht ab. Scrollbereich innerhalb des Panels + Hoehen-
+	# Kappe auf die Fensterhoehe im PauseMenu.gd (_fit_height).
+	var psc := ScrollContainer.new(); psc.name = "Scroll"
+	psc.custom_minimum_size = Vector2(360, 0)
+	psc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(psc)
+	var vb:=VBoxContainer.new(); vb.name="VBox"; vb.add_theme_constant_override("separation",6); psc.add_child(vb)
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var tl:=UITheme.lbl("Pause","Heading"); tl.horizontal_alignment=1; vb.add_child(tl)
 	var rb:=Button.new(); rb.name="ResumeBtn"; rb.text="Weiterspielen"; rb.theme_type_variation="PrimaryButton"; rb.custom_minimum_size=Vector2(0,52); vb.add_child(rb)
 	var ab:=VBoxContainer.new(); ab.name="Audio"; ab.add_theme_constant_override("separation",4); vb.add_child(ab)
@@ -942,7 +952,10 @@ func _build_pause_menu(root: Control) -> void:
 	fs.button_pressed = GraphicsSettings.window_fullscreen
 	fs.toggled.connect(func(on: bool): GraphicsSettings.set_fullscreen(on))
 	GraphicsSettings.changed.connect(func():
-		if is_instance_valid(fs): fs.set_pressed_no_signal(GraphicsSettings.window_fullscreen))
+		if is_instance_valid(fs): fs.set_pressed_no_signal(GraphicsSettings.window_fullscreen)
+		# UI-Groesse im Dropdown nachziehen (z. B. wenn set_ui_scale programmatisch laeuft)
+		if is_instance_valid(ui_opt) and GraphicsSettings.UI_SCALES.has(GraphicsSettings.ui_scale):
+			ui_opt.selected = GraphicsSettings.UI_SCALES.find(GraphicsSettings.ui_scale))
 	vb.add_child(fs)
 	var svb:=Button.new(); svb.name="SaveBtn"; svb.text="Speichern"; svb.custom_minimum_size=Vector2(0,44); vb.add_child(svb)
 	# Feature (v11.4, Speicherslot-System): "Speichern unter" erlaubt es, den

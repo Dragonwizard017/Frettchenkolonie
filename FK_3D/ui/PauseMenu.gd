@@ -4,6 +4,11 @@ extends CenterContainer
 var _vol_master: HSlider = null
 var _vol_music: HSlider  = null
 var _vol_sfx: HSlider    = null
+# v16.12-Hotfix ("UI geht aus dem Bild heraus"): linker Panel-Inhalt ist seit
+# v16.12 (Vollbild-Schalter + Tutorial + Dev-Zeile) hoeher als der Viewport.
+# Der ScrollContainer kapsst die Panel-Hoehe auf die Fensterhoehe; siehe
+# Main.gd/_build_pause_menu fuer den Layout-Umbau.
+var _scroll: ScrollContainer = null
 
 func _ready() -> void:
 	hide()
@@ -13,38 +18,68 @@ func _ready() -> void:
 	# weder Lautstärke noch Weiterspielen noch sonst etwas"):
 	# Main.gd._build_pause_menu() packt seit v12.4 (Zwei-Spalten-Layout mit
 	# Frettchen-Ich-Vorschau) alle Menü-Elemente in eine zusätzliche
-	# HBoxContainer "Row" -> Row/Panel/VBox/... statt Panel/VBox/...
+	# HBoxContainer "Row" -> Row/Panel/Scroll/VBox/... statt Panel/VBox/...
 	# Diese Datei wurde beim damaligen Umbau nie mitaktualisiert und hat
 	# seitdem ALLE Buttons/Regler über die alten, falschen Pfade
 	# "Panel/VBox/..." gesucht. get_node_or_null() gibt bei falschem Pfad
 	# still `null` zurück (keine Fehlermeldung), _connect_btn() überspringt
 	# dann einfach die Verbindung - das Menü sah normal aus, aber
 	# wortwörtlich KEIN Button und KEIN Regler hatte je eine Funktion.
-	# Jetzt auf die tatsächlichen Pfade "Row/Panel/VBox/..." korrigiert.
-	_vol_master = get_node_or_null("Row/Panel/VBox/Audio/MasterSlider")
-	_vol_music  = get_node_or_null("Row/Panel/VBox/Audio/MusicSlider")
-	_vol_sfx    = get_node_or_null("Row/Panel/VBox/Audio/SfxSlider")
-	_connect_btn("Row/Panel/VBox/ResumeBtn", func(): _on_resume())
-	_connect_btn("Row/Panel/VBox/SaveBtn",   func(): _on_save())
+	# Jetzt auf die tatsächlichen Pfade "Row/Panel/Scroll/VBox/..." korrigiert.
+	_vol_master = get_node_or_null("Row/Panel/Scroll/VBox/Audio/MasterSlider")
+	_vol_music  = get_node_or_null("Row/Panel/Scroll/VBox/Audio/MusicSlider")
+	_vol_sfx    = get_node_or_null("Row/Panel/Scroll/VBox/Audio/SfxSlider")
+	_connect_btn("Row/Panel/Scroll/VBox/ResumeBtn", func(): _on_resume())
+	_connect_btn("Row/Panel/Scroll/VBox/SaveBtn",   func(): _on_save())
 	# Feature (v11.4, Speicherslot-System): "Speichern unter" legt einen neuen,
 	# zusätzlichen benannten Speicherstand an, ohne den aktuellen Slot zu überschreiben.
-	_connect_btn("Row/Panel/VBox/SaveAsRow/SaveAsBtn", func(): _on_save_as())
+	_connect_btn("Row/Panel/Scroll/VBox/SaveAsRow/SaveAsBtn", func(): _on_save_as())
 	# Feature (v16.11, Welt-Export/-Import): laufende Welt als .fkw exportieren.
-	_connect_btn("Row/Panel/VBox/ExportBtn", func(): _on_export())
-	_connect_btn("Row/Panel/VBox/MenuBtn",   func(): _on_main_menu())
-	_connect_btn("Row/Panel/VBox/Speed/Btn1", func(): GameState.set_game_speed(1.0))
-	_connect_btn("Row/Panel/VBox/Speed/Btn2", func(): GameState.set_game_speed(2.0))
-	_connect_btn("Row/Panel/VBox/Speed/Btn3", func(): GameState.set_game_speed(3.0))
+	_connect_btn("Row/Panel/Scroll/VBox/ExportBtn", func(): _on_export())
+	_connect_btn("Row/Panel/Scroll/VBox/MenuBtn",   func(): _on_main_menu())
+	_connect_btn("Row/Panel/Scroll/VBox/Speed/Btn1", func(): GameState.set_game_speed(1.0))
+	_connect_btn("Row/Panel/Scroll/VBox/Speed/Btn2", func(): GameState.set_game_speed(2.0))
+	_connect_btn("Row/Panel/Scroll/VBox/Speed/Btn3", func(): GameState.set_game_speed(3.0))
 	# Feature (v11.10, Dev Mode):
-	_connect_btn("Row/Panel/VBox/DevModeRow/DevModeBtn", func(): _on_dev_mode_activate())
+	_connect_btn("Row/Panel/Scroll/VBox/DevModeRow/DevModeBtn", func(): _on_dev_mode_activate())
 	# Feature (v16.5): Tutorial-Rundgänge
-	_connect_btn("Row/Panel/VBox/TutorialRow/TutBasicBtn", func(): _on_tutorial("basic"))
-	_connect_btn("Row/Panel/VBox/TutorialRow/TutSystemsBtn", func(): _on_tutorial("systems"))
-	_connect_btn("Row/Panel/VBox/TutorialRow/TutLogisticsBtn", func(): _on_tutorial("logistics"))
+	_connect_btn("Row/Panel/Scroll/VBox/TutorialRow/TutBasicBtn", func(): _on_tutorial("basic"))
+	_connect_btn("Row/Panel/Scroll/VBox/TutorialRow/TutSystemsBtn", func(): _on_tutorial("systems"))
+	_connect_btn("Row/Panel/Scroll/VBox/TutorialRow/TutLogisticsBtn", func(): _on_tutorial("logistics"))
 	_update_dev_mode_status()
+	_scroll = get_node_or_null("Row/Panel/Scroll")
+	if _scroll:
+		# Hoehe nachziehen, wenn das Fenster (expand! -> Viewport height variiert),
+		# die UI-Skala oder die Panel-Mindesthoehe sich aendert.
+		resized.connect(_fit_height)
+		get_viewport().size_changed.connect(_fit_height)
 	if _vol_master: _vol_master.value_changed.connect(func(_v): _update_volumes())
 	if _vol_music:  _vol_music.value_changed.connect(func(_v): _update_volumes())
 	if _vol_sfx:    _vol_sfx.value_changed.connect(func(_v): _update_volumes())
+	_fit_height.call_deferred()
+
+## v16.12-Hotfix: Panel nie hoeher machen als das Fenster. CenterContainer
+## zentriert Kinder auf deren Mindestgroesse - eine zu hohe VBox wuerde oben
+## und unten aus dem Bild laufen. Die Scroll-Hoehe = min(Inhalt, Fenster - Rand).
+func _fit_height() -> void:
+	if _scroll == null:
+		return
+	var vb: Control = get_node_or_null("Row/Panel/Scroll/VBox")
+	if vb == null:
+		return
+	var content: float = vb.get_combined_minimum_size().y
+	# WICHTIG: _avail NICHT aus pm/pm.size lesen - CenterContainer kann wegen
+	# der Panel-Mindesthoehe nicht unter deren Min schrumpfen (Sackgasse:
+	# custom_min folgt der eingefrorenen Groesse). Die Viewport-Hoehe ist
+	# immer verlaesslich (canvas_items+expand: hier in Canvas-Pixel).
+	var avail: float = maxf(get_viewport_rect().size.y - 24.0, 160.0)
+	var new_h: float = minf(content, avail)
+	if not is_equal_approx(_scroll.custom_minimum_size.y, new_h):
+		_scroll.custom_minimum_size.y = new_h
+		# Nach dem neuen Layout erneut ansetzen: die Min-Groessen-Kaskade
+		# (Scroll -> Panel -> Row -> CenterContainer) kann sonst einen
+		# veralteten Viewport-Stand einfrieren (u.a. bei UI-Skalawechsel).
+		_fit_height.call_deferred()
 
 func _connect_btn(path: String, cb: Callable) -> void:
 	var btn: Button = get_node_or_null(path)
@@ -84,7 +119,7 @@ func _on_save() -> void:
 ## zusätzlich unter einem neuen Namen als eigenen Speicherstand.
 func _on_save_as() -> void:
 	var gc: Node = get_node_or_null("/root/Main/GameScreen")
-	var input: LineEdit = get_node_or_null("Row/Panel/VBox/SaveAsRow/SaveAsInput")
+	var input: LineEdit = get_node_or_null("Row/Panel/Scroll/VBox/SaveAsRow/SaveAsInput")
 	if gc == null or input == null: return
 	var raw_name: String = input.text.strip_edges()
 	if raw_name.is_empty():
@@ -120,7 +155,7 @@ func _update_volumes() -> void:
 ## Feature (v11.10, Dev Mode): Passwort-Eingabefeld in den Einstellungen -
 ## siehe DevMode.gd für die eigentliche Freischalt-Logik/Konvention.
 func _on_dev_mode_activate() -> void:
-	var input: LineEdit = get_node_or_null("Row/Panel/VBox/DevModeRow/DevPasswordInput")
+	var input: LineEdit = get_node_or_null("Row/Panel/Scroll/VBox/DevModeRow/DevPasswordInput")
 	if input == null: return
 	if DevMode.try_enable(input.text):
 		GameState.notify("🛠️ Dev Mode aktiviert!", Color(0.3, 0.85, 0.4))
@@ -130,7 +165,7 @@ func _on_dev_mode_activate() -> void:
 	_update_dev_mode_status()
 
 func _update_dev_mode_status() -> void:
-	var status: Label = get_node_or_null("Row/Panel/VBox/DevModeStatus")
+	var status: Label = get_node_or_null("Row/Panel/Scroll/VBox/DevModeStatus")
 	if status == null: return
 	if DevMode.enabled:
 		status.text = "🛠️ Dev Mode: AN"
@@ -145,7 +180,9 @@ func _on_state_changed(state: GameState.State) -> void:
 	# aktuellen Kolonie, damit klar ist, in welchen Slot "Speichern" schreibt.
 	if visible:
 		var gc: Node = get_node_or_null("/root/Main/GameScreen")
-		var save_btn: Button = get_node_or_null("Row/Panel/VBox/SaveBtn")
+		var save_btn: Button = get_node_or_null("Row/Panel/Scroll/VBox/SaveBtn")
 		if gc and save_btn:
 			save_btn.text = "Speichern: " + str(gc.current_world_name)
 		_update_dev_mode_status()
+		# Fensterhoehen-Kappe erst nach dem Layout-Lauf ansetzen
+		_fit_height.call_deferred()

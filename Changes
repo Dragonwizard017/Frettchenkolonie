@@ -43,6 +43,22 @@ gemeldete "Spiel in einem bestimmten Format").
   Preview-Flaeche mit Bearbeitungs-Balken an - das ist editorseitig eigenes
   Format/Centerverhalten, KEIN expand-Bug. Standalone (ZIP + Godot.exe)
   verhaelt sich einwandfrei.
+- **Hotfix 2 (25. Okt 2026, gemeldet: "die UI geht aus dem Bild heraus")**:
+  Das Pausenmenue war durch die v16.12-Zeilen (Vollbildschalter + UI-Groesse +
+  Tutorial + Dev-Zeile) hoeher als ein 16:9-Viewport (720 vpx); ein
+  CenterContainer schneidet uebergrosse Kinder oben und unten einfach ab.
+  Fix (Main.gd/_build_pause_menu + ui/PauseMenu.gd): linke Menuespalte liegt
+  jetzt IN einem ScrollContainer ("Row/Panel/Scroll/VBox"), dessen Hoehe ueber
+  `_fit_height()` auf min(Inhalt, Viewport - Rand) gekappt wird - die Kappe
+  liest die Viewport-Hoehe (NICHT die eigene, wegen der Min-Groessenkaskade
+  eingefrorenen Container-Groesse!) und laeuft selbst-nach (call_deferred),
+  wenn sie ihren Wert aendert - sonst friert ein veralteter Viewport-Stand den
+  Wert ein (u. a. bei UI-Skalawechsel). Pfadanpassung: alle PauseMenu-Pfade
+  "Row/Panel/VBox/..." -> "Row/Panel/Scroll/VBox/...". Kleine Politur:
+  das UI-Groesse-Dropdown zieht jetzt per GraphicsSettings.changed nach.
+  Verifiziert mit `_t/PauseFit.gd` (echtes Fenster): 1280x720, 960x540,
+  1500x1000 und UI-Skala 115 % - Scroll-Hoehe je unter Viewport-Grenze
+  ("in Window: true" x4), Screenshots im Repo-Verlauf geprueft.
 
 ## v16.11 (Welt-Export/-Import: platzsparendes .fkw + Weltcode) - 24. Okt 2026
 Austausch-Update. Eine Welt kann jetzt als sehr kleine `.fkw`-Datei exportiert und auf
